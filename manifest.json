@@ -1,0 +1,32 @@
+{
+  "name": "Sober Journey",
+  "short_name": "Sober Journey",
+  "description": "Track sober days, drinking days, and streaks on your harm-reduction journey.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1e9e3e",
+  "theme_color": "#1e9e3e",
+  "categories": ["health", "lifestyle"],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
