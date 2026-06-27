@@ -1,31 +1,37 @@
 'use strict';
 
-const CACHE_NAME = 'sober-journey-personal-v1';
-const PRECACHE_URLS = [
-  './',
-  './index.html',
-  './manifest.json',
-  './icon-180.png',
-  './icon-192.png',
-  './icon-512.png',
-  'https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js',
-];
+const CACHE_NAME = 'sober-journey-v2';
+
+function scopeUrl(path) {
+  return new URL(path, self.registration.scope).href;
+}
+
+function precacheUrls() {
+  return [
+    self.registration.scope,
+    scopeUrl('index.html'),
+    scopeUrl('manifest.json'),
+    scopeUrl('icon-180.png'),
+    scopeUrl('icon-192.png'),
+    scopeUrl('icon-512.png'),
+    'https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js',
+  ];
+}
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(PRECACHE_URLS))
+      .then((cache) => Promise.all(
+        precacheUrls().map((url) => cache.add(url).catch(() => {}))
+      ))
       .then(() => self.skipWaiting())
-      .catch(() => {})
   );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
-      ))
+      .then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
       .then(() => self.clients.claim())
   );
 });
@@ -44,11 +50,12 @@ self.addEventListener('fetch', (event) => {
         .then((response) => {
           if (response && response.ok) {
             const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put('./index.html', copy));
+            caches.open(CACHE_NAME).then((cache) => cache.put(scopeUrl('index.html'), copy));
           }
           return response;
         })
-        .catch(() => caches.match('./index.html'))
+        .catch(() => caches.match(event.request)
+          .then((cached) => cached || caches.match(scopeUrl('index.html'))))
     );
     return;
   }

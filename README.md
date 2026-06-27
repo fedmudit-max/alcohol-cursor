@@ -1,39 +1,41 @@
 # Sober Journey
 
-Static PWA — one HTML file plus manifest, service worker, and icons. No build step, no backend.
+Static PWA for GitHub Pages: `https://fedmudit-max.github.io/alcohol-cursor/`
 
-## GitHub Pages
+## Deploy
 
-1. Push this repo to GitHub.
-2. **Settings → Pages → Build and deployment**
-   - Source: **Deploy from a branch**
-   - Branch: **main** (or `master`) → **/ (root)**
-3. Save. After a minute, open:
+Push these files to GitHub (branch **main**, Pages source **/ root**):
 
-   `https://<your-username>.github.io/<repo-name>/`
+- `index.html`, `manifest.json`, `sw.js`
+- `icon-180.png`, `icon-192.png`, `icon-512.png`
+- `.nojekyll` (must be committed — do not gitignore it)
 
-4. On your phone: open that URL → **Add to Home Screen** (iOS) or **Install app** (Android).
+## Install on phone
 
-## Files (all you need)
+1. Open **https://fedmudit-max.github.io/alcohol-cursor/** in Chrome (Android) or Safari (iPhone).
+2. **Android:** Menu → **Install app** (or **Add to Home screen**).
+3. **iPhone:** Share → **Add to Home Screen**.
 
-| File | Purpose |
-|------|---------|
-| `index.html` | App (HTML + CSS + JS) |
-| `manifest.json` | PWA install metadata |
-| `sw.js` | Offline cache |
-| `icon-180.png` | iPhone home screen |
-| `icon-192.png` | Android icon |
-| `icon-512.png` | Install / splash |
-| `.nojekyll` | Lets GitHub Pages serve static assets as-is |
+## Android 404 or old icon?
+
+This usually means an **old install** or **old service worker** is still on the phone.
+
+1. **Remove** the old home-screen shortcut (long-press → Uninstall / Remove).
+2. Chrome → **Settings → Site settings → All sites** → find `fedmudit-max.github.io` → **Clear & reset**.
+3. Open the URL again in Chrome (not the old shortcut).
+4. Install again.
+
+After pushing updates to GitHub, wait ~1 minute, then repeat step 2 if the icon or page still looks wrong.
+
+## If you rename the GitHub repo
+
+Update full URLs in `manifest.json` (`start_url`, `scope`, `id`, icon `src` paths) to match `/your-new-repo-name/`.
 
 ## Local preview
 
-Any static server works (service worker needs `http://`, not `file://`):
+Use Live Server or `npx serve .` — open the folder URL. Service worker needs `http://`, not `file://`.
 
-- VS Code **Live Server** extension, or  
-- `npx serve .` if you have Node installed
-
-## Settings in `index.html`
+## Config (`index.html`)
 
 ```javascript
 const CONFIG = {
@@ -43,9 +45,3 @@ const CONFIG = {
   buildTag:       'personal-v1',
 };
 ```
-
-- **Onboarding** — once per device (`sj_onboarded` in localStorage).
-- **AUDIT test** — resets on each page reload.
-- **Journey data** — saved in localStorage (`soberJourney_v1`).
-
-To show dev test buttons again, set `showTestUI: true` and `isProduction: false`.

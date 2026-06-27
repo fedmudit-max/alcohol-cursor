@@ -1,9 +1,10 @@
 {
+  "id": "https://fedmudit-max.github.io/alcohol-cursor/",
   "name": "Sober Journey",
   "short_name": "Sober Journey",
   "description": "Track sober days, drinking days, and streaks on your harm-reduction journey.",
-  "start_url": "./index.html",
-  "scope": "./",
+  "start_url": "https://fedmudit-max.github.io/alcohol-cursor/index.html",
+  "scope": "https://fedmudit-max.github.io/alcohol-cursor/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#1e9e3e",
@@ -11,19 +12,19 @@
   "categories": ["health", "lifestyle"],
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "https://fedmudit-max.github.io/alcohol-cursor/icon-192.png?v=2",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icon-512.png",
+      "src": "https://fedmudit-max.github.io/alcohol-cursor/icon-512.png?v=2",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icon-512.png",
+      "src": "https://fedmudit-max.github.io/alcohol-cursor/icon-512.png?v=2",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
