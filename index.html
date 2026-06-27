@@ -222,6 +222,13 @@ body.loaded { background: var(--bg); }
 .current-card .card-label  { color:#34c759; }
 .current-card.inactive .card-label { color:var(--label2); }
 
+/* MONTH GRID CALENDAR */
+.cal-cell {
+  aspect-ratio:1; border-radius:8px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; font-weight:700; line-height:1;
+}
+
 .card-value { font-weight:700; line-height:1; font-variant-numeric:tabular-nums; letter-spacing:-1px; }
 .current-card .card-value { font-size:44px; color:#34c759; }
 .current-card.inactive .card-value { color:var(--label2); font-size:38px; }
@@ -295,6 +302,7 @@ body.loaded { background: var(--bg); }
 .stage-building  { color:#cc2200; }
 .stage-improving { color:#ff9500; }
 .stage-safe      { color:#34c759; }
+.stage-incontrol { color:#007aff; }
 
 .milestone-row {
   display:flex; align-items:center; justify-content:space-between;
@@ -550,6 +558,18 @@ body.modal-open { overflow:hidden; position:fixed; width:100%; }
             <div class="milestone-status">—</div>
           </div>
         </div>
+
+        <div class="stage-label stage-incontrol" id="inControlStageLabel" style="display:none;">In Control</div>
+        <div id="inControlStage" style="display:none;">
+          <div class="milestone-row" id="jm-150">
+            <div class="milestone-left"><div class="milestone-icon">🏆</div><div class="milestone-text"><div class="milestone-name" data-label="150 Days — Sustained Control">150 Days</div></div></div>
+            <div class="milestone-status">—</div>
+          </div>
+          <div class="milestone-row" id="jm-200">
+            <div class="milestone-left"><div class="milestone-icon">👑</div><div class="milestone-text"><div class="milestone-name" data-label="200 Days — Total Command">200 Days</div></div></div>
+            <div class="milestone-status">—</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -578,22 +598,6 @@ body.modal-open { overflow:hidden; position:fixed; width:100%; }
         <button onclick="AuditOnboarding.show()" id="assessBtn" style="background:#007aff;border:none;border-radius:22px;padding:12px 28px;min-height:44px;font-size:13px;font-weight:600;color:white;cursor:pointer;font-family:inherit;">Take Test</button>
       </div>
       <div id="meterFeedback" style="display:none;margin-top:12px;padding:10px 12px;border-radius:10px;font-size:12px;line-height:1.6;"></div>
-      <!-- Why this zone expandable -->
-      <div id="whyZoneWrap" style="display:none;margin-top:10px;">
-        <button onclick="SoberTracker.toggleWhyZone()" id="whyZoneBtn"
-          style="width:100%;background:rgba(60,60,67,0.06);border:1px solid rgba(60,60,67,0.12);
-          border-radius:10px;padding:11px 14px;font-size:13px;font-weight:600;
-          color:rgba(60,60,67,0.6);cursor:pointer;font-family:inherit;
-          display:flex;align-items:center;justify-content:space-between;
-          min-height:44px;transition:background 0.15s ease;">
-          <span style="display:flex;align-items:center;gap:8px;">
-            <span style="font-size:16px;">🔬</span>
-            <span>What does this zone mean for my body?</span>
-          </span>
-          <span id="whyZoneArrow" style="font-size:18px;color:rgba(60,60,67,0.4);">▸</span>
-        </button>
-        <div id="whyZoneContent" style="display:none;margin-top:6px;padding:4px 10px;border-radius:10px;border:1px solid rgba(60,60,67,0.08);"></div>
-      </div>
     </div>
   </div>
 
@@ -653,7 +657,7 @@ body.modal-open { overflow:hidden; position:fixed; width:100%; }
 
 
   <!-- LOW RISK TARGET ZONE CARD -->
-  <div class="card" style="margin-top:12px;">
+  <div class="card" id="lowRiskZoneCard" style="margin-top:12px;">
     <div style="padding:14px 16px 16px;">
       <div style="font-size:13px;font-weight:700;color:#1c1c1e;margin-bottom:4px;">🎯 Low Risk Target Zone</div>
       <div style="font-size:12px;color:rgba(60,60,67,0.5);margin-bottom:12px;">Three patterns that keep you in the WHO Low Risk zone</div>
@@ -694,10 +698,11 @@ body.modal-open { overflow:hidden; position:fixed; width:100%; }
       </div>
       <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:3px;" id="monthDayLabels"></div>
       <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;" id="monthGrid"></div>
-      <div style="display:flex;gap:14px;margin-top:10px;font-size:10px;color:rgba(60,60,67,0.4);justify-content:flex-start;">
+      <div style="display:flex;gap:14px;margin-top:10px;font-size:10px;color:rgba(60,60,67,0.4);justify-content:flex-start;flex-wrap:wrap;">
         <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#34c759;vertical-align:middle;margin-right:3px;"></span><span id="calLegendSober">Sober</span></span>
         <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:rgba(255,149,0,0.7);vertical-align:middle;margin-right:3px;"></span><span id="calLegendDrink">Drinking</span></span>
         <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:rgba(60,60,67,0.1);border:1px solid rgba(60,60,67,0.12);vertical-align:middle;margin-right:3px;"></span>Not logged</span>
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:rgba(60,60,67,0.08);border:2px solid #34c759;vertical-align:middle;margin-right:3px;"></span>Today</span>
       </div>
       <div id="monthEmptyState" style="display:none;text-align:center;font-size:11px;color:rgba(60,60,67,0.3);padding:6px 0 2px;">Start logging to fill your month</div>
     </div>
@@ -768,9 +773,12 @@ body.modal-open { overflow:hidden; position:fixed; width:100%; }
 <div class="target-zone-modal" id="targetZoneModal">
   <div style="background:white;border-radius:24px 24px 0 0;padding:24px 20px 44px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;">
     <div style="width:36px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 20px;"></div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-      <div style="font-size:17px;font-weight:800;color:#1c1c1e;">🎯 Low Risk Target Zone</div>
-      <button onclick="SoberTracker.closeTargetZone()" style="background:rgba(60,60,67,0.08);border:none;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;flex-shrink:0;">✕</button>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:12px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:17px;font-weight:800;color:#1c1c1e;">🎯 Low Risk Target Zone</div>
+        <div style="font-size:11px;color:rgba(60,60,67,0.5);margin-top:4px;line-height:1.45;">1 drink = 10gm alcohol = 30ml whisky = 1 peg</div>
+      </div>
+      <button onclick="SoberTracker.closeTargetZone()" style="background:rgba(52,199,89,0.1);border:1.5px solid rgba(52,199,89,0.25);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:#248a3d;flex-shrink:0;">✕</button>
     </div>
 
     <div style="display:flex;flex-direction:column;gap:8px;">
@@ -814,6 +822,42 @@ body.modal-open { overflow:hidden; position:fixed; width:100%; }
         <div style="font-size:11px;color:rgba(60,60,67,0.4);">Upper edge of Low Risk. Strict quantity discipline required.</div>
       </div>
 
+    </div>
+
+    <!-- Beer peg guide — same as AUDIT Q2 -->
+    <div style="border:1.5px solid rgba(52,199,89,0.25);border-radius:12px;overflow:hidden;margin-top:10px;">
+      <button onclick="AuditOnboarding.toggleBeer('tzBeer','tzBeerArr')"
+        style="width:100%;padding:11px 14px;background:rgba(52,199,89,0.06);border:none;
+        font-size:13px;font-weight:600;color:#248a3d;cursor:pointer;
+        font-family:inherit;text-align:left;display:flex;align-items:center;
+        justify-content:space-between;min-height:44px;">
+        <span>🍺 I drink beer — how many pegs is that?</span>
+        <span id="tzBeerArr" style="font-size:18px;color:rgba(36,138,61,0.45);transition:transform 0.2s;">▸</span>
+      </button>
+      <div id="tzBeer" style="display:none;border-top:1px solid rgba(52,199,89,0.15);padding:12px 14px;background:white;">
+        <div style="font-size:10px;color:rgba(60,60,67,0.35);margin-bottom:10px;">1 drink = 10gm alcohol = 30ml whisky = 1 peg</div>
+        <div style="display:grid;grid-template-columns:auto 1fr auto;gap:6px 12px;align-items:center;">
+          <div style="font-size:11px;font-weight:600;color:rgba(60,60,67,0.4);padding-bottom:4px;">BOTTLE</div>
+          <div style="font-size:11px;font-weight:600;color:rgba(60,60,67,0.4);padding-bottom:4px;">TYPE</div>
+          <div style="font-size:11px;font-weight:600;color:rgba(60,60,67,0.4);padding-bottom:4px;text-align:right;">PEGS</div>
+
+          <div style="font-size:13px;color:#1c1c1e;">650ml</div>
+          <div style="font-size:12px;color:rgba(60,60,67,0.5);">Strong (7.5% ABV)</div>
+          <div style="font-size:13px;font-weight:700;color:#cc6600;text-align:right;">≈ 4 pegs</div>
+
+          <div style="font-size:13px;color:#1c1c1e;">500ml</div>
+          <div style="font-size:12px;color:rgba(60,60,67,0.5);">Strong (7.5% ABV)</div>
+          <div style="font-size:13px;font-weight:700;color:#cc6600;text-align:right;">≈ 3 pegs</div>
+
+          <div style="font-size:13px;color:#1c1c1e;">650ml</div>
+          <div style="font-size:12px;color:rgba(60,60,67,0.5);">Regular (5% ABV)</div>
+          <div style="font-size:13px;font-weight:600;color:rgba(60,60,67,0.6);text-align:right;">≈ 2.5 pegs</div>
+
+          <div style="font-size:13px;color:#1c1c1e;">500ml</div>
+          <div style="font-size:12px;color:rgba(60,60,67,0.5);">Regular (5% ABV)</div>
+          <div style="font-size:13px;font-weight:600;color:rgba(60,60,67,0.6);text-align:right;">≈ 2 pegs</div>
+        </div>
+      </div>
     </div>
 
     <div style="margin-top:14px;font-size:11px;color:rgba(60,60,67,0.35);text-align:center;line-height:1.6;">
@@ -1718,6 +1762,8 @@ const JOURNEY_TROPHIES = [
   { days:60,  el:'jm-60',  c:{ emoji:'✨', title:'Turning Point!',      msg:"60 sober days. Six sober days for every drinking day. You are approaching every clinical safe limit. The summit is visible." }},
   { days:80,  el:'jm-80',  c:{ emoji:'🏔️', title:'Low Risk!',          msg:"80 sober days. You are drinking less often than most people globally.\n\nAt this frequency — you are low risk IF each drinking day stays within:\n🥃 Whisky — 1 peg (60ml) or 🍺 Beer — 1 bottle (330ml)\n\nYou control the days. Now control the pour." }},
   { days:100, el:'jm-100', c:{ emoji:'💎', title:'Occasional Drinker!', msg:"100 days. Occasional drinker by every clinical definition.\n\nThey said quit. You said control. You have conquered.\n\nWHO: No level of alcohol is completely safe. Less is always better." }},
+  { days:150, el:'jm-150', hiddenUntil:100, c:{ emoji:'🏆', title:'Sustained Control!', msg:"150 sober days in one journey. You are not just occasional — you are in control.\n\nYour body has had months to heal. This pattern is yours now." }},
+  { days:200, el:'jm-200', hiddenUntil:150, c:{ emoji:'👑', title:'Total Command!',     msg:"200 sober days. Fifteen sober days for every drinking day.\n\nYou have proven this is not luck. This is who you are." }},
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -1850,12 +1896,29 @@ const UI = {
   },
 
   renderJourneyTrophies(data) {
-    // Show journey number in tab header
-    // Taking Control lock/unlock
-    // Taking Control always visible — no lock
     const current = data.currentScore.success;
+    const journeyActive = !data.journeyPendingReset;
+
+    function milestoneVisible(m) {
+      if (m.hiddenUntil === undefined) return true;
+      if (!journeyActive) return false;
+      return current >= m.hiddenUntil;
+    }
+
+    const showInControl = milestoneVisible({ hiddenUntil: 100 });
+    const inControlLabel = el('inControlStageLabel');
+    const inControlStage = el('inControlStage');
+    if (inControlLabel) inControlLabel.style.display = showInControl ? '' : 'none';
+    if (inControlStage) inControlStage.style.display = showInControl ? '' : 'none';
+
     JOURNEY_TROPHIES.forEach(m => {
-      const row    = el(m.el); if (!row) return;
+      const row = el(m.el); if (!row) return;
+      if (!milestoneVisible(m)) {
+        row.style.display = 'none';
+        return;
+      }
+      row.style.display = '';
+
       const count  = (data.journeyTrophies && data.journeyTrophies[m.days]) || 0;
       const nameEl = row.querySelector('.milestone-name');
       const statEl = row.querySelector('.milestone-status');
@@ -2275,6 +2338,8 @@ const Tracker = {
     recalculateStreakFromLog(d);
     d.personalBestCelebrated = false;
     d.celebratedStreakMilestones = {};
+    // Reset Progress tab to default (Streak tab + hide long-term science milestones)
+    this.switchTab(0);
     // Reset streak milestone UI
     STREAK_MILESTONES.forEach(m => {
       const row = el(m.el); if (!row) return;
@@ -2316,8 +2381,13 @@ const Tracker = {
     d.lastDayCheck = new Date(appToday.getFullYear(), appToday.getMonth(), appToday.getDate(), 12, 0, 0).toISOString();
     DataManager.save(d);
     refreshStreakUI(d);
+    this.resetJourneyTabView();
     UI.renderAll(d);
     setTimeout(() => this._queueCelebration('🎯', celeb.title, celeb.msg), 300);
+  },
+
+  resetJourneyTabView() {
+    this.switchTab(1);
   },
 
   _startNew() {
@@ -2350,6 +2420,7 @@ const Tracker = {
     this._currentStreaks = [];
     DataManager.save(d);
     refreshStreakUI(d);
+    this.resetJourneyTabView();
     UI.renderAll(d);
   },
 
@@ -2509,21 +2580,6 @@ const Tracker = {
     if (subLabel) subLabel.style.display = open ? 'none' : 'block';
     // Re-render chart when opening — SVG won't draw correctly in display:none
     if (!open) renderJourneyChart(Tracker.data);
-  },
-
-  toggleWhyZone() {
-    const content = el('whyZoneContent');
-    const arrow   = el('whyZoneArrow');
-    const btn     = el('whyZoneBtn');
-    if (!content) return;
-    const isOpen = content.style.display !== 'none';
-    content.style.display  = isOpen ? 'none' : 'block';
-    if (arrow) arrow.textContent = isOpen ? '▸' : '▾';
-    if (btn) {
-      btn.style.background   = isOpen ? 'rgba(60,60,67,0.06)' : 'rgba(60,60,67,0.1)';
-      btn.style.borderColor  = isOpen ? 'rgba(60,60,67,0.12)' : 'rgba(60,60,67,0.2)';
-      btn.style.color        = isOpen ? 'rgba(60,60,67,0.6)' : 'rgba(60,60,67,0.8)';
-    }
   },
 
   closeCelebration() {
@@ -2776,8 +2832,12 @@ const AuditOnboarding = {
     Tracker.data   = d;
     DataManager.save(d);
     el('auditModal').classList.remove('open');
+    const zn = getAuditZoneName(d);
+    const zi = zn ? DYK_FACTS.findIndex(f => f.type === 'zone' && f.zoneName === zn) : -1;
+    d.dykIndex = zi >= 0 ? zi : 0;
     MeterController.updateFromJourney(d);
     renderReductionTarget(d);
+    scrollToPostTestView();
   }
 };
 
@@ -3065,30 +3125,7 @@ With medical support and daily tracking, you can move from <strong>Dependent →
       feedbackEl.style.display = 'none';
     }
 
-    // Why this zone — expandable body impact section
-    const zoneDetail = ZONE_DETAILS[zoneName];
-    const whyWrap    = el('whyZoneWrap');
-    const whyContent = el('whyZoneContent');
-    const whyArrow   = el('whyZoneArrow');
-    if (whyWrap && whyContent && zoneDetail) {
-      whyWrap.style.display = 'block';
-      whyContent.style.display = 'none'; // reset to closed on new score
-      if (whyArrow) whyArrow.textContent = '▸';
-      const rows = zoneDetail.items.map(item =>
-        `<div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px solid rgba(60,60,67,0.06);">
-          <div style="font-size:16px;flex-shrink:0;width:22px;text-align:center;">${item.organ}</div>
-          <div>
-            <div style="font-size:11px;font-weight:700;color:${zoneDetail.color};margin-bottom:1px;">${item.system}</div>
-            <div style="font-size:12px;color:rgba(60,60,67,0.65);line-height:1.5;">${item.impact}</div>
-            ${item.cite ? `<div style="font-size:10px;color:rgba(60,60,67,0.35);margin-top:2px;">📄 ${item.cite}</div>` : ''}
-          </div>
-        </div>`
-      ).join('');
-      whyContent.style.background   = zoneDetail.bg;
-      whyContent.style.borderRadius = '8px';
-      whyContent.style.padding      = '4px 10px';
-      whyContent.innerHTML          = rows;
-    }
+    renderDidYouKnow(data);
   }
 };
 
@@ -3363,7 +3400,7 @@ let _calMonth = null;
 
 function renderMonthGrid(data, targetYear, targetMonth) {
   const log   = data.dailyLog || data.log || {};
-  const today = new Date();
+  const today = getAppToday(data);
 
   // Default to current month
   if (targetYear  === undefined) targetYear  = today.getFullYear();
@@ -3426,18 +3463,26 @@ function renderMonthGrid(data, targetYear, targetMonth) {
   let html = Array(first).fill('<div></div>').join('');
   for (let d = 1; d <= days; d++) {
     const k = `${targetYear}-${String(targetMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const isToday    = isCurrentMonth && d === today.getDate();
-    const isFuture   = isCurrentMonth && d > today.getDate();
+    const isToday     = isCurrentMonth && d === today.getDate();
+    const isFuture    = isCurrentMonth && d > today.getDate();
     const beforeStart = isStartMonth && d < startDay;
-    const status     = log[k];
+    const status      = log[k];
 
     let bg='rgba(60,60,67,0.06)', border='1px solid rgba(60,60,67,0.10)', color='rgba(60,60,67,0.35)';
-    if (status==='sober')    { bg='#34c759'; border='1px solid #248a3d'; color='white'; }
-    if (status==='drinking') { bg='rgba(255,149,0,0.18)'; border='1px solid rgba(255,149,0,0.45)'; color='#cc6600'; }
+    let cls = 'cal-cell';
+    if (status==='sober')    { bg='#34c759'; border='1px solid #248a3d'; color='white'; cls += ' cal-cell--sober'; }
+    if (status==='drinking') { bg='rgba(255,149,0,0.18)'; border='1px solid rgba(255,149,0,0.45)'; color='#cc6600'; cls += ' cal-cell--drink'; }
     if (isFuture || beforeStart) { bg='rgba(60,60,67,0.03)'; border='1px solid rgba(60,60,67,0.06)'; color='rgba(60,60,67,0.18)'; }
+    if (isToday && !isFuture && !beforeStart) {
+      cls += ' cal-cell--today';
+      if (!status) {
+        bg = 'rgba(60,60,67,0.08)';
+        color = 'rgba(60,60,67,0.55)';
+      }
+      border = '2px solid #34c759';
+    }
 
-    const outline = isToday ? `outline:2px solid ${status==='sober'?'#248a3d':status==='drinking'?'#ff3b30':'rgba(60,60,67,0.3)'};outline-offset:1px;` : '';
-    html += `<div style="aspect-ratio:1;border-radius:5px;background:${bg};border:${border};${outline}display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:${color};">${d}</div>`;
+    html += `<div class="${cls}" style="background:${bg};border:${border};color:${color};">${d}</div>`;
   }
   el('monthGrid').innerHTML = html;
 
@@ -3613,11 +3658,35 @@ const ZONE_DETAILS = {
   },
 };
 
+function getAuditZoneName(data) {
+  if (!data || data.auditQ1 === null || data.auditQ1 === undefined) return null;
+  if (data.auditQ2 === null || data.auditQ3 === null) return null;
+  const score = typeof data.auditScore === 'number'
+    ? data.auditScore
+    : (data.auditQ1 + data.auditQ2 + data.auditQ3);
+  return MeterController.ZONES[MeterController.getZoneIdx(score)].label;
+}
+
+function renderZoneDetailHtml(zoneDetail, items) {
+  const list = items || zoneDetail.items;
+  return list.map(item =>
+    `<div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px solid rgba(60,60,67,0.06);">
+      <div style="font-size:16px;flex-shrink:0;width:22px;text-align:center;">${item.organ}</div>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:${zoneDetail.color};margin-bottom:1px;">${item.system}</div>
+        <div style="font-size:12px;color:rgba(60,60,67,0.65);line-height:1.5;">${item.impact}</div>
+        ${item.cite ? `<div style="font-size:10px;color:rgba(60,60,67,0.35);margin-top:2px;">📄 ${item.cite}</div>` : ''}
+      </div>
+    </div>`
+  ).join('');
+}
+
 
 // ═══════════════════════════════════════════════════════════════
-// 28-DAY SCIENCE TIMELINE
-// Visual progression of body recovery — rendered once on boot
-// Each node: milestone day, organ, what changes, clinical source
+// SCIENCE TIMELINE (Progress tab)
+// Days 1–28 always visible; Day 30+ unlock progressively by streak.
+// hiddenUntil = streak needed before milestone appears in the list.
+// Drinking day resets streak → long-term milestones hide again.
 // ═══════════════════════════════════════════════════════════════
 
 const SCIENCE_NODES = [
@@ -3657,6 +3726,41 @@ const SCIENCE_NODES = [
     change: 'Liver enzymes within normal range for most hazardous drinkers. Brain grey matter volume stabilising. Cardiovascular risk measurably reduced.',
     cite: ''
   },
+  {
+    day: 30, organ: '🫀', label: 'Day 30',
+    title: 'Blood Pressure & Cancer Risk',
+    change: 'Blood pressure reduction equivalent to one antihypertensive medication dose (Roerecke et al., Lancet 2017). Cancer risk reduction begins to be measurable.',
+    cite: 'Roerecke et al., Lancet 2017',
+    hiddenUntil: 28
+  },
+  {
+    day: 60, organ: '🧠', label: 'Day 60',
+    title: 'Liver & Cognition',
+    change: 'Liver fat largely cleared in moderate drinkers. Cognitive function — memory, processing speed — measurably improved (Rao et al., 2000).',
+    cite: 'Rao et al., 2000',
+    hiddenUntil: 30
+  },
+  {
+    day: 90, organ: '🧬', label: 'Day 90',
+    title: 'Brain, Heart & Gut',
+    change: 'Neuroplasticity significantly recovered. Risk of alcohol-related cardiac events reduced by 30%. Gut microbiome substantially restored (Leclercq et al., 2014).',
+    cite: 'Leclercq et al., 2014',
+    hiddenUntil: 60
+  },
+  {
+    day: 180, organ: '🫁', label: 'Day 180',
+    title: 'Liver Recovery & Immunity',
+    change: 'Liver fibrosis begins reversing in early-stage cases. Immune system largely restored.',
+    cite: '',
+    hiddenUntil: 60
+  },
+  {
+    day: 365, organ: '💚', label: 'Day 365',
+    title: 'Cardiovascular Reset',
+    change: 'Cardiovascular risk profile equivalent to a non-drinker (Ronksley et al., BMJ 2011).',
+    cite: 'Ronksley et al., BMJ 2011',
+    hiddenUntil: 180
+  },
 ];
 
 function toggleSciNode(idx) {
@@ -3674,26 +3778,33 @@ function toggleSciNode(idx) {
   });
 }
 
+function getVisibleScienceNodes(streak) {
+  return SCIENCE_NODES.filter(n => n.hiddenUntil === undefined || streak >= n.hiddenUntil);
+}
+
 function renderScienceTimeline(currentStreak) {
   const container = el('scienceTimeline');
   if (!container) return;
 
+  const nodes = getVisibleScienceNodes(currentStreak);
   let html = '';
 
-  SCIENCE_NODES.forEach((node, i) => {
+  nodes.forEach((node, i) => {
     const achieved  = currentStreak >= node.day;
     const isCurrent = currentStreak > 0 && (
-      i === SCIENCE_NODES.length - 1
+      i === nodes.length - 1
         ? achieved
-        : currentStreak >= node.day && currentStreak < SCIENCE_NODES[i + 1].day
+        : currentStreak >= node.day && currentStreak < nodes[i + 1].day
     );
-    const lineColor = (achieved && i < SCIENCE_NODES.length - 1 && currentStreak >= SCIENCE_NODES[i + 1].day)
+    const lineColor = (achieved && i < nodes.length - 1 && currentStreak >= nodes[i + 1].day)
       ? '#34c759' : 'rgba(60,60,67,0.12)';
     const dotBg   = achieved ? '#34c759' : 'rgba(60,60,67,0.12)';
     const dotSize = isCurrent ? '14px' : '8px';
-    const connector = i < SCIENCE_NODES.length - 1
+    const citeHtml = node.cite
+      ? `<div style="font-size:10px;color:rgba(60,60,67,0.35);margin-top:6px;font-style:italic;">📄 ${node.cite}</div>` : '';
+    const connector = i < nodes.length - 1
       ? `<div style="flex:1;width:2px;background:${lineColor};margin-top:3px;"></div>` : '';
-    const sepLine = i < SCIENCE_NODES.length - 1
+    const sepLine = i < nodes.length - 1
       ? `<div style="display:flex;"><div style="width:24px;flex-shrink:0;display:flex;justify-content:center;"><div style="width:2px;height:6px;background:${lineColor};"></div></div></div>` : '';
 
     if (isCurrent) {
@@ -3717,6 +3828,7 @@ function renderScienceTimeline(currentStreak) {
             <span style="font-size:9px;font-weight:700;color:white;background:#34c759;border-radius:5px;padding:2px 7px;white-space:nowrap;">YOU ARE HERE</span>
           </div>
           <div style="font-size:12px;color:rgba(60,60,67,0.7);line-height:1.65;padding-top:8px;border-top:1px solid rgba(60,60,67,0.08);">${node.change}</div>
+          ${citeHtml}
         </div>
       </div>
     </div>${sepLine}`;
@@ -3726,6 +3838,7 @@ function renderScienceTimeline(currentStreak) {
       const titleColor = achieved ? '#1c1c1e' : '#1c1c1e';
       const dayColor   = achieved ? '#34c759' : 'rgba(60,60,67,0.35)';
       const textColor  = 'rgba(60,60,67,0.65)';
+      const nodeIdx    = SCIENCE_NODES.indexOf(node);
 
       html += `
     <div style="display:flex;align-items:stretch;gap:0;">
@@ -3734,7 +3847,7 @@ function renderScienceTimeline(currentStreak) {
         ${connector}
       </div>
       <div style="flex:1;min-width:0;padding-left:10px;margin-bottom:4px;">
-        <div id="sn-card-${i}" onclick="toggleSciNode(${i})" style="cursor:pointer;background:${achieved?'rgba(52,199,89,0.05)':'rgba(60,60,67,0.03)'};border:1px solid ${achieved?'rgba(52,199,89,0.18)':'rgba(60,60,67,0.11)'};border-radius:10px;padding:10px 12px;-webkit-tap-highlight-color:rgba(0,0,0,0.04);">
+        <div id="sn-card-${nodeIdx}" onclick="toggleSciNode(${nodeIdx})" style="cursor:pointer;background:${achieved?'rgba(52,199,89,0.05)':'rgba(60,60,67,0.03)'};border:1px solid ${achieved?'rgba(52,199,89,0.18)':'rgba(60,60,67,0.11)'};border-radius:10px;padding:10px 12px;-webkit-tap-highlight-color:rgba(0,0,0,0.04);">
           <div style="display:flex;align-items:center;justify-content:space-between;">
             <div style="display:flex;align-items:center;gap:8px;">
               <span style="font-size:14px;line-height:1;">${node.organ}</span>
@@ -3745,12 +3858,13 @@ function renderScienceTimeline(currentStreak) {
             </div>
             <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
               ${achieved ? '<span style="font-size:10px;color:#34c759;font-weight:700;">✓</span>' : ''}
-              <span id="sn-arr-${i}" style="font-size:18px;color:rgba(60,60,67,0.3);font-weight:300;line-height:1;">›</span>
+              <span id="sn-arr-${nodeIdx}" style="font-size:18px;color:rgba(60,60,67,0.3);font-weight:300;line-height:1;">›</span>
             </div>
           </div>
           <div class="sn-preview" style="font-size:11px;color:rgba(60,60,67,0.5);margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${node.change}&thinsp;…</div>
-          <div id="sn-body-${i}" style="display:none;margin-top:7px;padding-top:7px;border-top:1px solid rgba(60,60,67,0.07);">
+          <div id="sn-body-${nodeIdx}" style="display:none;margin-top:7px;padding-top:7px;border-top:1px solid rgba(60,60,67,0.07);">
             <div style="font-size:11px;color:${textColor};line-height:1.6;">${node.change}</div>
+            ${citeHtml}
           </div>
         </div>
       </div>
@@ -3791,6 +3905,49 @@ window.addEventListener('unhandledrejection', function(e) {
 // ═══════════════════════════════════════════════════════════════
 // BOOT — runs once when page loads
 // ═══════════════════════════════════════════════════════════════
+function scrollToPostTestView() {
+  function run() {
+    const scoreEl = el('currentCard');
+    const meterCard = el('assessBtn') && el('assessBtn').closest('.card');
+    const reduction = el('reductionTargetCard');
+    const lowRisk = el('lowRiskZoneCard');
+    if (!meterCard) return;
+
+    const vh = window.innerHeight;
+    const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+
+    const topStart = (scoreEl || meterCard).getBoundingClientRect().top + scrollY;
+    const topEnd = meterCard.getBoundingClientRect().bottom + scrollY;
+
+    let bottomStart = topEnd;
+    if (reduction && reduction.style.display !== 'none') {
+      bottomStart = reduction.getBoundingClientRect().top + scrollY;
+    } else if (lowRisk) {
+      bottomStart = lowRisk.getBoundingClientRect().top + scrollY;
+    }
+
+    const bottomEnd = lowRisk
+      ? lowRisk.getBoundingClientRect().bottom + scrollY
+      : (reduction && reduction.style.display !== 'none'
+          ? reduction.getBoundingClientRect().bottom + scrollY
+          : bottomStart + 140);
+
+    // Place boundary between meter (top block) and targets (bottom block) at screen centre
+    const splitY = (topEnd + bottomStart) / 2;
+    let target = splitY - vh / 2;
+
+    const minScroll = topStart - vh * 0.06;
+    const maxScroll = Math.max(0, bottomEnd - vh * 0.94);
+    target = Math.max(minScroll, Math.min(target, maxScroll));
+    target = Math.max(0, target);
+
+    window.scrollTo({ top: target, behavior: 'smooth' });
+  }
+
+  requestAnimationFrame(() => setTimeout(run, 80));
+  setTimeout(run, 320);
+}
+
 function dismissWelcomeHint() {
   try { localStorage.setItem('sj_welcome_dismissed', '1'); } catch (e) {}
   const card = el('welcomeHint');
@@ -4208,13 +4365,13 @@ function renderReductionTarget(data) {
 SoberTracker.showWinningWays   = function() { const m=document.getElementById('winningWaysModal'); if(m) m.classList.add('open'); };
 SoberTracker.closeWinningWays  = function() { const m=document.getElementById('winningWaysModal'); if(m) m.classList.remove('open'); };
 SoberTracker.showTargetZone    = function() { const m=document.getElementById('targetZoneModal'); if(m) m.classList.add('open'); };
-SoberTracker.closeTargetZone   = function() { const m=document.getElementById('targetZoneModal'); if(m) m.classList.remove('open'); };
-SoberTracker.toggleWhyZone     = function() {
-  const c=document.getElementById('whyZoneContent'), a=document.getElementById('whyZoneArrow');
-  if(!c) return;
-  const open=c.style.display!=='none';
-  c.style.display=open?'none':'block';
-  if(a) a.textContent=open?'▸':'▾';
+SoberTracker.closeTargetZone   = function() {
+  const m=document.getElementById('targetZoneModal');
+  if(m) m.classList.remove('open');
+  const p=document.getElementById('tzBeer');
+  const a=document.getElementById('tzBeerArr');
+  if(p) p.style.display='none';
+  if(a) a.textContent='▸';
 };
 
 // ── PATCH renderAll ───────────────────────────────────────────
@@ -4271,17 +4428,36 @@ const DYK_FACTS = [
   {type:"strategy",title:"\ud83d\udd11 The right order of reduction",subtitle:"Most people get this wrong \u2014 and relapse because of it.",steps:[{icon:"\u274c",text:"Wrong: Stop suddenly \u2192 cravings hit \u2192 back to drinking."},{icon:"\u2705",text:"Step 1 \u2014 Stop binge sessions. Never go over 180ml whisky in one sitting."},{icon:"\u2705",text:"Step 2 \u2014 Reduce quantity. Fewer pegs per session."},{icon:"\u2705",text:"Step 3 \u2014 Reduce frequency. Drink less often."}],note:"Zero to hero does not work. One step at a time does. The sequence matters."},
   {type:"strategy",title:"\ud83d\udcc5 Drink daily? Reduce by one drink each day",subtitle:"Gradual reduction is clinically safer than stopping suddenly.",steps:[{icon:"1\ufe0f\u20e3",text:"If you currently drink 4 pegs daily \u2014 target 3 pegs today."},{icon:"\ud83d\udcc9",text:"Each day, reduce by 1 drink. Your body adjusts gradually."}],note:"One less drink per day. Small change, measurable impact on your liver overnight."},
   {type:"strategy",title:"\ud83c\udf7a Beer drinker? Step down the bottle",subtitle:"Small packaging changes make a measurable difference.",steps:[{icon:"1\ufe0f\u20e3",text:"650ml strong \u2192 650ml regular. Same size, same ritual \u2014 30% less alcohol."},{icon:"2\ufe0f\u20e3",text:"650ml regular \u2192 500ml strong. Smaller bottle, fewer pegs."},{icon:"3\ufe0f\u20e3",text:"500ml strong \u2192 500ml regular. Same size, 2 fewer pegs."},{icon:"\ud83d\udcc9",text:"2 bottles \u2192 1 bottle. Halves your intake in one decision."}],note:"You do not have to stop drinking beer. Just drink less of it, less strong."},
-,
-  {text:"2 bottles of strong beer (650ml, 7.5% ABV) = 8 pegs of alcohol. That crosses the WHO binge threshold of 6 pegs. Switch to 2 regular beers (650ml, 5% ABV) and you get the same ritual — same number of bottles, same evening — but only 5 pegs. One swap, no binge.",source:"WHO standard drink guidelines · ABV calculations"}
-,
-  {text:"The secret of enjoying alcohol is simple: control either how much you drink, or how often. Do one well and alcohol stays a pleasure. Lose control of both — and what once felt like enjoyment becomes a daily obligation you never chose.",source:"WHO Global Status Report on Alcohol 2023"}, 
-  {text:"Heavy drinkers don't fall in all at once. The rabbit hole is entered one extra drink at a time — a slightly larger pour, one more occasion per week. Each step feels small. The destination does not.",source:"DSM-5 Alcohol Use Disorder"}
-,
-  {text:"With alcohol, less is more — and more is less. Drink rarely and a single peg delivers genuine pleasure. Drink heavily every day and ten pegs barely feel like anything. The body adapts ruthlessly: it builds tolerance and raises the baseline just to feel normal.",source:"Koob & Volkow, Neurobiological Theories of Addiction 2010"}, 
-  {text:"A heavy drinker who once felt euphoria from two drinks now needs six to feel anything at all — and still wakes up worse. Less alcohol preserves the experience. More alcohol destroys it. The pleasure was never in the quantity.",source:"WHO Global Status Report on Alcohol 2023"}
-,
+  {text:"2 bottles of strong beer (650ml, 7.5% ABV) = 8 pegs of alcohol. That crosses the WHO binge threshold of 6 pegs. Switch to 2 regular beers (650ml, 5% ABV) and you get the same ritual — same number of bottles, same evening — but only 5 pegs. One swap, no binge.",source:"WHO standard drink guidelines · ABV calculations"},
+  {text:"The secret of enjoying alcohol is simple: control either how much you drink, or how often. Do one well and alcohol stays a pleasure. Lose control of both — and what once felt like enjoyment becomes a daily obligation you never chose.",source:"WHO Global Status Report on Alcohol 2023"},
+  {text:"Heavy drinkers don't fall in all at once. The rabbit hole is entered one extra drink at a time — a slightly larger pour, one more occasion per week. Each step feels small. The destination does not.",source:"DSM-5 Alcohol Use Disorder"},
+  {text:"With alcohol, less is more — and more is less. Drink rarely and a single peg delivers genuine pleasure. Drink heavily every day and ten pegs barely feel like anything. The body adapts ruthlessly: it builds tolerance and raises the baseline just to feel normal.",source:"Koob & Volkow, Neurobiological Theories of Addiction 2010"},
+  {text:"A heavy drinker who once felt euphoria from two drinks now needs six to feel anything at all — and still wakes up worse. Less alcohol preserves the experience. More alcohol destroys it. The pleasure was never in the quantity.",source:"WHO Global Status Report on Alcohol 2023"},
   {text:"You win here in six ways. Add one more sober day than last time. Drink one fewer peg per session. Don't increase your intake. Lower your AUDIT-C score by even one point. Beat your personal best. Reach a milestone you haven't hit before. Any one of these is a victory. You don't have to quit. You just have to be slightly better than yesterday.",source:"Sober Journey · Harm Reduction Framework"}
 ];
+
+// AUDIT-C zone body-impact cards — two cards per zone (positions 10–19)
+(function() {
+  const zoneOrder = ['Dependent', 'Harmful', 'Hazardous', 'Low Risk', 'Sober'];
+  const zoneCards = [];
+  for (const zoneName of zoneOrder) {
+    if (!ZONE_DETAILS[zoneName]) continue;
+    zoneCards.push({ type: 'zone', zoneName, part: 1 });
+    zoneCards.push({ type: 'zone', zoneName, part: 2 });
+  }
+  DYK_FACTS.splice(9, 0, ...zoneCards);
+})();
+
+function normalizeDykIndex(index) {
+  const len = DYK_FACTS.length;
+  if (!len) return 0;
+  let idx = ((index || 0) % len + len) % len;
+  if (DYK_FACTS[idx]) return idx;
+  for (let i = 0; i < len; i++) {
+    if (DYK_FACTS[i]) return i;
+  }
+  return 0;
+}
 
 // ── DYK INDEX STORAGE ─────────────────────────────────────────
 if (!('dykIndex' in DataManager.defaults())) {
@@ -4293,15 +4469,21 @@ if (!('dykIndex' in DataManager.defaults())) {
 function renderDidYouKnow(data) {
   const card = document.getElementById('didYouKnowCard');
   if (!card) return;
-  const idx  = (data.dykIndex || 0) % DYK_FACTS.length;
+  const idx  = normalizeDykIndex(data.dykIndex);
+  if (data.dykIndex !== idx) {
+    data.dykIndex = idx;
+    DataManager.save(data);
+  }
   const fact = DYK_FACTS[idx];
+  if (!fact) return;
   const bodyEl = document.getElementById('dykBody');
   const titleEl = document.getElementById('dykTitle');
   const barEl   = document.getElementById('dykTopBar');
   const cntEl   = document.getElementById('dykCounter');
   if (cntEl) cntEl.textContent = `${idx+1} / ${DYK_FACTS.length}`;
   if (barEl) {
-    if (fact.type==='craving')    barEl.style.background='linear-gradient(90deg,#FF8C00,#cc6600)';
+    if (fact.type==='zone')        barEl.style.background=`linear-gradient(90deg,${ZONE_DETAILS[fact.zoneName].color},${ZONE_DETAILS[fact.zoneName].color}cc)`;
+    else if (fact.type==='craving')    barEl.style.background='linear-gradient(90deg,#FF8C00,#cc6600)';
     else if (fact.type==='myth')  barEl.style.background='linear-gradient(90deg,#ff3b30,#cc2200)';
     else if (fact.type==='strategy') barEl.style.background='linear-gradient(90deg,#007aff,#0055cc)';
     else if (fact.winning)        barEl.style.background='linear-gradient(90deg,#34c759,#248a3d)';
@@ -4309,14 +4491,20 @@ function renderDidYouKnow(data) {
     else                          barEl.style.background='linear-gradient(90deg,#34c759,#248a3d)';
   }
   if (titleEl) {
-    if (fact.type==='craving')    {titleEl.textContent='\u23f3 Craving Support';titleEl.style.color='#cc6600';}
+    if (fact.type==='zone')        { titleEl.textContent = fact.zoneName + ' zone' + (fact.part ? ` (${fact.part}/2)` : ''); titleEl.style.color = ZONE_DETAILS[fact.zoneName].color; }
+    else if (fact.type==='craving')    {titleEl.textContent='\u23f3 Craving Support';titleEl.style.color='#cc6600';}
     else if (fact.type==='myth')  {titleEl.textContent='\u274c Myth vs Fact';    titleEl.style.color='#cc2200';}
     else if (fact.type==='strategy'){titleEl.textContent='\ud83d\udccb Strategy';titleEl.style.color='#007aff';}
     else if (fact.winning)        {titleEl.textContent='\ud83c\udfc6 Winning';   titleEl.style.color='#248a3d';}
     else                          {titleEl.textContent='\ud83d\udca1 Knowledge'; titleEl.style.color='#1c1c1e';}
   }
   if (!bodyEl) return;
-  if (fact.who) {
+  if (fact.type === 'zone') {
+    const zd = ZONE_DETAILS[fact.zoneName];
+    const mid = Math.ceil(zd.items.length / 2);
+    const items = fact.part === 2 ? zd.items.slice(mid) : zd.items.slice(0, mid);
+    bodyEl.innerHTML = `<div style="background:${zd.bg};border-radius:10px;padding:8px 12px;">${renderZoneDetailHtml(zd, items)}</div>`;
+  } else if (fact.who) {
     bodyEl.innerHTML=`<div style="background:rgba(255,149,0,0.06);border:1.5px solid rgba(255,149,0,0.25);border-radius:12px;padding:14px 16px;"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="font-size:18px;">🌍</span><span style="font-size:11px;font-weight:700;color:#cc6600;letter-spacing:0.5px;text-transform:uppercase;">WHO Position · 2023</span></div><div style="font-size:15px;font-weight:700;color:rgba(28,28,30,0.9);line-height:1.5;font-style:italic;margin-bottom:10px;">"No level of alcohol consumption is safe for our health."</div><div style="height:1px;background:rgba(255,149,0,0.2);margin-bottom:10px;"></div><div style="font-size:12px;color:rgba(60,60,67,0.6);line-height:1.6;">Low Risk means <em>lower</em> risk — not zero risk. Any alcohol carries some health risk. The less you drink, the lower the risk.</div></div>`;
   } else if (fact.type==='myth') {
     bodyEl.innerHTML=`<div style="margin-bottom:10px;padding:10px 12px;background:rgba(255,59,48,0.05);border-radius:10px;border-left:3px solid rgba(255,59,48,0.4);"><div style="font-size:11px;font-weight:700;color:rgba(255,59,48,0.8);margin-bottom:4px;">\u274c Myth</div><div style="font-size:13px;color:rgba(60,60,67,0.75);line-height:1.6;font-style:italic;">"${fact.myth}"</div></div><div style="padding:10px 12px;background:rgba(52,199,89,0.06);border-radius:10px;border-left:3px solid rgba(52,199,89,0.4);"><div style="font-size:11px;font-weight:700;color:#248a3d;margin-bottom:4px;">\u2705 Fact</div><div style="font-size:13px;color:rgba(60,60,67,0.8);line-height:1.6;">${fact.fact}</div></div>`;
@@ -4335,14 +4523,14 @@ function renderDidYouKnow(data) {
 // ── DYK NAV ───────────────────────────────────────────────────
 SoberTracker.dykNext = function() {
   const d = DataManager.load();
-  d.dykIndex = ((d.dykIndex||0)+1) % DYK_FACTS.length;
+  d.dykIndex = normalizeDykIndex((d.dykIndex || 0) + 1);
   DataManager.save(d);
   Tracker.data = d;
   renderDidYouKnow(d);
 };
 SoberTracker.dykPrev = function() {
   const d = DataManager.load();
-  d.dykIndex = ((d.dykIndex||0)-1+DYK_FACTS.length) % DYK_FACTS.length;
+  d.dykIndex = normalizeDykIndex((d.dykIndex || 0) - 1);
   DataManager.save(d);
   Tracker.data = d;
   renderDidYouKnow(d);
