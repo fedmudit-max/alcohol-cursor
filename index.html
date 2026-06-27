@@ -373,19 +373,25 @@ body.modal-open { overflow:hidden; position:fixed; width:100%; }
 
 #auditModal.open { display:flex !important; }
 
-/* DEV TEST BAR — top of screen, below build banner; stays under modals */
+/* DEV TEST BAR — fixed bottom; enable with CONFIG.showTestUI */
 #testBtns {
   display: none;
   position: fixed;
-  top: 28px;
+  bottom: 0;
   left: 0;
   right: 0;
   z-index: 50;
   background: #1c1c1e;
-  padding: 8px 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.25);
   max-width: 480px;
   margin: 0 auto;
+}
+body.test-ui-active .scroll-view {
+  padding-bottom: calc(88px + env(safe-area-inset-bottom));
+}
+body.test-ui-active .toast.show {
+  bottom: calc(88px + env(safe-area-inset-bottom));
 }
 #testBuildTag {
   font-size: 10px;
@@ -417,15 +423,6 @@ body.modal-open { overflow:hidden; position:fixed; width:100%; }
 
 <!-- Dev-only build marker — hidden in personal/production mode -->
 <div id="sjBuildBanner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99999;background:#ff3b30;color:#fff;font:700 11px/1.3 -apple-system,system-ui,sans-serif;text-align:center;padding:5px 8px;box-shadow:0 2px 8px rgba(0,0,0,0.25);"></div>
-
-<!-- Dev test bar — enable with CONFIG.showTestUI -->
-<div id="testBtns" style="display:none;">
-  <div id="testBuildTag"></div>
-  <div class="test-bar-grid">
-    <button type="button" class="test-btn-next" onclick="if(!this.disabled){this.disabled=true;SoberTracker.autoAdvanceDay();setTimeout(()=>this.disabled=false,600);}">⏭ Next Day</button>
-    <button type="button" class="test-btn-gap" onclick="SJ_testCatchUp(3)">🧪 3-Day Gap</button>
-  </div>
-</div>
 
 <div class="splash" id="splash" style="z-index:9998;"></div>
 
@@ -727,26 +724,40 @@ body.modal-open { overflow:hidden; position:fixed; width:100%; }
     </div>
   </div>
 
-  <!-- LIFETIME STATS — always visible from Journey 2 onwards -->
-  <div id="lifetimeStatsCard" style="display:none;margin-top:12px;padding:14px 16px;border-radius:16px;background:rgba(60,60,67,0.05);border:1px solid rgba(60,60,67,0.08);">
-    <div style="font-size:10px;font-weight:700;color:rgba(60,60,67,0.35);letter-spacing:1.5px;text-transform:uppercase;text-align:center;margin-bottom:10px;">Lifetime</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;">
-      <div style="text-align:center;padding:0 8px;">
-        <div style="font-size:22px;font-weight:800;color:#1c1c1e;" id="ltJourneys">—</div>
-        <div style="font-size:10px;color:rgba(60,60,67,0.4);margin-top:2px;">Journeys</div>
-      </div>
-      <div style="text-align:center;padding:0 8px;border-left:1px solid rgba(60,60,67,0.1);border-right:1px solid rgba(60,60,67,0.1);">
-        <div style="font-size:22px;font-weight:800;color:#34c759;" id="ltSober">—</div>
-        <div style="font-size:10px;color:rgba(60,60,67,0.4);margin-top:2px;">Sober Days</div>
-      </div>
-      <div style="text-align:center;padding:0 8px;">
-        <div style="font-size:22px;font-weight:800;color:rgba(60,60,67,0.35);" id="ltDrink">—</div>
-        <div style="font-size:10px;color:rgba(60,60,67,0.4);margin-top:2px;">Drink Days</div>
+  <!-- LIFETIME STATS -->
+  <div class="card" id="lifetimeStatsCard" style="display:none;animation:fadeInUp 0.4s ease 0.4s both;margin-top:12px;">
+    <button onclick="SoberTracker.toggleLifetimeStats()" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;min-height:44px;">
+      <div style="font-size:13px;font-weight:700;color:#1c1c1e;">📊 Lifetime</div>
+      <span id="lifetimeStatsToggleBtn" style="font-size:12px;font-weight:500;color:rgba(60,60,67,0.4);">Show ▾</span>
+    </button>
+    <div id="lifetimeStatsBody" style="display:none;padding:0 16px 16px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;">
+        <div style="text-align:center;padding:0 8px;">
+          <div style="font-size:22px;font-weight:800;color:#1c1c1e;" id="ltJourneys">—</div>
+          <div style="font-size:10px;color:rgba(60,60,67,0.4);margin-top:2px;">Journeys</div>
+        </div>
+        <div style="text-align:center;padding:0 8px;border-left:1px solid rgba(60,60,67,0.1);border-right:1px solid rgba(60,60,67,0.1);">
+          <div style="font-size:22px;font-weight:800;color:#34c759;" id="ltSober">—</div>
+          <div style="font-size:10px;color:rgba(60,60,67,0.4);margin-top:2px;">Sober Days</div>
+        </div>
+        <div style="text-align:center;padding:0 8px;">
+          <div style="font-size:22px;font-weight:800;color:rgba(60,60,67,0.35);" id="ltDrink">—</div>
+          <div style="font-size:10px;color:rgba(60,60,67,0.4);margin-top:2px;">Drink Days</div>
+        </div>
       </div>
     </div>
   </div>
 
 </div><!-- /scroll-view -->
+
+<!-- Dev test bar — bottom; enable with CONFIG.showTestUI -->
+<div id="testBtns" style="display:none;">
+  <div id="testBuildTag"></div>
+  <div class="test-bar-grid">
+    <button type="button" class="test-btn-next" onclick="if(!this.disabled){this.disabled=true;SoberTracker.autoAdvanceDay();setTimeout(()=>this.disabled=false,600);}">⏭ Next Day</button>
+    <button type="button" class="test-btn-gap" onclick="SJ_testCatchUp(3)">🧪 3-Day Gap</button>
+  </div>
+</div>
 
 <!-- WINNING WAYS MODAL -->
 <div class="winning-ways-modal" id="winningWaysModal">
@@ -1511,7 +1522,7 @@ const DataManager = {
 // CONFIG — personal PWA defaults (flip showTestUI for dev testing)
 const CONFIG = {
   isProduction:   true,
-  showTestUI:     false,
+  showTestUI:     true,
   showOnboarding: true,
   buildTag:       'personal-v1',
 };
@@ -2582,6 +2593,15 @@ const Tracker = {
     if (!open) renderJourneyChart(Tracker.data);
   },
 
+  toggleLifetimeStats() {
+    const body = el('lifetimeStatsBody');
+    const btn  = el('lifetimeStatsToggleBtn');
+    if (!body) return;
+    const open = body.style.display !== 'none';
+    body.style.display = open ? 'none' : 'block';
+    if (btn) btn.textContent = open ? 'Show \u25be' : 'Hide \u25b4';
+  },
+
   closeCelebration() {
     el('celebrationModal').classList.remove('active');
     setTimeout(() => this._showNext(), 200);
@@ -3383,8 +3403,7 @@ function renderJourneyEndCard(data) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// Green = sober day, Red = drinking day, Grey = not logged yet.
-// Hidden on Day 1, shows from Day 2 onwards.
+// Lifetime stats card — collapsed by default; tap 📊 Lifetime to expand.
 function renderLifetimeStats(data) {
   const card = el('lifetimeStatsCard');
   if (!card) return;
@@ -3967,9 +3986,19 @@ function renderWelcomeHint(data) {
   card.style.display = (!dismissed && isFresh) ? 'block' : 'none';
 }
 
+function applyTestUIChrome() {
+  const active = !!CONFIG.showTestUI;
+  document.body.classList.toggle('test-ui-active', active);
+  const tb = el('testBtns');
+  if (tb) tb.style.display = active ? 'block' : 'none';
+  const tag = el('testBuildTag');
+  if (tag) tag.textContent = active ? ('Build: ' + (CONFIG.buildTag || 'dev')) : '';
+}
+
 function applyDevChrome() {
   if (CONFIG.isProduction) {
     document.title = 'Sober Journey';
+    applyTestUIChrome();
     return;
   }
   const banner = el('sjBuildBanner');
@@ -3977,7 +4006,7 @@ function applyDevChrome() {
     banner.style.display = 'block';
     banner.textContent = 'BUILD ' + (CONFIG.buildTag || 'dev');
   }
-  if (CONFIG.showTestUI) document.body.style.paddingTop = '96px';
+  applyTestUIChrome();
 }
 
 function boot() {
@@ -4064,14 +4093,8 @@ if (document.readyState === 'loading') {
 }
 
 // Show/hide test UI based on CONFIG
+applyTestUIChrome();
 if (CONFIG.showTestUI) {
-  const tb = el('testBtns');
-  if (tb) tb.style.display = 'block';
-  const tag = el('testBuildTag');
-  if (tag) tag.textContent = 'Build: ' + (CONFIG.buildTag || 'dev');
-  if (!CONFIG.isProduction) document.body.style.paddingTop = '96px';
-
-  // Console helpers for catch-up debugging
   window.SJ_status = function() {
     const d = Tracker.data || DataManager.load();
     const days = daysSince(d.lastDayCheck, getAppToday(d));
