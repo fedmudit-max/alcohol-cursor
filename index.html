@@ -182,6 +182,11 @@ body.loaded { background: var(--bg); }
 @keyframes bounce     { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-14px);} }
 @keyframes confFall   { 0%{transform:translateY(-20px) rotate(0deg);opacity:1;} 100%{transform:translateY(110vh) rotate(720deg);opacity:0;} }
 @keyframes modalSlide { from{opacity:0;transform:scale(0.93);} to{opacity:1;transform:scale(1);} }
+@keyframes bodyTimelinePulse {
+  0%, 100% { box-shadow:0 0 0 3px rgba(52,199,89,0.28); transform:scale(1); }
+  50%      { box-shadow:0 0 0 7px rgba(52,199,89,0.12); transform:scale(1.12); }
+}
+.body-timeline-dot-current { animation:bodyTimelinePulse 2s ease-in-out infinite; }
 
 /* LAYOUT */
 .scroll-view { padding:16px 16px 40px; padding:16px 16px calc(40px + env(safe-area-inset-bottom)); max-width:480px; margin:0 auto; }
@@ -266,11 +271,11 @@ body.loaded { background: var(--bg); }
   display:flex; align-items:center; justify-content:center; text-align:center; line-height:1.2;
   transition:opacity 0.15s ease, transform 0.1s ease;
 }
-.btn-primary  { background:linear-gradient(180deg,#248a3d,#1e7a34); color:white; box-shadow:0 4px 16px rgba(36,138,61,0.5); }
+.btn-primary  { background:linear-gradient(180deg,#34c759,#30d158); color:white; box-shadow:0 4px 16px rgba(52,199,89,0.45); }
 .btn-secondary{ background:linear-gradient(180deg,#ff453a,#ff3b30); color:white; box-shadow:0 4px 16px rgba(255,59,48,0.45); }
 .btn-primary:active:not(:disabled), .btn-secondary:active:not(:disabled) { opacity:0.8; transform:scale(0.98); }
 .btn-primary:disabled, .btn-secondary:disabled { opacity:0.4; cursor:not-allowed; box-shadow:none; background:#8e8e93; }
-.btn-primary.logged { background:linear-gradient(180deg,#248a3d,#1e7a34); opacity:1 !important; box-shadow:none; }
+.btn-primary.logged { background:linear-gradient(180deg,#248a3d,#1e7a34) !important; opacity:1 !important; box-shadow:none; cursor:default; }
 
 /* SEGMENTED CONTROL */
 .segmented-wrap { padding:12px 16px 0; border-bottom:1px solid var(--separator); }
@@ -467,7 +472,6 @@ body.test-ui-active .toast.show {
     <div style="padding:14px 16px 16px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <div style="font-size:13px;font-weight:700;color:#1c1c1e;" id="bodyTimelineTitle">🫀 Your body today</div>
-        <div style="font-size:11px;font-weight:700;color:#34c759;" id="bodyTimelineDay">Day 0</div>
       </div>
       <div style="font-size:13px;color:rgba(60,60,67,0.65);line-height:1.6;margin-bottom:14px;" id="bodyTimelineText">
         Start your streak to see your body recover in real time.
@@ -788,6 +792,7 @@ body.test-ui-active .toast.show {
       <div style="flex:1;min-width:0;">
         <div style="font-size:17px;font-weight:800;color:#1c1c1e;">🎯 Low Risk Target Zone</div>
         <div style="font-size:11px;color:rgba(60,60,67,0.5);margin-top:4px;line-height:1.45;">1 drink = 10gm alcohol = 30ml whisky = 1 peg</div>
+        <div style="font-size:11px;color:rgba(60,60,67,0.45);margin-top:2px;line-height:1.45;">BINGE = 180ml+ in one session</div>
       </div>
       <button onclick="SoberTracker.closeTargetZone()" style="background:rgba(52,199,89,0.1);border:1.5px solid rgba(52,199,89,0.25);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:#248a3d;flex-shrink:0;">✕</button>
     </div>
@@ -1223,7 +1228,7 @@ body.test-ui-active .toast.show {
 </div>
 
 <!-- SRI hash ensures CDN cannot serve malicious code -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="d3.min.js"></script>
 <script>
 'use strict';
 
@@ -2001,6 +2006,7 @@ const Tracker = {
 
   init() {
     this.data = DataManager.load();
+    this.data.dykIndex = 0;
     if (!this.data.journeyStartKey) {
       // Legacy saves: infer journey start from oldest day in current score window
       const keys = Object.keys(this.data.dailyLog || {}).sort().reverse();
@@ -3300,7 +3306,6 @@ function renderBodyTimeline(data) {
   const streak  = data.currentStreak | 0;
   const broken  = streak === 0 && isStreakBroken(data);
   const titleEl = el('bodyTimelineTitle');
-  const dayEl   = el('bodyTimelineDay');
   const textEl  = el('bodyTimelineText');
   const dotsEl  = el('bodyTimelineDots');
   const labelsEl = el('bodyTimelineLabels');
@@ -3308,13 +3313,9 @@ function renderBodyTimeline(data) {
 
   const { start, end } = getBodyTimelineWindow(streak);
 
-  if (dayEl) {
-    dayEl.textContent = streak > 0 ? `Day ${streak}` : (broken ? 'Streak 0' : 'Day 0');
-  }
-
   if (broken) {
-    titleEl.textContent = '🔄 Streak broken';
-    textEl.textContent  = `${data.currentScore.success} sober days in journey · 0 day streak. Log today sober to start again.`;
+    titleEl.textContent = '🍺 Drinking Day Logged';
+    textEl.textContent  = 'Tomorrow is a new opportunity to build your streak again. Your Journey continues. Beat your best score.';
   } else if (streak === 0) {
     titleEl.textContent = '🕐 Your body today';
     textEl.textContent  = BODY_FACTS[0].text;
@@ -3336,7 +3337,7 @@ function renderBodyTimeline(data) {
 
     if (isCurrent) {
       html += `<div style="flex:0 0 12px;display:flex;justify-content:center;align-items:center;">
-        <div style="width:12px;height:12px;border-radius:50%;background:${green};box-shadow:0 0 0 3px rgba(52,199,89,0.25);flex-shrink:0;"></div></div>`;
+        <div class="body-timeline-dot-current" style="width:12px;height:12px;border-radius:50%;background:${green};flex-shrink:0;"></div></div>`;
     } else {
       html += `<div style="flex:0 0 8px;display:flex;justify-content:center;align-items:center;">
         <div style="width:8px;height:8px;border-radius:50%;background:${isPast?green:dim};flex-shrink:0;"></div></div>`;
@@ -4345,6 +4346,8 @@ function renderReductionTarget(data) {
   const freqTargetLabel=['Never','Once a month','Once a week','Twice a week','Every other day'];
   const bingeDone=q3===0, qtyDone=q2<=1, freqDone=q1<=1;
   const q2Target=q2>1?q2-1:null, q1Target=q1>1?q1-1:null;
+  const lowRiskBanner = `<div style="margin-top:12px;padding:12px;background:rgba(52,199,89,0.06);border-radius:10px;text-align:center;"><div style="font-size:22px;margin-bottom:6px;">🎯</div><div style="font-size:14px;font-weight:700;color:#248a3d;">You have reached the Low Risk Zone.</div></div>`;
+  const showLowRiskBanner = score <= 3;
   const row=(state,label,cur,tgt,sub)=>{
     if(state==='done') return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(60,60,67,0.06);"><div style="width:24px;height:24px;border-radius:50%;background:#34c759;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="color:white;font-size:13px;font-weight:700;">✓</span></div><div><div style="font-size:13px;font-weight:600;color:#248a3d;">${label}</div><div style="font-size:11px;color:rgba(60,60,67,0.45);margin-top:1px;">${cur}</div></div></div>`;
     if(state==='pending') return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(60,60,67,0.06);opacity:0.4;"><div style="width:24px;height:24px;border-radius:50%;border:2px solid rgba(60,60,67,0.2);flex-shrink:0;"></div><div><div style="font-size:13px;font-weight:500;color:rgba(60,60,67,0.5);">${label}</div><div style="font-size:11px;color:rgba(60,60,67,0.35);margin-top:1px;">${sub||'Complete step above first'}</div></div></div>`;
@@ -4359,29 +4362,40 @@ function renderReductionTarget(data) {
     : row('active', 'Quantity per session', qtyLabel[q2], qtyLabel[q2Target??1], '');
 
   const freqRow = freqDone
-    ? ''
+    ? row('done', 'Frequency', freqLabel[q1], '', '')
     : (!qtyDone)
       ? row('pending', 'Frequency', freqLabel[q1], freqTargetLabel[q1Target??Math.max(q1-1,1)], 'Reduce quantity first')
       : row('active', 'Frequency', freqLabel[q1], freqTargetLabel[q1Target??Math.max(q1-1,1)], '');
 
-  if (qtyDone && freqDone && bingeDone) {
-    body.innerHTML = `${row('done','Stop binge sessions','Under 180ml every session','','')}${row('done','Quantity per session',qtyLabel[q2],'','')}${row('done','Frequency',freqLabel[q1],'','')}<div style="margin-top:12px;padding:12px;background:rgba(52,199,89,0.06);border-radius:10px;text-align:center;"><div style="font-size:22px;margin-bottom:6px;">🎯</div><div style="font-size:14px;font-weight:700;color:#248a3d;">You have reached Low Risk zone.</div></div>`;
-    return;
-  }
-
   let msg = '';
+  const bingeAlert = '⚠️ Never go over 180ml whisky in one session. Above this threshold liver stress and accident risk spike sharply.';
+  const qtyAlerts = ['','3-4 pegs per session — already doing well. Now work on frequency.','From 5-6 pegs down to 3-4. That is the WHO single-occasion Low Risk limit.','From 7-9 pegs to 5-6. One less round makes a measurable difference.','10+ pegs is acute liver stress. Target 7-9 as the first step down.'];
   if (!bingeDone && !qtyDone) {
     msg = '⚠️ Two steps — both active now. Stop binge sessions (never exceed 180ml whisky in one sitting) and reduce your quantity per session. Work on both together.';
   } else if (!bingeDone) {
-    msg = '⚠️ Never go over 180ml whisky in one session. Above this threshold liver stress and accident risk spike sharply.';
+    msg = bingeAlert;
   } else if (!qtyDone && q2Target !== null) {
-    const msgs = ['','3-4 pegs per session — already doing well. Now work on frequency.','From 5-6 pegs down to 3-4. That is the WHO single-occasion Low Risk limit.','From 7-9 pegs to 5-6. One less round makes a measurable difference.','10+ pegs is acute liver stress. Target 7-9 as the first step down.'];
-    msg = msgs[q2] || '';
+    msg = qtyAlerts[q2] || '';
   } else if (qtyDone && !freqDone && q1Target !== null) {
-    const msgs = ['','Once a month — deliberate, enjoyable.','From 2-4x month to once a month.','From 2-3x week to 2-4x month — breaks the weekly habit loop.','From 4+x week to 2-3x week — cut two occasions this week.'];
-    msg = msgs[q1] || '';
+    const freqMsgs = ['','Once a month — deliberate, enjoyable.','From 2-4x month to once a month.','From 2-3x week to 2-4x month — breaks the weekly habit loop.','From 4+x week to 2-3x week — cut two occasions this week.'];
+    msg = freqMsgs[q1] || '';
   }
-  body.innerHTML=`${bingeRow}${qtyRow}${freqRow}${msg?`<div style="margin-top:10px;padding:10px 14px;background:rgba(52,199,89,0.05);border-radius:10px;border-left:3px solid rgba(52,199,89,0.3);"><div style="font-size:12px;color:rgba(60,60,67,0.65);line-height:1.65;">${msg}</div></div>`:''}`;
+  const msgBlock = (text) => text ? `<div style="margin-top:10px;padding:10px 14px;background:rgba(52,199,89,0.05);border-radius:10px;border-left:3px solid rgba(52,199,89,0.3);"><div style="font-size:12px;color:rgba(60,60,67,0.65);line-height:1.65;">${text}</div></div>` : '';
+
+  if (qtyDone && freqDone && bingeDone) {
+    body.innerHTML = `${row('done','Stop binge sessions','Under 180ml every session','','')}${row('done','Quantity per session',qtyLabel[q2],'','')}${row('done','Frequency',freqLabel[q1],'','')}${lowRiskBanner}`;
+    return;
+  }
+
+  if (showLowRiskBanner) {
+    const lowRiskAlerts = [];
+    if (q3 > 0) lowRiskAlerts.push(bingeAlert);
+    if (q2 === 2) lowRiskAlerts.push(qtyAlerts[2]);
+    body.innerHTML = `${bingeRow}${qtyRow}${freqRow}${lowRiskAlerts.map(msgBlock).join('')}${lowRiskBanner}`;
+    return;
+  }
+
+  body.innerHTML=`${bingeRow}${qtyRow}${freqRow}${msgBlock(msg)}`;
 }
 
 // ── WINNING WAYS ──────────────────────────────────────────────
