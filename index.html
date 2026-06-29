@@ -228,6 +228,44 @@ body.loaded { background: var(--bg); }
 .current-card.inactive .card-label { color:var(--label2); }
 
 /* MONTH GRID CALENDAR */
+.cal-nav-header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:10px;
+}
+.month-nav-btn {
+  background:rgba(52,199,89,0.1);
+  border:1.5px solid rgba(52,199,89,0.35);
+  border-radius:8px;
+  width:32px;
+  height:32px;
+  font-size:18px;
+  font-weight:700;
+  color:#248a3d;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+  font-family:inherit;
+  transition:background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s;
+}
+.month-nav-btn:hover:not(:disabled) {
+  background:rgba(52,199,89,0.16);
+  border-color:#34c759;
+  color:#1e7a34;
+}
+.month-nav-btn:active:not(:disabled) {
+  transform:scale(0.96);
+}
+.month-nav-btn:disabled {
+  opacity:1;
+  background:rgba(52,199,89,0.05);
+  border-color:rgba(52,199,89,0.15);
+  color:rgba(52,199,89,0.35);
+  cursor:not-allowed;
+}
 .cal-cell {
   aspect-ratio:1; border-radius:8px;
   display:flex; align-items:center; justify-content:center;
@@ -689,13 +727,13 @@ body.test-ui-active .toast.show {
       <span id="monthGridToggleBtn" style="font-size:12px;font-weight:500;color:rgba(60,60,67,0.4);">Show ▾</span>
     </button>
     <div id="monthGridBody" style="display:none;padding:0 16px 16px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <button onclick="SoberTracker.calendarPrev()" id="calPrevBtn" style="background:none;border:none;cursor:pointer;font-size:20px;color:rgba(60,60,67,0.35);width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:8px;">‹</button>
+      <div class="cal-nav-header">
+        <button type="button" class="month-nav-btn" onclick="SoberTracker.calendarPrev()" id="calPrevBtn" aria-label="Previous month">‹</button>
         <div style="text-align:center;">
           <div style="font-size:13px;font-weight:700;color:#1c1c1e;" id="monthGridMonthLabel"></div>
           <div id="monthGridSubtitle" style="display:none;"></div>
         </div>
-        <button onclick="SoberTracker.calendarNext()" id="calNextBtn" style="background:none;border:none;cursor:pointer;font-size:20px;color:rgba(60,60,67,0.35);width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:8px;">›</button>
+        <button type="button" class="month-nav-btn" onclick="SoberTracker.calendarNext()" id="calNextBtn" aria-label="Next month">›</button>
       </div>
       <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:3px;" id="monthDayLabels"></div>
       <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;" id="monthGrid"></div>
@@ -720,7 +758,7 @@ body.test-ui-active .toast.show {
     </button>
     <div id="journeyChartBody" style="display:none;padding:0 16px 16px;">
       <div style="display:flex;align-items:stretch;">
-        <svg id="journeyYAxis" aria-hidden="true" width="28" height="140" style="flex-shrink:0;"></svg>
+        <svg id="journeyYAxis" aria-hidden="true" width="34" height="140" style="flex-shrink:0;"></svg>
         <div style="flex:1;">
           <svg id="journeyChartInner" role="img" aria-label="Journey history chart — sober days per journey" viewBox="0 0 400 140" width="100%" height="140" style="display:block;overflow:visible;"></svg>
         </div>
@@ -1336,10 +1374,11 @@ const DataManager = {
       streakPeakAtRunStart:       0,  // best streak to beat when current run began (after drink or new journey)
       inPersonalBest:             false,
       personalBestCelebrated:     false,
-      journeyTrophies:            { 5:0,10:0,15:0,20:0,30:0,40:0,60:0,80:0,100:0 },
+      journeyTrophies:            { 5:0,10:0,15:0,20:0,30:0,40:0,60:0,80:0,100:0,150:0,200:0 },
       journeyPendingReset:        false,
       celebratedStreakMilestones: {},
       celebratedTrophies:         {},
+      celebratedScienceMilestones: {},
       auditQ1:                    null,
       auditQ2:                    null,
       auditQ3:                    null,
@@ -1414,6 +1453,7 @@ const DataManager = {
     if (!data.journeyTrophies) data.journeyTrophies = def.journeyTrophies;
     if (!data.celebratedStreakMilestones) data.celebratedStreakMilestones = {};
     if (!data.celebratedTrophies)        data.celebratedTrophies        = {};
+    if (!data.celebratedScienceMilestones) data.celebratedScienceMilestones = {};
     if (!data.dailyLog)         data.dailyLog         = {};
     if (!data.scoredDays)       data.scoredDays       = {};
     if (!data.completedJourneys) data.completedJourneys = [];
@@ -1768,6 +1808,15 @@ const STREAK_MILESTONES = [
     c:{ emoji:'🌟', title:'One Full Week!', msg:"7 days. One complete week without alcohol.\n\n🧠 Brain chemistry actively resetting. Dopamine receptors recovering. Anxiety measurably lower.\n\nBy WHO frequency standards — you are now out of the Hazardous zone for the week." }},
 ];
 
+// Progress tab shares Day 1/3/7 with Streak — Streak popup wins; skip Progress celebration.
+const STREAK_SCIENCE_OVERLAP_DAYS = new Set(STREAK_MILESTONES.map(m => m.days));
+
+function markStreakOwnedScienceCelebrated(data, day) {
+  if (!STREAK_SCIENCE_OVERLAP_DAYS.has(day)) return;
+  if (!data.celebratedScienceMilestones) data.celebratedScienceMilestones = {};
+  data.celebratedScienceMilestones[day] = true;
+}
+
 const JOURNEY_TROPHIES = [
   { days:10,  el:'jm-10',  c:{ emoji:'⚡', title:'First Win!',          msg:"10 sober days. Your first real milestone. Sober days now equal your drinking days. You are no longer losing." }},
   { days:15,  el:'jm-15',  c:{ emoji:'🌿', title:'Holding Ground!',     msg:"15 sober days. Sober days now outnumber drinking days. For the first time — you are ahead. The tide has turned." }},
@@ -1778,9 +1827,16 @@ const JOURNEY_TROPHIES = [
   { days:60,  el:'jm-60',  c:{ emoji:'✨', title:'Turning Point!',      msg:"60 sober days. Six sober days for every drinking day. You are approaching every clinical safe limit. The summit is visible." }},
   { days:80,  el:'jm-80',  c:{ emoji:'🏔️', title:'Low Risk!',          msg:"80 sober days. You are drinking less often than most people globally.\n\nAt this frequency — you are low risk IF each drinking day stays within:\n🥃 Whisky — 1 peg (60ml) or 🍺 Beer — 1 bottle (330ml)\n\nYou control the days. Now control the pour." }},
   { days:100, el:'jm-100', c:{ emoji:'💎', title:'Occasional Drinker!', msg:"100 days. Occasional drinker by every clinical definition.\n\nThey said quit. You said control. You have conquered.\n\nWHO: No level of alcohol is completely safe. Less is always better." }},
-  { days:150, el:'jm-150', hiddenUntil:100, c:{ emoji:'🏆', title:'Sustained Control!', msg:"150 sober days in one journey. You are not just occasional — you are in control.\n\nYour body has had months to heal. This pattern is yours now." }},
-  { days:200, el:'jm-200', hiddenUntil:150, c:{ emoji:'👑', title:'Total Command!',     msg:"200 sober days. Fifteen sober days for every drinking day.\n\nYou have proven this is not luck. This is who you are." }},
+  { days:150, el:'jm-150', hiddenUntil:80,  c:{ emoji:'🏆', title:'Sustained Control!', msg:"150 sober days in one journey. You are not just occasional — you are in control.\n\nYour body has had months to heal. This pattern is yours now." }},
+  { days:200, el:'jm-200', hiddenUntil:100, c:{ emoji:'👑', title:'Total Command!',     msg:"200 sober days. Fifteen sober days for every drinking day.\n\nYou have proven this is not luck. This is who you are." }},
 ];
+
+const JOURNEY_TROPHY_COUNT_DAYS = new Set([50, 100, 150, 200]);
+
+function journeyTrophyStatusText(days, count) {
+  if (!JOURNEY_TROPHY_COUNT_DAYS.has(days)) return '✓';
+  return count > 1 ? `\u00d7${count}` : '1 time';
+}
 
 // ═══════════════════════════════════════════════════════════════
 // UI MANAGER
@@ -1913,19 +1969,22 @@ const UI = {
 
   renderJourneyTrophies(data) {
     const current = data.currentScore.success;
-    const journeyActive = !data.journeyPendingReset;
 
     function milestoneVisible(m) {
       if (m.hiddenUntil === undefined) return true;
-      if (!journeyActive) return false;
       return current >= m.hiddenUntil;
     }
 
-    const showInControl = milestoneVisible({ hiddenUntil: 100 });
+    const showInControl = current >= 80;
     const inControlLabel = el('inControlStageLabel');
     const inControlStage = el('inControlStage');
     if (inControlLabel) inControlLabel.style.display = showInControl ? '' : 'none';
     if (inControlStage) inControlStage.style.display = showInControl ? '' : 'none';
+
+    const visible = JOURNEY_TROPHIES.filter(milestoneVisible);
+    const nextMilestone = visible.find(m => current < m.days);
+    const highestAchieved = visible.filter(m => current >= m.days).pop() || null;
+    const focusMilestone = nextMilestone || highestAchieved;
 
     JOURNEY_TROPHIES.forEach(m => {
       const row = el(m.el); if (!row) return;
@@ -1938,12 +1997,20 @@ const UI = {
       const count  = (data.journeyTrophies && data.journeyTrophies[m.days]) || 0;
       const nameEl = row.querySelector('.milestone-name');
       const statEl = row.querySelector('.milestone-status');
+      const isFocus = focusMilestone && focusMilestone.days === m.days;
+
       if (current >= m.days) {
-        row.classList.add('milestone-active');
+        row.classList.toggle('milestone-active', isFocus && !nextMilestone);
         nameEl.className  = 'milestone-name achieved';
         statEl.className  = 'milestone-status achieved';
         nameEl.textContent = nameEl.dataset.label;
-        statEl.textContent = count > 1 ? `${count} times` : '1 time';
+        statEl.textContent = journeyTrophyStatusText(m.days, count);
+      } else if (nextMilestone && m.days === nextMilestone.days) {
+        row.classList.add('milestone-active');
+        nameEl.className  = 'milestone-name';
+        statEl.className  = 'milestone-status';
+        nameEl.textContent = nameEl.dataset.label.split(' — ')[0];
+        statEl.textContent = '—';
       } else {
         row.classList.remove('milestone-active');
         nameEl.className  = 'milestone-name';
@@ -2140,7 +2207,20 @@ const Tracker = {
 
     if (status === 'success') {
       const added = this._recordSoberDay(d, key);
-      if (added) this._checkTrophies();
+      if (added) {
+        recalculateStreakFromLog(d);
+        this._checkTrophies();
+        for (const m of STREAK_MILESTONES) {
+          if (d.currentStreak === m.days && !d.celebratedStreakMilestones[m.id]) {
+            d.celebratedStreakMilestones[m.id] = true;
+            markStreakOwnedScienceCelebrated(d, m.days);
+            launchConfetti(90);
+            this._queueCelebration(m.c.emoji, m.c.title, m.c.msg);
+            break;
+          }
+        }
+        this._checkScienceMilestones();
+      }
     } else {
       this._recordDrinkDay(d, key);
       if (d.currentScore.failures >= JOURNEY_MAX_FAILURES) { this._endJourney(); return; }
@@ -2322,26 +2402,27 @@ const Tracker = {
     setTimeout(() => {
       if (isFirst) {
         launchConfetti(120);
+        markStreakOwnedScienceCelebrated(d, 1);
         this._queueCelebration('🌅','Day 1 — You Showed Up!',"The hardest part is starting. You did it. This is the beginning of everything.");
-        return;
-      }
-      // Personal best fires FIRST — more emotionally significant than a milestone trophy
-      if (justBroke) {
+      } else if (justBroke) {
         launchConfetti(110);
         this._queueCelebration('🏆',`New Personal Best — ${d.currentStreak} Days!`,`You just beat your longest streak ever (${prevLongest} days). Uncharted territory. Keep going!`);
-        return;
       }
       this._checkTrophies();
-      if (this._celebQueue.length > 0) return;
-      for (const m of STREAK_MILESTONES) {
-        if (d.currentStreak === m.days && !d.celebratedStreakMilestones[m.id]) {
-          d.celebratedStreakMilestones[m.id] = true;
-          DataManager.save(d);
-          launchConfetti(90);
-          this._queueCelebration(m.c.emoji, m.c.title, m.c.msg);
-          return;
+      if (!isFirst && !justBroke) {
+        for (const m of STREAK_MILESTONES) {
+          if (d.currentStreak === m.days && !d.celebratedStreakMilestones[m.id]) {
+            d.celebratedStreakMilestones[m.id] = true;
+            markStreakOwnedScienceCelebrated(d, m.days);
+            DataManager.save(d);
+            launchConfetti(90);
+            this._queueCelebration(m.c.emoji, m.c.title, m.c.msg);
+            break;
+          }
         }
       }
+      this._checkScienceMilestones();
+      if (this._celebQueue.length > 0) return;
       showToast(_dailyMsg(d.currentStreak, d.currentScore));
     }, 300);
   },
@@ -2355,6 +2436,7 @@ const Tracker = {
     recalculateStreakFromLog(d);
     d.personalBestCelebrated = false;
     d.celebratedStreakMilestones = {};
+    d.celebratedScienceMilestones = {};
     // Reset Progress tab to default (Streak tab + hide long-term science milestones)
     this.switchTab(0);
     // Reset streak milestone UI
@@ -2428,6 +2510,7 @@ const Tracker = {
     d.inPersonalBest = false;
     d.personalBestCelebrated = false;
     d.celebratedStreakMilestones = {};
+    d.celebratedScienceMilestones = {};
     d.celebratedTrophies = {};
     d.journeyPendingReset = false;
     d.gapSimCount = 0;
@@ -2507,6 +2590,7 @@ const Tracker = {
     d.currentScore.failures++;
     d.totalFailures++;
     d.celebratedStreakMilestones = {};
+    d.celebratedScienceMilestones = {};
     this._updateBest();
     ensureScoreNumbers(d);
     return true;
@@ -2534,6 +2618,22 @@ const Tracker = {
         DataManager.save(d);
         launchConfetti(100);
         this._queueCelebration(m.c.emoji, m.c.title, m.c.msg);
+      }
+    }
+  },
+
+  _checkScienceMilestones() {
+    const d = this.data;
+    const streak = d.currentStreak | 0;
+    if (!d.celebratedScienceMilestones) d.celebratedScienceMilestones = {};
+    for (const node of SCIENCE_NODES) {
+      if (!node.c) continue;
+      if (STREAK_SCIENCE_OVERLAP_DAYS.has(node.day)) continue;
+      if (isScienceMilestoneEarned(streak, node.day, d.celebratedScienceMilestones)) {
+        d.celebratedScienceMilestones[node.day] = true;
+        DataManager.save(d);
+        launchConfetti(90);
+        this._queueCelebration(node.c.emoji, node.c.title, node.c.msg);
       }
     }
   },
@@ -2572,18 +2672,22 @@ const Tracker = {
   },
 
   calendarPrev() {
-    let y = _calYear, m = _calMonth - 1;
+    const data = Tracker.data || DataManager.load();
+    const today = getAppToday(data);
+    let y = _calYear ?? today.getFullYear();
+    let m = (_calMonth ?? today.getMonth()) - 1;
     if (m < 0) { m = 11; y--; }
-    renderMonthGrid(Tracker.data, y, m);
+    renderMonthGrid(data, y, m);
   },
 
   calendarNext() {
-    const today = new Date();
-    let y = _calYear, m = _calMonth + 1;
+    const data = Tracker.data || DataManager.load();
+    const today = getAppToday(data);
+    let y = _calYear ?? today.getFullYear();
+    let m = (_calMonth ?? today.getMonth()) + 1;
     if (m > 11) { m = 0; y++; }
-    // Don't go past current month
     if (y > today.getFullYear() || (y === today.getFullYear() && m > today.getMonth())) return;
-    renderMonthGrid(Tracker.data, y, m);
+    renderMonthGrid(data, y, m);
   },
 
   toggleJourneyChart() {
@@ -3422,9 +3526,13 @@ function renderMonthGrid(data, targetYear, targetMonth) {
   const log   = data.dailyLog || data.log || {};
   const today = getAppToday(data);
 
-  // Default to current month
-  if (targetYear  === undefined) targetYear  = today.getFullYear();
-  if (targetMonth === undefined) targetMonth = today.getMonth();
+  // Keep the month the user picked; only default to today on first render
+  if (targetYear == null) {
+    targetYear = _calYear != null ? _calYear : today.getFullYear();
+  }
+  if (targetMonth == null) {
+    targetMonth = _calMonth != null ? _calMonth : today.getMonth();
+  }
 
   // Store for navigation
   _calYear  = targetYear;
@@ -3456,10 +3564,8 @@ function renderMonthGrid(data, targetYear, targetMonth) {
   const atStart = (targetYear === startYear && targetMonth === startMonth);
   // Can't go past current month
   const atEnd   = isCurrentMonth;
-  if (prevBtn) prevBtn.style.opacity = atStart ? '0.2' : '1';
-  if (prevBtn) prevBtn.style.pointerEvents = atStart ? 'none' : 'auto';
-  if (nextBtn) nextBtn.style.opacity = atEnd ? '0.2' : '1';
-  if (nextBtn) nextBtn.style.pointerEvents = atEnd ? 'none' : 'auto';
+  if (prevBtn) prevBtn.disabled = atStart;
+  if (nextBtn) nextBtn.disabled = atEnd;
 
   // Count sober/drinking
   let soberN = 0, drinkN = 0;
@@ -3531,28 +3637,35 @@ function renderJourneyChart(data) {
 
   if (pts.length < 1) return;
 
+  const WINDOW = 5;
+  const visiblePts = pts.length <= WINDOW ? pts : pts.slice(-WINDOW);
+
   // subtitle removed — count shown in toggle button context
 
   const H=140, padT=20, padB=28, VW=400, padX=20, cH=H-padT-padB;
+  const chartW = VW - padX * 2;
+  const slotStep = chartW / (WINDOW - 1);
   const yMax  = Math.max(...pts.map(p=>p.val), 5);
   const yMaxR = Math.ceil(yMax * 1.25 / 5) * 5;
   const fracs = [0, 0.25, 0.5, 0.75, 1];
 
   el('journeyYAxis').setAttribute('height', H);
-  el('journeyYAxis').innerHTML = fracs.map(f => {
-    const y = padT + cH - f*cH;
-    return `<text x="28" y="${y+4}" text-anchor="end" font-size="9" font-weight="500" fill="rgba(134,134,139,0.8)" font-family="-apple-system,sans-serif">${Math.round(f*yMaxR)}</text>`;
-  }).join('');
+  el('journeyYAxis').innerHTML = `
+    <line x1="30" y1="${padT}" x2="30" y2="${padT + cH}" stroke="rgba(0,0,0,0.04)" stroke-width="1"/>
+    ${fracs.map(f => {
+      const y = padT + cH - f*cH;
+      return `<text x="22" y="${y+4}" text-anchor="end" font-size="9" font-weight="500" fill="rgba(134,134,139,0.8)" font-family="-apple-system,sans-serif">${Math.round(f*yMaxR)}</text>`;
+    }).join('')}`;
 
   const grid = fracs.map(f => {
     const y = padT + cH - f*cH;
-    return `<line x1="${padX}" y1="${y}" x2="${VW-padX}" y2="${y}" stroke="rgba(0,0,0,${f===0?'0.1':'0.04'})" stroke-width="${f===0?1.5:1}"/>`;
+    return `<line x1="${padX}" y1="${y}" x2="${VW-padX}" y2="${y}" stroke="rgba(0,0,0,0.04)" stroke-width="1"/>`;
   }).join('');
 
   const best   = Math.max(...pts.map(p=>p.val));
-  const coords = pts.map((p,i) => ({
+  const coords = visiblePts.map((p,i) => ({
     ...p,
-    x: pts.length===1 ? VW/2 : padX + (i/(pts.length-1)) * (VW-padX*2),
+    x: padX + i * slotStep,
     y: padT + cH - (p.val/yMaxR)*cH,
   }));
 
@@ -3610,6 +3723,10 @@ function getNextStreakMilestone(currentStreak) {
 // Returns true if a journey trophy should be awarded right now
 function isTrophyEarned(successCount, trophyDays, celebratedTrophies) {
   return successCount === trophyDays && !celebratedTrophies[trophyDays];
+}
+
+function isScienceMilestoneEarned(streak, nodeDay, celebratedScienceMilestones) {
+  return streak === nodeDay && !celebratedScienceMilestones[nodeDay];
 }
 
 // Returns integer days between an ISO date string and ref day (default: real today)
@@ -3714,72 +3831,83 @@ const SCIENCE_NODES = [
     day: 1, organ: '🫀', label: 'Day 1',
     title: 'Heart & Blood',
     change: 'Blood alcohol clears within 24 hours. Heart rate and blood pressure begin returning to baseline.',
-    cite: ''
+    cite: '',
+    c: { emoji: '🫀', title: 'Day 1 — Heart & Blood', msg: 'Blood alcohol is clearing. Heart rate and blood pressure are beginning to return to baseline.\n\nYour body noticed immediately.' }
   },
   {
     day: 3, organ: '🫁', label: 'Day 3',
     title: 'Liver & Bloodstream',
     change: 'Bloodstream fully alcohol-free. Liver enzymes (ALT, GGT) begin normalising. GABA receptors start rebalancing.',
-    cite: ''
+    cite: '',
+    c: { emoji: '🫁', title: 'Day 3 — Bloodstream Clear', msg: 'Your bloodstream is fully alcohol-free.\n\nLiver enzymes are normalising. GABA receptors are starting to rebalance.' }
   },
   {
     day: 7, organ: '🧠', label: 'Day 7',
     title: 'Brain Chemistry',
     change: 'Dopamine and serotonin systems measurably recovering. Anxiety significantly lower. Sleep architecture improving.',
-    cite: ''
+    cite: '',
+    c: { emoji: '🧠', title: 'Day 7 — Brain Chemistry', msg: 'One week. Dopamine and serotonin systems are measurably recovering.\n\nAnxiety is lower. Sleep architecture is improving.' }
   },
   {
     day: 14, organ: '🌿', label: 'Day 14',
     title: 'Liver & Blood Pressure',
     change: 'Early fatty liver reversal confirmed. Systolic blood pressure drops 5-10 mmHg on average. REM sleep restored.',
-    cite: ''
+    cite: '',
+    c: { emoji: '🌿', title: 'Day 14 — Two Weeks', msg: 'Early fatty liver reversal is confirmed. Blood pressure is dropping 5–10 mmHg on average.\n\nREM sleep is returning.' }
   },
   {
     day: 21, organ: '🛡️', label: 'Day 21',
     title: 'Immune System',
     change: 'NK cell activity and T-lymphocyte function measurably stronger. Inflammation markers (CRP) reduced. Gut microbiome recovering.',
-    cite: ''
+    cite: '',
+    c: { emoji: '🛡️', title: 'Day 21 — Immune System', msg: 'Three weeks. NK cell activity and T-lymphocyte function are measurably stronger.\n\nInflammation markers are down. Your gut microbiome is recovering.' }
   },
   {
     day: 28, organ: '💎', label: 'Day 28',
     title: 'Full Month',
     change: 'Liver enzymes within normal range for most hazardous drinkers. Brain grey matter volume stabilising. Cardiovascular risk measurably reduced.',
-    cite: ''
+    cite: '',
+    c: { emoji: '💎', title: 'Day 28 — Full Month', msg: 'Four weeks without alcohol.\n\nLiver enzymes are in normal range for most hazardous drinkers. Brain grey matter is stabilising. Cardiovascular risk is measurably reduced.' }
   },
   {
     day: 30, organ: '🫀', label: 'Day 30',
     title: 'Blood Pressure & Cancer Risk',
     change: 'Blood pressure reduction equivalent to one antihypertensive medication dose (Roerecke et al., Lancet 2017). Cancer risk reduction begins to be measurable.',
     cite: 'Roerecke et al., Lancet 2017',
-    hiddenUntil: 28
+    hiddenUntil: 28,
+    c: { emoji: '🫀', title: 'Day 30 — Blood Pressure', msg: '30 days. Blood pressure reduction equivalent to one antihypertensive medication dose.\n\nCancer risk reduction is beginning to be measurable.' }
   },
   {
     day: 60, organ: '🧠', label: 'Day 60',
     title: 'Liver & Cognition',
     change: 'Liver fat largely cleared in moderate drinkers. Cognitive function — memory, processing speed — measurably improved (Rao et al., 2000).',
     cite: 'Rao et al., 2000',
-    hiddenUntil: 30
+    hiddenUntil: 30,
+    c: { emoji: '🧠', title: 'Day 60 — Liver & Cognition', msg: '60 days. Liver fat is largely cleared in moderate drinkers.\n\nMemory and processing speed are measurably improved.' }
   },
   {
     day: 90, organ: '🧬', label: 'Day 90',
     title: 'Brain, Heart & Gut',
     change: 'Neuroplasticity significantly recovered. Risk of alcohol-related cardiac events reduced by 30%. Gut microbiome substantially restored (Leclercq et al., 2014).',
     cite: 'Leclercq et al., 2014',
-    hiddenUntil: 60
+    hiddenUntil: 60,
+    c: { emoji: '🧬', title: 'Day 90 — Brain, Heart & Gut', msg: '90 days. Neuroplasticity has significantly recovered.\n\nCardiac event risk is down 30%. Your gut microbiome is substantially restored.' }
   },
   {
     day: 180, organ: '🫁', label: 'Day 180',
     title: 'Liver Recovery & Immunity',
     change: 'Liver fibrosis begins reversing in early-stage cases. Immune system largely restored.',
     cite: '',
-    hiddenUntil: 60
+    hiddenUntil: 60,
+    c: { emoji: '🫁', title: 'Day 180 — Liver Recovery', msg: '180 days. Liver fibrosis is beginning to reverse in early-stage cases.\n\nYour immune system is largely restored.' }
   },
   {
     day: 365, organ: '💚', label: 'Day 365',
     title: 'Cardiovascular Reset',
     change: 'Cardiovascular risk profile equivalent to a non-drinker (Ronksley et al., BMJ 2011).',
     cite: 'Ronksley et al., BMJ 2011',
-    hiddenUntil: 180
+    hiddenUntil: 180,
+    c: { emoji: '💚', title: 'Day 365 — One Full Year', msg: 'One year sober.\n\nCardiovascular risk profile equivalent to a non-drinker.\n\nThis is not luck. This is who you are.' }
   },
 ];
 
