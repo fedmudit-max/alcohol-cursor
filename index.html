@@ -332,6 +332,7 @@ body.loaded { background: var(--bg); }
 /* JOURNEY TAB HEADER */
 .journey-tab-header { padding:14px 0 10px; border-bottom:1px solid var(--separator); margin-bottom:4px; }
 .journey-mechanic { font-size:13px; font-weight:500; color:var(--label2); line-height:1.4; font-style:italic; }
+.journey-tab-subtitle { font-size:11px; font-style:italic; font-weight:500; color:var(--label2); line-height:1.4; }
 
 /* MILESTONE LIST */
 .milestone-list { display:flex; flex-direction:column; }
@@ -551,7 +552,7 @@ body.test-ui-active .toast.show {
     <!-- Journey Tab -->
     <div class="tab-content">
       <div class="journey-tab-header">
-        <div class="journey-mechanic">How many sober days against 10 drinking days?</div>
+        <div class="journey-tab-subtitle">Track sober days journey against 10 drinking days. In next journey, go farther.</div>
       </div>
       <div class="milestone-list">
         <div class="stage-label stage-building">Early Battle</div>
@@ -1983,8 +1984,6 @@ const UI = {
 
     const visible = JOURNEY_TROPHIES.filter(milestoneVisible);
     const nextMilestone = visible.find(m => current < m.days);
-    const highestAchieved = visible.filter(m => current >= m.days).pop() || null;
-    const focusMilestone = nextMilestone || highestAchieved;
 
     JOURNEY_TROPHIES.forEach(m => {
       const row = el(m.el); if (!row) return;
@@ -1997,16 +1996,15 @@ const UI = {
       const count  = (data.journeyTrophies && data.journeyTrophies[m.days]) || 0;
       const nameEl = row.querySelector('.milestone-name');
       const statEl = row.querySelector('.milestone-status');
-      const isFocus = focusMilestone && focusMilestone.days === m.days;
 
       if (current >= m.days) {
-        row.classList.toggle('milestone-active', isFocus && !nextMilestone);
+        row.classList.add('milestone-active');
         nameEl.className  = 'milestone-name achieved';
         statEl.className  = 'milestone-status achieved';
         nameEl.textContent = nameEl.dataset.label;
         statEl.textContent = journeyTrophyStatusText(m.days, count);
       } else if (nextMilestone && m.days === nextMilestone.days) {
-        row.classList.add('milestone-active');
+        row.classList.remove('milestone-active');
         nameEl.className  = 'milestone-name';
         statEl.className  = 'milestone-status';
         nameEl.textContent = nameEl.dataset.label.split(' — ')[0];
@@ -3350,6 +3348,38 @@ function getBodyTimelineWindow(streak) {
   return { start, end: start + WINDOW - 1, displayDay: streak };
 }
 
+// 0 before noon, 0.5 after — halfway toward the next day dot
+function getBodyTimelineHalfProgress() {
+  const now = new Date();
+  const hours = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
+  return hours >= 12 ? 0.5 : 0;
+}
+
+function positionBodyTimelineCurrentDot(dotsEl) {
+  const dot = dotsEl.querySelector('.body-timeline-dot-current[data-shift="1"]');
+  if (!dot) return;
+  const progress = parseFloat(dot.dataset.progress || '0');
+  dot.style.position = '';
+  dot.style.top = '';
+  dot.style.left = '';
+  dot.style.transform = '';
+  dot.style.zIndex = '';
+  if (progress <= 0) return;
+
+  const slot = dot.parentElement;
+  const bridge = slot?.nextElementSibling;
+  if (!bridge || !bridge.classList.contains('body-timeline-bridge')) return;
+
+  const spanW = slot.offsetWidth + bridge.offsetWidth;
+  const left = 6 + progress * (spanW - 2);
+  slot.style.position = 'relative';
+  dot.style.position = 'absolute';
+  dot.style.top = '50%';
+  dot.style.left = `${left}px`;
+  dot.style.transform = 'translate(-50%, -50%)';
+  dot.style.zIndex = '1';
+}
+
 function getBodyFact(day) {
   if (BODY_FACTS[day]) return BODY_FACTS[day];
   return {
@@ -3430,27 +3460,40 @@ function renderBodyTimeline(data) {
   }
 
   // Progress bar — one dot per day in the current 7-day window
+  const dayProgress = getBodyTimelineHalfProgress();
   let html = '';
   let labelHtml = '';
   for (let i = start; i <= end; i++) {
     const isPast    = streak > 0 && i < streak;
     const isCurrent = streak > 0 && i === streak;
+    const isLast    = i === end;
     const green     = '#34c759';
     const dim       = 'rgba(60,60,67,0.15)';
     const labelColor = (isPast || isCurrent) ? green : dim;
 
-    if (isCurrent) {
+    if (isCurrent && !isLast) {
+      html += `<div style="display:contents;">
+        <div class="body-timeline-current-slot" style="flex:0 0 12px;display:flex;justify-content:center;align-items:center;overflow:visible;">
+          <div class="body-timeline-dot-current" data-shift="1" data-progress="${dayProgress}" style="width:12px;height:12px;border-radius:50%;background:${green};flex-shrink:0;"></div>
+        </div>
+        <div class="body-timeline-bridge" style="flex:1;height:2px;background:${dim};align-self:center;"></div>
+      </div>`;
+      labelHtml += `<div style="display:contents;">
+        <div style="flex:0 0 12px;display:flex;justify-content:center;"><span style="font-size:8px;color:${labelColor};white-space:nowrap;transform:translateX(-50%);position:relative;left:50%;">Day ${i}</span></div>
+        <div style="flex:1;"></div>
+      </div>`;
+    } else if (isCurrent) {
       html += `<div style="flex:0 0 12px;display:flex;justify-content:center;align-items:center;">
         <div class="body-timeline-dot-current" style="width:12px;height:12px;border-radius:50%;background:${green};flex-shrink:0;"></div></div>`;
+      labelHtml += `<div style="flex:0 0 12px;display:flex;justify-content:center;"><span style="font-size:8px;color:${labelColor};white-space:nowrap;transform:translateX(-50%);position:relative;left:50%;">Day ${i}</span></div>`;
     } else {
       html += `<div style="flex:0 0 8px;display:flex;justify-content:center;align-items:center;">
         <div style="width:8px;height:8px;border-radius:50%;background:${isPast?green:dim};flex-shrink:0;"></div></div>`;
+      const dotFlex = '0 0 8px';
+      labelHtml += `<div style="flex:${dotFlex};display:flex;justify-content:center;"><span style="font-size:8px;color:${labelColor};white-space:nowrap;transform:translateX(-50%);position:relative;left:50%;">Day ${i}</span></div>`;
     }
 
-    const dotFlex = isCurrent ? '0 0 12px' : '0 0 8px';
-    labelHtml += `<div style="flex:${dotFlex};display:flex;justify-content:center;"><span style="font-size:8px;color:${labelColor};white-space:nowrap;transform:translateX(-50%);position:relative;left:50%;">Day ${i}</span></div>`;
-
-    if (i < end) {
+    if (i < end && !(isCurrent && !isLast)) {
       html += `<div style="flex:1;height:2px;background:${isPast?green:dim};align-self:center;"></div>`;
       labelHtml += `<div style="flex:1;"></div>`;
     }
@@ -3458,6 +3501,7 @@ function renderBodyTimeline(data) {
 
   dotsEl.innerHTML = html;
   if (labelsEl) labelsEl.innerHTML = labelHtml;
+  positionBodyTimelineCurrentDot(dotsEl);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -3632,8 +3676,10 @@ function renderJourneyChart(data) {
   if (card) card.style.display = 'block';
 
   const pts = completed.map(j => ({ val:j.score.success, label:`J${j.attempt}` }));
-  // Always add current journey as live point
-  pts.push({ val:data.currentScore.success, label:`J${data.attempt}`, live:true });
+  const currentAlreadyCompleted = completed.some(j => j.attempt === data.attempt);
+  if (!data.journeyPendingReset && !currentAlreadyCompleted) {
+    pts.push({ val:data.currentScore.success, label:`J${data.attempt}`, live:true });
+  }
 
   if (pts.length < 1) return;
 
