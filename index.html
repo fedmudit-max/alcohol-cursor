@@ -183,10 +183,27 @@ body.loaded { background: var(--bg); }
 @keyframes confFall   { 0%{transform:translateY(-20px) rotate(0deg);opacity:1;} 100%{transform:translateY(110vh) rotate(720deg);opacity:0;} }
 @keyframes modalSlide { from{opacity:0;transform:scale(0.93);} to{opacity:1;transform:scale(1);} }
 @keyframes bodyTimelinePulse {
-  0%, 100% { box-shadow:0 0 0 3px rgba(52,199,89,0.28); transform:scale(1); }
-  50%      { box-shadow:0 0 0 7px rgba(52,199,89,0.12); transform:scale(1.12); }
+  0%, 100% { box-shadow:0 0 0 3px rgba(52,199,89,0.28); }
+  50%      { box-shadow:0 0 0 7px rgba(52,199,89,0.12); }
 }
-.body-timeline-dot-current { animation:bodyTimelinePulse 2s ease-in-out infinite; }
+.body-timeline-dot-fixed {
+  width:14px; height:14px; border-radius:50%; background:#34c759; flex-shrink:0;
+}
+.body-timeline-dot-fixed--sm { width:12px; height:12px; }
+.body-timeline-dot-active-wrap {
+  position:absolute; z-index:3; display:flex; align-items:center; justify-content:center;
+  border-radius:50%; animation:bodyTimelinePulse 2s ease-in-out infinite; pointer-events:none;
+}
+.body-timeline-dot-active {
+  width:8px; height:8px; border-radius:50%; background:#34c759; flex-shrink:0;
+}
+.body-timeline-current-col {
+  flex:0 0 14px; min-width:14px; position:relative; display:flex; justify-content:center; align-items:center; overflow:visible;
+}
+.body-timeline-past-col { flex:0 0 12px; min-width:12px; display:flex; justify-content:center; align-items:center; }
+#bodyTimelineDots { position:relative; overflow:visible; min-height:14px; }
+#bodyTimelineLabels { overflow:visible; }
+.body-timeline-day-label { font-size:8px; white-space:nowrap; line-height:1; }
 
 /* LAYOUT */
 .scroll-view { padding:16px 16px 40px; padding:16px 16px calc(40px + env(safe-area-inset-bottom)); max-width:480px; margin:0 auto; }
@@ -3348,36 +3365,44 @@ function getBodyTimelineWindow(streak) {
   return { start, end: start + WINDOW - 1, displayDay: streak };
 }
 
-// 0 before noon, 0.5 after — halfway toward the next day dot
+// 0 before noon, 0.5 after — active dot sits halfway toward the next day
 function getBodyTimelineHalfProgress() {
   const now = new Date();
   const hours = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
   return hours >= 12 ? 0.5 : 0;
 }
 
-function positionBodyTimelineCurrentDot(dotsEl) {
-  const dot = dotsEl.querySelector('.body-timeline-dot-current[data-shift="1"]');
-  if (!dot) return;
-  const progress = parseFloat(dot.dataset.progress || '0');
-  dot.style.position = '';
-  dot.style.top = '';
-  dot.style.left = '';
-  dot.style.transform = '';
-  dot.style.zIndex = '';
-  if (progress <= 0) return;
+const BODY_TIMELINE_FIXED_COL = 14;
+const BODY_TIMELINE_FIXED_R   = 7;
+const BODY_TIMELINE_NEXT_R    = 4;
 
-  const slot = dot.parentElement;
-  const bridge = slot?.nextElementSibling;
-  if (!bridge || !bridge.classList.contains('body-timeline-bridge')) return;
+function bodyTimelineSpanToNext(bridgeW) {
+  return bridgeW + (BODY_TIMELINE_FIXED_COL - BODY_TIMELINE_FIXED_R) + BODY_TIMELINE_NEXT_R;
+}
 
-  const spanW = slot.offsetWidth + bridge.offsetWidth;
-  const left = 6 + progress * (spanW - 2);
-  slot.style.position = 'relative';
-  dot.style.position = 'absolute';
-  dot.style.top = '50%';
-  dot.style.left = `${left}px`;
-  dot.style.transform = 'translate(-50%, -50%)';
-  dot.style.zIndex = '1';
+function positionBodyTimelineActiveDot(dotsEl) {
+  const wrap = dotsEl.querySelector('.body-timeline-dot-active-wrap[data-active="1"]');
+  if (!wrap) return;
+  const col = wrap.closest('.body-timeline-current-col');
+  if (!col) return;
+
+  const progress = getBodyTimelineHalfProgress();
+  const bridge = col.nextElementSibling;
+  const fillEl = bridge?.querySelector('.body-timeline-bridge-fill');
+  let centerX = BODY_TIMELINE_FIXED_R;
+  if (progress > 0 && bridge?.classList.contains('body-timeline-bridge--live')) {
+    const bridgeW = bridge.offsetWidth;
+    centerX = BODY_TIMELINE_FIXED_R + progress * bodyTimelineSpanToNext(bridgeW);
+    if (fillEl && bridgeW > 0) {
+      const fillPx = Math.max(0, Math.min(bridgeW, centerX - BODY_TIMELINE_FIXED_COL));
+      fillEl.style.width = `${(fillPx / bridgeW) * 100}%`;
+    }
+  } else if (fillEl) {
+    fillEl.style.width = '0%';
+  }
+  wrap.style.left = `${centerX}px`;
+  wrap.style.top = '50%';
+  wrap.style.transform = 'translate(-50%, -50%)';
 }
 
 function getBodyFact(day) {
@@ -3460,48 +3485,53 @@ function renderBodyTimeline(data) {
   }
 
   // Progress bar — one dot per day in the current 7-day window
-  const dayProgress = getBodyTimelineHalfProgress();
   let html = '';
   let labelHtml = '';
   for (let i = start; i <= end; i++) {
     const isPast    = streak > 0 && i < streak;
     const isCurrent = streak > 0 && i === streak;
-    const isLast    = i === end;
     const green     = '#34c759';
     const dim       = 'rgba(60,60,67,0.15)';
     const labelColor = (isPast || isCurrent) ? green : dim;
 
-    if (isCurrent && !isLast) {
-      html += `<div style="display:contents;">
-        <div class="body-timeline-current-slot" style="flex:0 0 12px;display:flex;justify-content:center;align-items:center;overflow:visible;">
-          <div class="body-timeline-dot-current" data-shift="1" data-progress="${dayProgress}" style="width:12px;height:12px;border-radius:50%;background:${green};flex-shrink:0;"></div>
+    if (isCurrent) {
+      html += `<div class="body-timeline-current-col">
+        <div class="body-timeline-dot-fixed"></div>
+        <div class="body-timeline-dot-active-wrap" data-active="1">
+          <div class="body-timeline-dot-active"></div>
         </div>
-        <div class="body-timeline-bridge" style="flex:1;height:2px;background:${dim};align-self:center;"></div>
       </div>`;
-      labelHtml += `<div style="display:contents;">
-        <div style="flex:0 0 12px;display:flex;justify-content:center;"><span style="font-size:8px;color:${labelColor};white-space:nowrap;transform:translateX(-50%);position:relative;left:50%;">Day ${i}</span></div>
-        <div style="flex:1;"></div>
-      </div>`;
-    } else if (isCurrent) {
-      html += `<div style="flex:0 0 12px;display:flex;justify-content:center;align-items:center;">
-        <div class="body-timeline-dot-current" style="width:12px;height:12px;border-radius:50%;background:${green};flex-shrink:0;"></div></div>`;
-      labelHtml += `<div style="flex:0 0 12px;display:flex;justify-content:center;"><span style="font-size:8px;color:${labelColor};white-space:nowrap;transform:translateX(-50%);position:relative;left:50%;">Day ${i}</span></div>`;
+    } else if (isPast) {
+      html += `<div class="body-timeline-past-col">
+        <div class="body-timeline-dot-fixed body-timeline-dot-fixed--sm"></div></div>`;
     } else {
-      html += `<div style="flex:0 0 8px;display:flex;justify-content:center;align-items:center;">
-        <div style="width:8px;height:8px;border-radius:50%;background:${isPast?green:dim};flex-shrink:0;"></div></div>`;
-      const dotFlex = '0 0 8px';
-      labelHtml += `<div style="flex:${dotFlex};display:flex;justify-content:center;"><span style="font-size:8px;color:${labelColor};white-space:nowrap;transform:translateX(-50%);position:relative;left:50%;">Day ${i}</span></div>`;
+      html += `<div style="flex:0 0 8px;min-width:8px;display:flex;justify-content:center;align-items:center;">
+        <div style="width:8px;height:8px;border-radius:50%;background:${dim};flex-shrink:0;"></div></div>`;
     }
 
-    if (i < end && !(isCurrent && !isLast)) {
-      html += `<div style="flex:1;height:2px;background:${isPast?green:dim};align-self:center;"></div>`;
+    const dotFlex = isCurrent ? '0 0 14px' : (isPast ? '0 0 12px' : '0 0 8px');
+    const minW = isCurrent ? '14px' : (isPast ? '12px' : '8px');
+    const labelJustify = i === start ? 'flex-start' : (i === end ? 'flex-end' : 'center');
+    labelHtml += `<div style="flex:${dotFlex};min-width:${minW};display:flex;justify-content:${labelJustify};">
+      <span class="body-timeline-day-label" style="color:${labelColor};">Day ${i}</span>
+    </div>`;
+
+    if (i < end) {
+      if (isCurrent) {
+        html += `<div class="body-timeline-bridge-to-next body-timeline-bridge--live" style="flex:1;display:flex;height:2px;align-self:center;">
+          <div class="body-timeline-bridge-fill" style="width:0%;background:${green};height:2px;flex-shrink:0;"></div>
+          <div style="flex:1;background:${dim};height:2px;"></div>
+        </div>`;
+      } else {
+        html += `<div class="body-timeline-bridge-to-next" style="flex:1;height:2px;background:${isPast?green:dim};align-self:center;"></div>`;
+      }
       labelHtml += `<div style="flex:1;"></div>`;
     }
   }
 
   dotsEl.innerHTML = html;
   if (labelsEl) labelsEl.innerHTML = labelHtml;
-  positionBodyTimelineCurrentDot(dotsEl);
+  requestAnimationFrame(() => positionBodyTimelineActiveDot(dotsEl));
 }
 
 // ═══════════════════════════════════════════════════════════════
