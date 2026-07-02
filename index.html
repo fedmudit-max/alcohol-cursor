@@ -502,7 +502,7 @@ body.test-ui-active .toast.show {
       </div>
     </div>
     <div class="current-card" id="currentCard">
-      <div class="card-label">Current Journey</div>
+      <div class="card-label" id="currentJourneyLabel">Current Journey</div>
       <div class="card-value" id="currentScore">0 – 0</div>
       <div class="score-explain" id="scoreExplain">0 sober days — 0 drinking days</div>
     </div>
@@ -694,19 +694,19 @@ body.test-ui-active .toast.show {
         <div style="font-size:13px;color:#1c1c1e;line-height:1.6;font-weight:500;" id="journeyEndVerdict">—</div>
       </div>
 
-      <!-- Lifetime stats row -->
+      <!-- All-time career totals (includes the journey that just ended) -->
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
         <div style="text-align:center;">
           <div style="font-size:20px;font-weight:800;color:#1c1c1e;" id="journeyEndTotal">—</div>
-          <div style="font-size:10px;color:rgba(60,60,67,0.4);margin-top:2px;">Journeys</div>
+          <div style="font-size:10px;color:rgba(60,60,67,0.4);margin-top:2px;">Finished</div>
         </div>
         <div style="text-align:center;">
           <div style="font-size:20px;font-weight:800;color:#34c759;" id="journeyEndTotalSober">—</div>
-          <div style="font-size:10px;color:rgba(60,60,67,0.4);margin-top:2px;">Total Sober</div>
+          <div style="font-size:10px;color:rgba(60,60,67,0.4);margin-top:2px;">All-time Sober</div>
         </div>
         <div style="text-align:center;">
           <div style="font-size:20px;font-weight:800;color:rgba(60,60,67,0.4);" id="journeyEndTotalDrink">—</div>
-          <div style="font-size:10px;color:rgba(60,60,67,0.4);margin-top:2px;">Total Drink</div>
+          <div style="font-size:10px;color:rgba(60,60,67,0.4);margin-top:2px;">All-time Drinks</div>
         </div>
       </div>
     </div>
@@ -784,7 +784,7 @@ body.test-ui-active .toast.show {
     </div>
   </div>
 
-  <!-- LIFETIME STATS -->
+  <!-- LIFETIME STATS — journey # (attempt), all-time sober & drink days (grow every log) -->
   <div class="card" id="lifetimeStatsCard" style="display:none;animation:fadeInUp 0.4s ease 0.4s both;margin-top:12px;">
     <button onclick="SoberTracker.toggleLifetimeStats()" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;min-height:44px;">
       <div style="font-size:13px;font-weight:700;color:#1c1c1e;">📊 Lifetime</div>
@@ -794,7 +794,7 @@ body.test-ui-active .toast.show {
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;">
         <div style="text-align:center;padding:0 8px;">
           <div style="font-size:22px;font-weight:800;color:#1c1c1e;" id="ltJourneys">—</div>
-          <div style="font-size:10px;color:rgba(60,60,67,0.4);margin-top:2px;">Journeys</div>
+          <div style="font-size:10px;color:rgba(60,60,67,0.4);margin-top:2px;">Journey</div>
         </div>
         <div style="text-align:center;padding:0 8px;border-left:1px solid rgba(60,60,67,0.1);border-right:1px solid rgba(60,60,67,0.1);">
           <div style="font-size:22px;font-weight:800;color:#34c759;" id="ltSober">—</div>
@@ -1292,7 +1292,6 @@ body.test-ui-active .toast.show {
 // CONSTANTS — change behaviour here, not scattered through code
 // ═══════════════════════════════════════════════════════════════
 const JOURNEY_MAX_FAILURES   = 10;   // drinking days before journey ends
-const JOURNEY_LAST_CHANCE    = JOURNEY_MAX_FAILURES - 1; // 9 — slash score display, last drink left
 
 // Score display — always "sober – drinks" (consistent separator at every failure count)
 function formatScoreHTML(score) {
@@ -1307,14 +1306,13 @@ function formatScoreText(score) {
   return `${s} – ${f}`;
 }
 
-// Best journey comparison — 20/10 beats 20/9; more sober days always wins
+// Best journey comparison — more sober days wins; tie → fewer drinking days wins (50-9 beats 50-10).
+// A 10-drink best (e.g. 51-10) only wins when sober days increased after the 9th drink, not at same sober total.
 function isScoreBetterThan(cur, best) {
   const cs = cur.success | 0, cf = cur.failures | 0;
   const bs = best.success | 0, bf = best.failures | 0;
   if (cs > bs) return true;
   if (cs < bs) return false;
-  if (cf === JOURNEY_MAX_FAILURES && bf === JOURNEY_LAST_CHANCE) return true;
-  if (bf === JOURNEY_MAX_FAILURES && cf === JOURNEY_LAST_CHANCE) return false;
   return cf < bf;
 }
 
@@ -1384,15 +1382,16 @@ const DataManager = {
       currentStreak:              0,
       todayStatus:                'none', // 'none' | 'success' | 'failed'
       todaySuccessLogged:         false,
-      totalSuccessfulDays:        0,  // lifetime sober days — reserved for stats screen (Month 3)
-      totalFailures:              0,  // lifetime drinking days — reserved for stats screen (Month 3)
+      totalSuccessfulDays:        0,  // all-time sober days across every journey (persisted)
+      totalFailures:              0,  // all-time drinking days across every journey (persisted)
       highestScore:               { success:0, failures:0 },
       nextJourneyTarget:          0,    // sober days to beat in the next journey (best journey score)
       longestStreak:              0,  // all-time best consecutive sober days — never resets between journeys
       streakPeakAtRunStart:       0,  // best streak to beat when current run began (after drink or new journey)
       inPersonalBest:             false,
       personalBestCelebrated:     false,
-      journeyTrophies:            { 5:0,10:0,15:0,20:0,30:0,40:0,60:0,80:0,100:0,150:0,200:0 },
+      journeyTrophies:            { 5:0,10:0,15:0,20:0,30:0,40:0,50:0,60:0,80:0,100:0,150:0,200:0 },
+      journeyMilestonesRevealed:  { 150:false, 200:false },
       journeyPendingReset:        false,
       celebratedStreakMilestones: {},
       celebratedTrophies:         {},
@@ -1469,6 +1468,11 @@ const DataManager = {
       data.highestScore = { success: 0, failures: 0 };
     }
     if (!data.journeyTrophies) data.journeyTrophies = def.journeyTrophies;
+    if (!data.journeyMilestonesRevealed) data.journeyMilestonesRevealed = { 150: false, 200: false };
+    if ((data.journeyTrophies[150] || 0) > 0) data.journeyMilestonesRevealed[150] = true;
+    if ((data.journeyTrophies[200] || 0) > 0) data.journeyMilestonesRevealed[200] = true;
+    if ((data.highestScore?.success || 0) >= 80)  data.journeyMilestonesRevealed[150] = true;
+    if ((data.highestScore?.success || 0) >= 100) data.journeyMilestonesRevealed[200] = true;
     if (!data.celebratedStreakMilestones) data.celebratedStreakMilestones = {};
     if (!data.celebratedTrophies)        data.celebratedTrophies        = {};
     if (!data.celebratedScienceMilestones) data.celebratedScienceMilestones = {};
@@ -1504,6 +1508,7 @@ const DataManager = {
 
     // Rebuild scoredDays from score + dailyLog — fixes stale flags that block catch-up scoring
     this._rebuildScoredDays(data);
+    if (reconcileDrinkLogToScore(data)) this._rebuildScoredDays(data);
 
     // Coerce and clamp AUDIT-C scores — prevent corrupted values affecting meter
     if (data.auditQ1 !== null && data.auditQ1 !== undefined)
@@ -1599,6 +1604,31 @@ function dateKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
 }
 
+function noonFromDateKey(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(y, m - 1, d, 12, 0, 0);
+}
+
+function calendarYesterdayKey(data) {
+  const yest = getAppToday(data);
+  yest.setDate(yest.getDate() - 1);
+  return dateKey(yest);
+}
+
+function shouldAskYesterday(data) {
+  if (!data || data.journeyPendingReset) return false;
+  if (!data.scoredDays) data.scoredDays = {};
+  const yestKey = calendarYesterdayKey(data);
+  const startKey = data.journeyStartKey;
+  if (startKey && yestKey < startKey) return false;
+  return !data.scoredDays[yestKey];
+}
+
+function promptYesterdayIfNeeded(data, delayMs = 1000) {
+  if (!shouldAskYesterday(data)) return;
+  setTimeout(() => el('yesterdayModal').classList.add('active'), delayMs);
+}
+
 // Test "Next Day" advances simulatedToday; logging/streak use this instead of real clock
 function getAppToday(data) {
   if (CONFIG.showTestUI && data && data.simulatedToday) {
@@ -1673,6 +1703,63 @@ function normalizeTodaySession(d) {
   if (d.todayStatus === 'failed' && entry !== 'drinking') {
     d.todayStatus = 'none';
   }
+}
+
+function journeyDrinkLogKeys(d) {
+  const log = d.dailyLog || {};
+  const startKey = d.journeyStartKey || null;
+  return Object.keys(log)
+    .filter(k => log[k] === 'drinking' && (!startKey || k >= startKey))
+    .sort();
+}
+
+// Score one drinking day into currentScore.failures (Tracker + load reconcile)
+function recordDrinkDay(d, key) {
+  if (!d) return false;
+  ensureScoreNumbers(d);
+  if (!d.currentScore) d.currentScore = { success: 0, failures: 0 };
+  if (!d.dailyLog) d.dailyLog = {};
+  if (!d.scoredDays) d.scoredDays = {};
+  if (d.journeyStartKey && key < d.journeyStartKey) return false;
+
+  recalculateStreakFromLog(d);
+  d.streakPeakAtRunStart = Math.max(d.longestStreak | 0, d.currentStreak | 0);
+
+  if (d.dailyLog[key] === 'drinking' && d.scoredDays[key]) return false;
+
+  if (d.dailyLog[key] === 'sober' && d.scoredDays[key]) {
+    d.currentScore.success = Math.max(0, d.currentScore.success - 1);
+    d.totalSuccessfulDays  = Math.max(0, d.totalSuccessfulDays - 1);
+    delete d.scoredDays[key];
+  } else if (d.scoredDays[key]) {
+    return false;
+  }
+
+  if ((d.currentScore.failures | 0) >= JOURNEY_MAX_FAILURES) return false;
+
+  d.dailyLog[key] = 'drinking';
+  d.scoredDays[key] = true;
+  d.currentScore.failures++;
+  d.totalFailures++;
+  d.celebratedStreakMilestones = {};
+  d.celebratedScienceMilestones = {};
+  applyBestScore(d, d.currentScore);
+  ensureScoreNumbers(d);
+  return true;
+}
+
+// Heal drift on load (product rule A): if dailyLog has more drinks than failures,
+// score unscored log entries — user should not fix code bugs mentally.
+function reconcileDrinkLogToScore(d) {
+  if (!d || !d.dailyLog) return false;
+  if (!d.scoredDays) d.scoredDays = {};
+  let changed = false;
+  for (const key of journeyDrinkLogKeys(d)) {
+    if (d.scoredDays[key]) continue;
+    if (journeyDrinkLogKeys(d).length <= (d.currentScore.failures | 0)) break;
+    if (recordDrinkDay(d, key)) changed = true;
+  }
+  return changed;
 }
 
 // Rebuild consecutive sober-day streak from dailyLog (single source of truth for streak + body timeline)
@@ -1853,7 +1940,47 @@ const JOURNEY_TROPHY_COUNT_DAYS = new Set([50, 100, 150, 200]);
 
 function journeyTrophyStatusText(days, count) {
   if (!JOURNEY_TROPHY_COUNT_DAYS.has(days)) return '✓';
-  return count > 1 ? `\u00d7${count}` : '1 time';
+  if (count <= 0) return '—';
+  return `\u00d7${count}`;
+}
+
+function journeyTrophyStatusDisplay(days, count, achieved) {
+  if (JOURNEY_TROPHY_COUNT_DAYS.has(days) && count > 0) {
+    return journeyTrophyStatusText(days, count);
+  }
+  if (achieved) return journeyTrophyStatusText(days, count);
+  return '—';
+}
+
+function syncJourneyMilestonesRevealed(data) {
+  if (!data.journeyMilestonesRevealed) data.journeyMilestonesRevealed = { 150: false, 200: false };
+  const current = data.currentScore.success | 0;
+  const trophies = data.journeyTrophies || {};
+  let changed = false;
+  if (current >= 80 || (trophies[150] || 0) > 0) {
+    if (!data.journeyMilestonesRevealed[150]) { data.journeyMilestonesRevealed[150] = true; changed = true; }
+  }
+  if (current >= 100 || (trophies[200] || 0) > 0) {
+    if (!data.journeyMilestonesRevealed[200]) { data.journeyMilestonesRevealed[200] = true; changed = true; }
+  }
+  return changed;
+}
+
+function isJourneyMilestoneVisible(data, m) {
+  if (m.hiddenUntil === undefined) return true;
+  const current = data.currentScore.success | 0;
+  const revealed = data.journeyMilestonesRevealed || {};
+  const count = (data.journeyTrophies && data.journeyTrophies[m.days]) || 0;
+  if (m.days === 150) return current >= m.hiddenUntil || revealed[150] || count > 0;
+  if (m.days === 200) return current >= m.hiddenUntil || revealed[200] || count > 0;
+  return current >= m.hiddenUntil;
+}
+
+function isInControlStageVisible(data) {
+  const current = data.currentScore.success | 0;
+  const revealed = data.journeyMilestonesRevealed || {};
+  const trophies = data.journeyTrophies || {};
+  return current >= 80 || revealed[150] || revealed[200] || (trophies[150] || 0) > 0 || (trophies[200] || 0) > 0;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1869,7 +1996,6 @@ const UI = {
     this.renderStreakMilestones(data);
     renderBodyTimeline(data);
     renderScienceTimeline(data.currentStreak | 0);
-    this.renderChances(data);
     this.renderButtons(data);
     this.renderJourneyTrophies(data);
     renderMonthGrid(data);
@@ -1883,6 +2009,8 @@ const UI = {
 
   renderPrimary(data) {
     el('calendarDay').textContent = data.calendarDay;
+    const journeyLabel = el('currentJourneyLabel');
+    if (journeyLabel) journeyLabel.textContent = `Journey ${data.attempt | 0}`;
     el('currentScore').innerHTML  = formatScoreHTML(data.currentScore);
     el('bestScore').textContent   = formatScoreText(data.highestScore);
     let explain = `${data.currentScore.success} sober days — ${data.currentScore.failures} drinking days · ${data.currentStreak | 0} day streak`;
@@ -1896,18 +2024,9 @@ const UI = {
     renderWelcomeHint(data);
   },
 
-  renderChances(data) {
-    const remaining = 10 - data.currentScore.failures;
-    el('chancesGrid').innerHTML = Array.from({length:10}, (_,i) => {
-      const used = i >= remaining;
-      return `<div class="chance" style="${used ? 'opacity:0.18;filter:grayscale(1);' : ''}">🥃</div>`;
-    }).join('');
-    el('journeyAvailable').textContent = remaining;
-  },
-
   renderButtons(data) {
     const sb = el('successBtn'), fb = el('failBtn');
-    if (data.journeyPendingReset) {
+    if (data.journeyPendingReset || (data.currentScore.failures | 0) >= JOURNEY_MAX_FAILURES) {
       sb.disabled = true; sb.classList.remove('logged'); sb.textContent = 'Journey Ended';
       fb.disabled = true; fb.textContent = '🥃 Logged';
     } else if (data.todayStatus === 'failed') {
@@ -1987,24 +2106,20 @@ const UI = {
 
   renderJourneyTrophies(data) {
     const current = data.currentScore.success;
+    if (syncJourneyMilestonesRevealed(data)) DataManager.save(data);
 
-    function milestoneVisible(m) {
-      if (m.hiddenUntil === undefined) return true;
-      return current >= m.hiddenUntil;
-    }
-
-    const showInControl = current >= 80;
+    const showInControl = isInControlStageVisible(data);
     const inControlLabel = el('inControlStageLabel');
     const inControlStage = el('inControlStage');
     if (inControlLabel) inControlLabel.style.display = showInControl ? '' : 'none';
     if (inControlStage) inControlStage.style.display = showInControl ? '' : 'none';
 
-    const visible = JOURNEY_TROPHIES.filter(milestoneVisible);
+    const visible = JOURNEY_TROPHIES.filter(m => isJourneyMilestoneVisible(data, m));
     const nextMilestone = visible.find(m => current < m.days);
 
     JOURNEY_TROPHIES.forEach(m => {
       const row = el(m.el); if (!row) return;
-      if (!milestoneVisible(m)) {
+      if (!isJourneyMilestoneVisible(data, m)) {
         row.style.display = 'none';
         return;
       }
@@ -2019,19 +2134,19 @@ const UI = {
         nameEl.className  = 'milestone-name achieved';
         statEl.className  = 'milestone-status achieved';
         nameEl.textContent = nameEl.dataset.label;
-        statEl.textContent = journeyTrophyStatusText(m.days, count);
+        statEl.textContent = journeyTrophyStatusDisplay(m.days, count, true);
       } else if (nextMilestone && m.days === nextMilestone.days) {
         row.classList.remove('milestone-active');
         nameEl.className  = 'milestone-name';
         statEl.className  = 'milestone-status';
         nameEl.textContent = nameEl.dataset.label.split(' — ')[0];
-        statEl.textContent = '—';
+        statEl.textContent = journeyTrophyStatusDisplay(m.days, count, false);
       } else {
         row.classList.remove('milestone-active');
         nameEl.className  = 'milestone-name';
         statEl.className  = 'milestone-status';
         nameEl.textContent = nameEl.dataset.label.split(' — ')[0];
-        statEl.textContent = '—';
+        statEl.textContent = journeyTrophyStatusDisplay(m.days, count, false);
       }
     });
   },
@@ -2088,7 +2203,7 @@ const Tracker = {
 
   init() {
     this.data = DataManager.load();
-    this.data.dykIndex = 0;
+    if (typeof this.data.dykIndex !== 'number') this.data.dykIndex = 0;
     if (!this.data.journeyStartKey) {
       // Legacy saves: infer journey start from oldest day in current score window
       const keys = Object.keys(this.data.dailyLog || {}).sort().reverse();
@@ -2111,7 +2226,14 @@ const Tracker = {
       this.data.journeyStartKey = appTodayKey;
     }
     DataManager._rebuildScoredDays(this.data);
+    if (reconcileDrinkLogToScore(this.data)) {
+      DataManager._rebuildScoredDays(this.data);
+      DataManager.saveNow(this.data);
+    }
     recalculateStreakFromLog(this.data);
+    if ((this.data.currentScore.failures | 0) >= JOURNEY_MAX_FAILURES && !this.data.journeyPendingReset) {
+      this._endJourney();
+    }
     this._catchUp();
     UI.renderAll(this.data);
     MidnightTimer.start();
@@ -2138,7 +2260,7 @@ const Tracker = {
       logKeys: Object.keys(this.data.dailyLog || {}),
     });
 
-    // Clock set back or same day — update lastDayCheck and return
+    // Clock set back or same day — re-ask yesterday if still unscored
     if (days <= 0) {
       catchUpLog('skip', days === 0 ? 'same day — use Simulate 3-Day Gap to test' : 'clock set back');
       if (days < 0) {
@@ -2146,6 +2268,7 @@ const Tracker = {
         DataManager.saveNow(this.data);
       }
       recalculateStreakFromLog(this.data);
+      promptYesterdayIfNeeded(this.data);
       return;
     }
 
@@ -2171,12 +2294,9 @@ const Tracker = {
     this.data.todaySuccessLogged = false;
     if (!this.data.dailyLog) this.data.dailyLog = {};
 
-    const yest = getAppToday(this.data);
-    yest.setDate(yest.getDate() - 1);
-    const yestKey = dateKey(yest);
+    const yestKey = calendarYesterdayKey(this.data);
     if (!this.data.scoredDays) this.data.scoredDays = {};
-    const startKey = this.data.journeyStartKey;
-    const askYesterday = !this.data.scoredDays[yestKey] && (!startKey || yestKey >= startKey);
+    const askYesterday = shouldAskYesterday(this.data);
 
     this.data.lastDayCheck = new Date(appToday.getFullYear(), appToday.getMonth(), appToday.getDate(), 12, 0, 0).toISOString();
     if (!CONFIG.showTestUI) delete this.data.simulatedToday;
@@ -2201,7 +2321,7 @@ const Tracker = {
     }
 
     if (askYesterday) {
-      setTimeout(() => el('yesterdayModal').classList.add('active'), 1000);
+      promptYesterdayIfNeeded(this.data);
     }
   },
 
@@ -2277,7 +2397,16 @@ const Tracker = {
       const cappedNoon = new Date(capped.getFullYear(), capped.getMonth(), capped.getDate(), 12, 0, 0);
       if (cappedNoon.getTime() > cursorStart.getTime()) cursorStart = cappedNoon;
     }
-    const lastOpenNoon = new Date(lastOpen.getFullYear(), lastOpen.getMonth(), lastOpen.getDate(), 12, 0, 0);
+    // Include orphaned days before calendar yesterday (e.g. skipped yesterday prompt last session)
+    if (d.journeyStartKey) {
+      let probe = noonFromDateKey(d.journeyStartKey);
+      while (probe.getTime() < yestNoon.getTime()) {
+        if (!d.scoredDays[dateKey(probe)] && probe.getTime() < cursorStart.getTime()) {
+          cursorStart = new Date(probe.getTime());
+        }
+        probe.setDate(probe.getDate() + 1);
+      }
+    }
     let cursor = cursorStart;
 
     while (cursor.getTime() < yestNoon.getTime()) {
@@ -2288,10 +2417,9 @@ const Tracker = {
         cursor.setDate(cursor.getDate() + 1);
         continue;
       }
-      const isLastOpen = cursor.getTime() === lastOpenNoon.getTime();
-      this._processMissedCatchUpDay(d, key, isLastOpen);
+      this._processMissedCatchUpDay(d, key);
 
-      if (d.currentScore.failures >= JOURNEY_MAX_FAILURES) { this._startNew(); return; }
+      if (d.currentScore.failures >= JOURNEY_MAX_FAILURES) { this._endJourney(); return; }
 
       d.calendarDay++;
       cursor.setDate(cursor.getDate() + 1);
@@ -2301,20 +2429,18 @@ const Tracker = {
     recalculateStreakFromLog(d);
   },
 
-  // Handle one missed day during catch-up — never overwrite a logged drinking day
-  _processMissedCatchUpDay(d, key, isLastOpenDay) {
-    if (d.dailyLog[key] === 'drinking') {
-      if (!d.scoredDays[key]) d.scoredDays[key] = true;
-      return;
-    }
+  // Auto-sober missed days before yesterday. Pre-logged drinks must score via _recordDrinkDay, not a silent flag.
+  _processMissedCatchUpDay(d, key) {
     if (d.scoredDays[key]) return;
-
-    if (isLastOpenDay && d.todayStatus === 'failed' && !d.dailyLog[key]) {
-      this._recordDrinkDay(d, key);
+    if (d.dailyLog[key] === 'drinking') {
+      if (journeyDrinkLogKeys(d).length > (d.currentScore.failures | 0)) {
+        this._recordDrinkDay(d, key);
+      }
       return;
     }
-
-    this._recordSoberDay(d, key);
+    if (this._recordSoberDay(d, key)) {
+      this._checkTrophies();
+    }
   },
 
   // --- AUTO ADVANCE ---
@@ -2337,7 +2463,7 @@ const Tracker = {
       }
       return;
     }
-    if (d.currentScore.failures >= JOURNEY_MAX_FAILURES) { this._startNew(); return; }
+    if (d.currentScore.failures >= JOURNEY_MAX_FAILURES) { this._endJourney(); return; }
 
     const appToday = getAppToday(d);
     const nextDay  = new Date(appToday.getFullYear(), appToday.getMonth(), appToday.getDate() + 1, 12, 0, 0);
@@ -2481,7 +2607,9 @@ const Tracker = {
     if (d.journeyPendingReset) return;
     if (!d.completedJourneys) d.completedJourneys = [];
     d.completedJourneys.push({ attempt: d.attempt, score: {...d.currentScore}, date: new Date().toISOString() });
-    if (d.completedJourneys.length > 20) d.completedJourneys = d.completedJourneys.slice(-20);
+    if (d.completedJourneys.length > MAX_COMPLETED_JOURNEYS) {
+      d.completedJourneys = d.completedJourneys.slice(-MAX_COMPLETED_JOURNEYS);
+    }
     const prevBest = d.highestScore.success | 0;
     this._updateBest();
     d.nextJourneyTarget = d.highestScore.success | 0;
@@ -2581,38 +2709,9 @@ const Tracker = {
   // Record one drinking day in dailyLog + currentScore (once per date via scoredDays)
   _recordDrinkDay(d, key) {
     this._ensureScore(d);
-    if (!d.dailyLog) d.dailyLog = {};
-    if (!d.scoredDays) d.scoredDays = {};
-    if (d.journeyStartKey && key < d.journeyStartKey) return false;
-
-    recalculateStreakFromLog(d);
-    d.streakPeakAtRunStart = Math.max(d.longestStreak | 0, d.currentStreak | 0);
-
-    if (d.dailyLog[key] === 'drinking' && d.scoredDays[key]) return false;
-
-    // Allow changing a sober day to drinking (e.g. yesterday modal correction)
-    if (d.dailyLog[key] === 'sober' && d.scoredDays[key]) {
-      d.currentScore.success = Math.max(0, d.currentScore.success - 1);
-      d.totalSuccessfulDays  = Math.max(0, d.totalSuccessfulDays - 1);
-      delete d.scoredDays[key];
-    } else if (d.scoredDays[key]) {
-      return false;
-    }
-
-    d.dailyLog[key] = 'drinking';
-    d.scoredDays[key] = true;
-    if (d.currentStreak > 0) this._currentStreaks.push(d.currentStreak);
-    d.currentScore.failures++;
-    d.totalFailures++;
-    d.celebratedStreakMilestones = {};
-    d.celebratedScienceMilestones = {};
-    this._updateBest();
-    ensureScoreNumbers(d);
-    return true;
-  },
-
-  _recalculateStreak(d) {
-    return recalculateStreakFromLog(d);
+    const ok = recordDrinkDay(d, key);
+    if (ok && d.currentStreak > 0) this._currentStreaks.push(d.currentStreak);
+    return ok;
   },
 
   _updateBest() {
@@ -2831,14 +2930,12 @@ const Onboarding = {
 // ─────────────────────────────────────────────
 // AUDIT ONBOARDING (Take Test flow)
 // Handles the 3-question AUDIT-C test popup.
-// One question at a time, filters impossible Q3 options based on Q1.
-// Saves Q1, Q2, Q3 answers to localStorage on completion.
+// One question at a time, filters impossible Q3 options based on Q2.
+// Results live in Tracker.data for this session only — AuditSession.forPersist strips them before localStorage write.
 // ─────────────────────────────────────────────
 const AuditOnboarding = {
   answers: [null, null, null], // q1, q2, q3
   step: 1,
-  // Q3_MAX_BY_Q1: given Q1 answer (0-4), what is the max valid Q3 score?
-  Q3_MAX_BY_Q1: [0, 2, 3, 3, 4],
 
   show() {
     this.answers = [null, null, null];
@@ -2965,6 +3062,7 @@ const AuditOnboarding = {
   },
 
   _save() {
+    // Session-only: written to Tracker.data + meter UI; stripped from localStorage via AuditSession.forPersist.
     const [q1, q2, q3] = this.answers;
     if (q1 === null || q2 === null || q3 === null) return;
     const d = Tracker.data || DataManager.load();
@@ -3536,8 +3634,17 @@ function renderBodyTimeline(data) {
 
 // ═══════════════════════════════════════════════════════════════
 // JOURNEY END SUMMARY
-// Shows when journey ends — score comparison, verdict, lifetime stats
+// Shows when journey ends — this journey score, target, and all-time career totals.
 // ═══════════════════════════════════════════════════════════════
+function careerTotals(data) {
+  return {
+    journey:  data.attempt | 0,
+    finished: (data.completedJourneys || []).length,
+    sober:    data.totalSuccessfulDays | 0,
+    drinks:   data.totalFailures | 0,
+  };
+}
+
 function renderJourneyEndCard(data) {
   const card = el('journeyEndCard');
   if (!card) return;
@@ -3575,21 +3682,21 @@ function renderJourneyEndCard(data) {
   }
   el('journeyEndVerdict').textContent = verdict;
 
-  // Lifetime stats
-  el('journeyEndTotal').textContent      = completed.length;
-  el('journeyEndTotalSober').textContent = data.totalSuccessfulDays;
-  el('journeyEndTotalDrink').textContent = data.totalFailures;
+  const career = careerTotals(data);
+  el('journeyEndTotal').textContent      = career.finished;
+  el('journeyEndTotalSober').textContent = career.sober;
+  el('journeyEndTotalDrink').textContent = career.drinks;
 }
 
-// ═══════════════════════════════════════════════════════════════
-// Lifetime stats card — collapsed by default; tap 📊 Lifetime to expand.
+// Lifetime stats — current journey # + all-time sober/drink days (each log adds to totals).
 function renderLifetimeStats(data) {
   const card = el('lifetimeStatsCard');
   if (!card) return;
   card.style.display = 'block';
-  el('ltJourneys').textContent = data.attempt;
-  el('ltSober').textContent    = data.totalSuccessfulDays;
-  el('ltDrink').textContent    = data.totalFailures;
+  const career = careerTotals(data);
+  el('ltJourneys').textContent = career.journey;
+  el('ltSober').textContent    = career.sober;
+  el('ltDrink').textContent    = career.drinks;
 }
 
 // Calendar navigation state
@@ -3597,7 +3704,7 @@ let _calYear  = null;
 let _calMonth = null;
 
 function renderMonthGrid(data, targetYear, targetMonth) {
-  const log   = data.dailyLog || data.log || {};
+  const log   = data.dailyLog || {};
   const today = getAppToday(data);
 
   // Keep the month the user picked; only default to today on first render
@@ -4357,7 +4464,7 @@ if (CONFIG.showTestUI) {
       prevYest.setDate(prevYest.getDate() - 1);
       const pk = dateKey(prevYest);
       if (d.dailyLog[pk] !== 'drinking' && !d.scoredDays[pk]) {
-        Tracker._recordSoberDay(d, pk);
+        if (Tracker._recordSoberDay(d, pk)) Tracker._checkTrophies();
       }
     }
 
@@ -4415,6 +4522,7 @@ if (CONFIG.showTestUI) {
       }
       if (d.dailyLog[key] !== 'drinking' && Tracker._recordSoberDay(d, key)) {
         autoAdded++;
+        Tracker._checkTrophies();
       }
       cursor.setDate(cursor.getDate() + 1);
     }
@@ -4763,14 +4871,14 @@ function renderDidYouKnow(data) {
 
 // ── DYK NAV ───────────────────────────────────────────────────
 SoberTracker.dykNext = function() {
-  const d = DataManager.load();
+  const d = Tracker.data || DataManager.load();
   d.dykIndex = normalizeDykIndex((d.dykIndex || 0) + 1);
   DataManager.save(d);
   Tracker.data = d;
   renderDidYouKnow(d);
 };
 SoberTracker.dykPrev = function() {
-  const d = DataManager.load();
+  const d = Tracker.data || DataManager.load();
   d.dykIndex = normalizeDykIndex((d.dykIndex || 0) - 1);
   DataManager.save(d);
   Tracker.data = d;
