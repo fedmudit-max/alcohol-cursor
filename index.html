@@ -781,6 +781,11 @@ body.test-ui-active .toast.show {
           <svg id="journeyChartInner" role="img" aria-label="Journey history chart — sober days per journey" viewBox="0 0 400 140" width="100%" height="140" style="display:block;overflow:visible;"></svg>
         </div>
       </div>
+      <div id="journeyChartNav" style="display:none;align-items:center;justify-content:center;gap:12px;margin-top:10px;">
+        <button type="button" class="month-nav-btn" onclick="SoberTracker.journeyChartOlder()" id="journeyChartPrevBtn" aria-label="Older journeys">‹</button>
+        <div id="journeyChartRange" style="font-size:11px;font-weight:600;color:rgba(60,60,67,0.45);min-width:96px;text-align:center;">—</div>
+        <button type="button" class="month-nav-btn" onclick="SoberTracker.journeyChartNewer()" id="journeyChartNextBtn" aria-label="Newer journeys">›</button>
+      </div>
     </div>
   </div>
 
@@ -2817,6 +2822,16 @@ const Tracker = {
     if (!open) renderJourneyChart(Tracker.data);
   },
 
+  journeyChartOlder() {
+    _journeyChartOffset++;
+    renderJourneyChart(Tracker.data);
+  },
+
+  journeyChartNewer() {
+    _journeyChartOffset = Math.max(0, _journeyChartOffset - 1);
+    renderJourneyChart(Tracker.data);
+  },
+
   toggleLifetimeStats() {
     const body = el('lifetimeStatsBody');
     const btn  = el('lifetimeStatsToggleBtn');
@@ -3804,9 +3819,26 @@ function renderMonthGrid(data, targetYear, targetMonth) {
 // ═══════════════════════════════════════════════════════════════
 // JOURNEY HISTORY CHART
 // ═══════════════════════════════════════════════════════════════
+const JOURNEY_CHART_WINDOW = 6;
+let _journeyChartOffset = 0; // 0 = newest window; higher = older journeys
+let _journeyChartPtsCount = 0;
+
+function journeyChartVisibleSlice(pts) {
+  const n = pts.length;
+  if (n <= JOURNEY_CHART_WINDOW) {
+    return { visible: pts, start: 0, maxOffset: 0, offset: 0 };
+  }
+  const maxOffset = n - JOURNEY_CHART_WINDOW;
+  const offset = Math.min(Math.max(0, _journeyChartOffset), maxOffset);
+  _journeyChartOffset = offset;
+  const start = n - JOURNEY_CHART_WINDOW - offset;
+  return { visible: pts.slice(start, start + JOURNEY_CHART_WINDOW), start, maxOffset, offset };
+}
+
+// JOURNEY HISTORY CHART
+// ═══════════════════════════════════════════════════════════════
 // Draws the journey history line chart.
-// One dot per completed journey, Y axis = sober days.
-// Hidden until user starts Journey 2.
+// One dot per completed journey (+ live current). Arrow nav scrolls windows of 6.
 function renderJourneyChart(data) {
   const completed = (data.completedJourneys || []).filter(j => j && j.score && typeof j.score.success === 'number');
   const card = el('journeyChartCard');
@@ -3820,14 +3852,27 @@ function renderJourneyChart(data) {
 
   if (pts.length < 1) return;
 
-  const WINDOW = 5;
-  const visiblePts = pts.length <= WINDOW ? pts : pts.slice(-WINDOW);
+  if (pts.length > _journeyChartPtsCount) _journeyChartOffset = 0;
+  _journeyChartPtsCount = pts.length;
 
-  // subtitle removed — count shown in toggle button context
+  const { visible: visiblePts, start, maxOffset, offset } = journeyChartVisibleSlice(pts);
+
+  const navRow = el('journeyChartNav');
+  const prevBtn = el('journeyChartPrevBtn');
+  const nextBtn = el('journeyChartNextBtn');
+  const rangeEl = el('journeyChartRange');
+  if (navRow) navRow.style.display = pts.length > JOURNEY_CHART_WINDOW ? 'flex' : 'none';
+  if (prevBtn) prevBtn.disabled = offset >= maxOffset;
+  if (nextBtn) nextBtn.disabled = offset <= 0;
+  if (rangeEl && visiblePts.length) {
+    const first = visiblePts[0].label;
+    const last  = visiblePts[visiblePts.length - 1].label;
+    rangeEl.textContent = first === last ? first : `${first} – ${last}`;
+  }
 
   const H=140, padT=20, padB=28, VW=400, padX=20, cH=H-padT-padB;
   const chartW = VW - padX * 2;
-  const slotStep = chartW / (WINDOW - 1);
+  const slotStep = chartW / (JOURNEY_CHART_WINDOW - 1);
   const yMax  = Math.max(...pts.map(p=>p.val), 5);
   const yMaxR = Math.ceil(yMax * 1.25 / 5) * 5;
   const fracs = [0, 0.25, 0.5, 0.75, 1];
