@@ -283,6 +283,24 @@ body.loaded { background: var(--bg); }
   color:rgba(52,199,89,0.35);
   cursor:not-allowed;
 }
+.journey-chart-frame { display:flex; flex-direction:column; }
+.journey-chart-nav {
+  display:flex;
+  align-items:center;
+  margin-top:4px;
+}
+.journey-chart-nav-y {
+  flex-shrink:0;
+  width:34px;
+}
+.journey-chart-nav-plot {
+  flex:1;
+  min-width:0;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding-right:2px;
+}
 .cal-cell {
   aspect-ratio:1; border-radius:8px;
   display:flex; align-items:center; justify-content:center;
@@ -293,6 +311,7 @@ body.loaded { background: var(--bg); }
 .current-card .card-value { font-size:44px; color:#34c759; }
 .current-card.inactive .card-value { color:var(--label2); font-size:38px; }
 .best-card .card-value { font-size:30px; color:#ff9500; }
+.best-card .score-explain { font-size:10px; color:rgba(255,149,0,0.85); margin-top:2px; }
 
 .score-dash {
   background:linear-gradient(90deg,var(--green),#ff9500);
@@ -364,6 +383,11 @@ body.loaded { background: var(--bg); }
 .stage-improving { color:#ff9500; }
 .stage-safe      { color:#34c759; }
 .stage-incontrol { color:#007aff; }
+.stage-incontrol.stage-incontrol-unlocked {
+  border-top:1px solid var(--separator);
+  margin-top:2px;
+  padding-top:10px;
+}
 
 .milestone-row {
   display:flex; align-items:center; justify-content:space-between;
@@ -499,10 +523,11 @@ body.test-ui-active .toast.show {
       <div class="best-card">
         <div class="card-label">🏆 Best Score</div>
         <div class="card-value" id="bestScore">0 – 0</div>
+        <div class="score-explain" id="bestScoreExplain" style="display:none;"></div>
       </div>
     </div>
     <div class="current-card" id="currentCard">
-      <div class="card-label" id="currentJourneyLabel">Current Journey</div>
+      <div class="card-label">Current Journey</div>
       <div class="card-value" id="currentScore">0 – 0</div>
       <div class="score-explain" id="scoreExplain">0 sober days — 0 drinking days</div>
     </div>
@@ -775,16 +800,20 @@ body.test-ui-active .toast.show {
       <span id="journeyChartToggleBtn" style="font-size:12px;font-weight:500;color:rgba(60,60,67,0.4);">Show ▾</span>
     </button>
     <div id="journeyChartBody" style="display:none;padding:0 16px 16px;">
-      <div style="display:flex;align-items:stretch;">
-        <svg id="journeyYAxis" aria-hidden="true" width="34" height="140" style="flex-shrink:0;"></svg>
-        <div style="flex:1;">
-          <svg id="journeyChartInner" role="img" aria-label="Journey history chart — sober days per journey" viewBox="0 0 400 140" width="100%" height="140" style="display:block;overflow:visible;"></svg>
+      <div class="journey-chart-frame">
+        <div style="display:flex;align-items:stretch;">
+          <svg id="journeyYAxis" aria-hidden="true" width="34" height="140" style="flex-shrink:0;"></svg>
+          <div style="flex:1;">
+            <svg id="journeyChartInner" role="img" aria-label="Journey history chart — sober days per journey" viewBox="0 0 400 140" width="100%" height="140" style="display:block;overflow:visible;"></svg>
+          </div>
         </div>
-      </div>
-      <div id="journeyChartNav" style="display:none;align-items:center;justify-content:center;gap:12px;margin-top:10px;">
-        <button type="button" class="month-nav-btn" onclick="SoberTracker.journeyChartOlder()" id="journeyChartPrevBtn" aria-label="Older journeys">‹</button>
-        <div id="journeyChartRange" style="font-size:11px;font-weight:600;color:rgba(60,60,67,0.45);min-width:96px;text-align:center;">—</div>
-        <button type="button" class="month-nav-btn" onclick="SoberTracker.journeyChartNewer()" id="journeyChartNextBtn" aria-label="Newer journeys">›</button>
+        <div id="journeyChartNav" class="journey-chart-nav" style="display:none;">
+          <div class="journey-chart-nav-y" aria-hidden="true"></div>
+          <div class="journey-chart-nav-plot">
+            <button type="button" class="month-nav-btn" onclick="SoberTracker.journeyChartOlder()" id="journeyChartPrevBtn" aria-label="Older journeys">‹</button>
+            <button type="button" class="month-nav-btn" onclick="SoberTracker.journeyChartNewer()" id="journeyChartNextBtn" aria-label="Newer journeys">›</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -2014,16 +2043,16 @@ const UI = {
 
   renderPrimary(data) {
     el('calendarDay').textContent = data.calendarDay;
-    const journeyLabel = el('currentJourneyLabel');
-    if (journeyLabel) journeyLabel.textContent = `Journey ${data.attempt | 0}`;
     el('currentScore').innerHTML  = formatScoreHTML(data.currentScore);
     el('bestScore').textContent   = formatScoreText(data.highestScore);
-    let explain = `${data.currentScore.success} sober days — ${data.currentScore.failures} drinking days · ${data.currentStreak | 0} day streak`;
+    el('scoreExplain').textContent = `${data.currentScore.success} sober days — ${data.currentScore.failures} drinking days`;
     const target = getNextJourneyTarget(data);
-    if (!data.journeyPendingReset && data.attempt > 1 && target > 0) {
-      explain += ` · Beat ${target} to win`;
+    const bestExplainEl = el('bestScoreExplain');
+    if (bestExplainEl) {
+      const showTarget = !data.journeyPendingReset && data.attempt > 1 && target > 0;
+      bestExplainEl.textContent = showTarget ? `Beat ${target} to win` : '';
+      bestExplainEl.style.display = showTarget ? '' : 'none';
     }
-    el('scoreExplain').textContent = explain;
     document.title = CONFIG.isProduction ? 'Sober Journey' : ('Sober Journey · ' + (CONFIG.buildTag || 'dev'));
     el('currentCard').classList.toggle('inactive', data.currentScore.failures >= JOURNEY_MAX_FAILURES);
     renderWelcomeHint(data);
@@ -2116,7 +2145,10 @@ const UI = {
     const showInControl = isInControlStageVisible(data);
     const inControlLabel = el('inControlStageLabel');
     const inControlStage = el('inControlStage');
-    if (inControlLabel) inControlLabel.style.display = showInControl ? '' : 'none';
+    if (inControlLabel) {
+      inControlLabel.style.display = showInControl ? '' : 'none';
+      inControlLabel.classList.toggle('stage-incontrol-unlocked', showInControl);
+    }
     if (inControlStage) inControlStage.style.display = showInControl ? '' : 'none';
 
     const visible = JOURNEY_TROPHIES.filter(m => isJourneyMilestoneVisible(data, m));
@@ -3860,15 +3892,9 @@ function renderJourneyChart(data) {
   const navRow = el('journeyChartNav');
   const prevBtn = el('journeyChartPrevBtn');
   const nextBtn = el('journeyChartNextBtn');
-  const rangeEl = el('journeyChartRange');
   if (navRow) navRow.style.display = pts.length > JOURNEY_CHART_WINDOW ? 'flex' : 'none';
   if (prevBtn) prevBtn.disabled = offset >= maxOffset;
   if (nextBtn) nextBtn.disabled = offset <= 0;
-  if (rangeEl && visiblePts.length) {
-    const first = visiblePts[0].label;
-    const last  = visiblePts[visiblePts.length - 1].label;
-    rangeEl.textContent = first === last ? first : `${first} – ${last}`;
-  }
 
   const H=140, padT=20, padB=28, VW=400, padX=20, cH=H-padT-padB;
   const chartW = VW - padX * 2;
