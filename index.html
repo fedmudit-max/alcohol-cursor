@@ -312,6 +312,7 @@ body.loaded { background: var(--bg); }
 .current-card.inactive .card-value { color:var(--label2); font-size:38px; }
 .best-card .card-value { font-size:30px; color:#ff9500; }
 .best-card .score-explain { font-size:10px; color:rgba(255,149,0,0.85); margin-top:2px; }
+.best-card .score-explain.is-new-best { color:var(--label2); }
 
 .score-dash {
   background:linear-gradient(90deg,var(--green),#ff9500);
@@ -1357,6 +1358,20 @@ function applyBestScore(data, cur) {
   if (!isScoreBetterThan(cur, data.highestScore)) return;
   data.highestScore = { success: cur.success | 0, failures: cur.failures | 0 };
 }
+
+function getBestCompletedJourneyScore(data) {
+  let best = { success: 0, failures: 0 };
+  for (const j of (data?.completedJourneys || [])) {
+    if (j?.score) best = isScoreBetterThan(j.score, best) ? { success: j.score.success | 0, failures: j.score.failures | 0 } : best;
+  }
+  return best;
+}
+
+function isBeatingBestScore(data) {
+  if (!data || data.journeyPendingReset) return false;
+  if (!(data.completedJourneys || []).length) return false;
+  return isScoreBetterThan(data.currentScore, getBestCompletedJourneyScore(data));
+}
 const AUDIT_MAX_SCORE        = 12;   // max possible AUDIT-C score
 const AUDIT_DEPENDENT_SCORE  = 9;    // score >= this → Dependent zone
 const AUDIT_HARMFUL_SCORE    = 6;    // score >= this → Harmful zone
@@ -1430,6 +1445,10 @@ const DataManager = {
       celebratedStreakMilestones: {},
       celebratedTrophies:         {},
       celebratedScienceMilestones: {},
+      journeyBeatTarget:            0,
+      journeyTargetChain:           [],
+      journeyTargetStartShown:      false,
+      celebratedJourneyTargets:     {},
       auditQ1:                    null,
       auditQ2:                    null,
       auditQ3:                    null,
@@ -1970,6 +1989,46 @@ const JOURNEY_TROPHIES = [
   { days:200, el:'jm-200', hiddenUntil:100, c:{ emoji:'👑', title:'Total Command!',     msg:"200 sober days. Fifteen sober days for every drinking day.\n\nYou have proven this is not luck. This is who you are." }},
 ];
 
+const JOURNEY_SOBER_TARGET_DAYS = JOURNEY_TROPHIES.map(m => m.days);
+
+// Popup-only sober-day targets per journey (not shown in Journey tab).
+// Inserts prior best (e.g. 43) between standard milestones when beating last journey matters.
+function buildJourneyTargetChain(beatTarget) {
+  const chain = [...JOURNEY_SOBER_TARGET_DAYS];
+  const beat = beatTarget | 0;
+  if (beat <= 0 || chain.includes(beat)) return chain;
+  if (beat <= chain[0]) return chain;
+  const insertAt = chain.findIndex(d => d > beat);
+  if (insertAt < 0) return chain;
+  if (beat <= chain[insertAt - 1]) return chain;
+  chain.splice(insertAt, 0, beat);
+  return chain;
+}
+
+function ensureJourneyTargetChain(data) {
+  if (!data.celebratedJourneyTargets) data.celebratedJourneyTargets = {};
+  if (data.journeyTargetChain && data.journeyTargetChain.length) return;
+  const beat = getBestCompletedJourneyScore(data).success;
+  data.journeyBeatTarget = beat;
+  data.journeyTargetChain = buildJourneyTargetChain(beat);
+  const s = data.currentScore?.success | 0;
+  if (s > 1) {
+    data.journeyTargetStartShown = true;
+    for (const days of data.journeyTargetChain) {
+      if (days < s) data.celebratedJourneyTargets[days] = true;
+      else break;
+    }
+  }
+}
+
+function journeyTargetNextMessage(nextDays, beatTarget) {
+  const beat = beatTarget | 0;
+  if (nextDays === beat && beat > 0) {
+    return `Your next target is ${nextDays} sober days — beat your best score!`;
+  }
+  return `Your next target is ${nextDays} sober days.`;
+}
+
 const JOURNEY_TROPHY_COUNT_DAYS = new Set([50, 100, 150, 200]);
 
 function journeyTrophyStatusText(days, count) {
@@ -2049,9 +2108,21 @@ const UI = {
     const target = getNextJourneyTarget(data);
     const bestExplainEl = el('bestScoreExplain');
     if (bestExplainEl) {
-      const showTarget = !data.journeyPendingReset && data.attempt > 1 && target > 0;
-      bestExplainEl.textContent = showTarget ? `Beat ${target} to win` : '';
-      bestExplainEl.style.display = showTarget ? '' : 'none';
+      const beatingBest = isBeatingBestScore(data);
+      const showTarget = !beatingBest && !data.journeyPendingReset && data.attempt > 1 && target > 0;
+      if (beatingBest) {
+        bestExplainEl.textContent = 'New Best! Keep Going!';
+        bestExplainEl.classList.add('is-new-best');
+        bestExplainEl.style.display = '';
+      } else if (showTarget) {
+        bestExplainEl.textContent = `Beat ${target} to win`;
+        bestExplainEl.classList.remove('is-new-best');
+        bestExplainEl.style.display = '';
+      } else {
+        bestExplainEl.textContent = '';
+        bestExplainEl.classList.remove('is-new-best');
+        bestExplainEl.style.display = 'none';
+      }
     }
     document.title = CONFIG.isProduction ? 'Sober Journey' : ('Sober Journey · ' + (CONFIG.buildTag || 'dev'));
     el('currentCard').classList.toggle('inactive', data.currentScore.failures >= JOURNEY_MAX_FAILURES);
@@ -2272,6 +2343,7 @@ const Tracker = {
       this._endJourney();
     }
     this._catchUp();
+    ensureJourneyTargetChain(this.data);
     UI.renderAll(this.data);
     MidnightTimer.start();
     setTimeout(() => {
@@ -2392,6 +2464,7 @@ const Tracker = {
           }
         }
         this._checkScienceMilestones();
+        this._checkJourneyTargets();
       }
     } else {
       this._recordDrinkDay(d, key);
@@ -2477,6 +2550,7 @@ const Tracker = {
     }
     if (this._recordSoberDay(d, key)) {
       this._checkTrophies();
+      this._checkJourneyTargets();
     }
   },
 
@@ -2600,6 +2674,7 @@ const Tracker = {
         }
       }
       this._checkScienceMilestones();
+      this._checkJourneyTargets();
       if (this._celebQueue.length > 0) return;
       showToast(_dailyMsg(d.currentStreak, d.currentScore));
     }, 300);
@@ -2692,6 +2767,10 @@ const Tracker = {
     d.celebratedStreakMilestones = {};
     d.celebratedScienceMilestones = {};
     d.celebratedTrophies = {};
+    d.celebratedJourneyTargets = {};
+    d.journeyBeatTarget = getBestCompletedJourneyScore(d).success;
+    d.journeyTargetChain = buildJourneyTargetChain(d.journeyBeatTarget);
+    d.journeyTargetStartShown = false;
     d.journeyPendingReset = false;
     d.gapSimCount = 0;
     d.journeyStartKey = dateKey(appToday);
@@ -2771,6 +2850,40 @@ const Tracker = {
         this._queueCelebration(m.c.emoji, m.c.title, m.c.msg);
       }
     }
+  },
+
+  _showJourneyStartTarget(d) {
+    if (!d || d.journeyPendingReset) return;
+    ensureJourneyTargetChain(d);
+    if (d.journeyTargetStartShown) return;
+    d.journeyTargetStartShown = true;
+    const first = (d.journeyTargetChain && d.journeyTargetChain[0]) || JOURNEY_SOBER_TARGET_DAYS[0] || 10;
+    DataManager.save(d);
+    this._queueCelebration('🎯', 'Your Target', `Your first target is ${first} sober days.`);
+  },
+
+  _checkJourneyTargets() {
+    const d = this.data;
+    if (!d || d.journeyPendingReset) return;
+    ensureJourneyTargetChain(d);
+    const chain = d.journeyTargetChain;
+    if (!chain || !chain.length) return;
+    if (!d.celebratedJourneyTargets) d.celebratedJourneyTargets = {};
+    const s = d.currentScore.success | 0;
+
+    // First sober day of the journey — after onboarding / welcome, not at journey start
+    if (!d.journeyTargetStartShown && s === 1) {
+      this._showJourneyStartTarget(d);
+      return;
+    }
+
+    if (!chain.includes(s) || d.celebratedJourneyTargets[s]) return;
+
+    d.celebratedJourneyTargets[s] = true;
+    const next = chain[chain.indexOf(s) + 1];
+    DataManager.save(d);
+    if (!next) return;
+    this._queueCelebration('🎯', 'Next Target', journeyTargetNextMessage(next, d.journeyBeatTarget));
   },
 
   _checkScienceMilestones() {
@@ -4535,7 +4648,10 @@ if (CONFIG.showTestUI) {
       prevYest.setDate(prevYest.getDate() - 1);
       const pk = dateKey(prevYest);
       if (d.dailyLog[pk] !== 'drinking' && !d.scoredDays[pk]) {
-        if (Tracker._recordSoberDay(d, pk)) Tracker._checkTrophies();
+        if (Tracker._recordSoberDay(d, pk)) {
+          Tracker._checkTrophies();
+          Tracker._checkJourneyTargets();
+        }
       }
     }
 
@@ -4594,6 +4710,7 @@ if (CONFIG.showTestUI) {
       if (d.dailyLog[key] !== 'drinking' && Tracker._recordSoberDay(d, key)) {
         autoAdded++;
         Tracker._checkTrophies();
+        Tracker._checkJourneyTargets();
       }
       cursor.setDate(cursor.getDate() + 1);
     }
