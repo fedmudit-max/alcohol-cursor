@@ -194,15 +194,31 @@ body.loaded { background: var(--bg); }
   position:absolute; z-index:3; display:flex; align-items:center; justify-content:center;
   border-radius:50%; animation:bodyTimelinePulse 2s ease-in-out infinite; pointer-events:none;
 }
+.body-timeline-dot-fixed--drink {
+  background:#ff9500;
+  box-shadow:0 0 0 3px rgba(255,149,0,0.28);
+}
 .body-timeline-dot-active {
   width:8px; height:8px; border-radius:50%; background:#34c759; flex-shrink:0;
+}
+.body-timeline-dot-active--full {
+  width:14px; height:14px;
 }
 .body-timeline-current-col {
   flex:0 0 14px; min-width:14px; position:relative; display:flex; justify-content:center; align-items:center; overflow:visible;
 }
-.body-timeline-past-col { flex:0 0 12px; min-width:12px; display:flex; justify-content:center; align-items:center; }
-#bodyTimelineDots { position:relative; overflow:visible; min-height:14px; }
-#bodyTimelineLabels { overflow:visible; }
+.body-timeline-past-col { flex:0 0 12px; min-width:12px; position:relative; display:flex; justify-content:center; align-items:center; overflow:visible; }
+.body-timeline-start-col {
+  flex:0 0 12px; min-width:12px; position:relative; display:flex; justify-content:center; align-items:center; overflow:visible;
+}
+.body-timeline-start-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.body-timeline-start-dot--past { width:12px; height:12px; background:#34c759; }
+.body-timeline-start-dot--idle { background:rgba(60,60,67,0.15); }
+#bodyTimelineDots { position:relative; overflow:visible; min-height:14px; width:100%; }
+#bodyTimelineLabels { overflow:visible; width:100%; }
+.body-timeline-bridge-to-next { min-width:10px; flex:1 1 10px; }
+#bodyTimelineCard { overflow:visible; }
+#bodyTimelineCard .body-timeline-wrap { overflow:visible; }
 .body-timeline-day-label { font-size:8px; white-space:nowrap; line-height:1; }
 
 /* LAYOUT */
@@ -556,10 +572,12 @@ body.test-ui-active .toast.show {
         <div style="font-size:13px;font-weight:700;color:#1c1c1e;" id="bodyTimelineTitle">🫀 Your body today</div>
       </div>
       <div style="font-size:13px;color:rgba(60,60,67,0.65);line-height:1.6;margin-bottom:14px;" id="bodyTimelineText">
-        Start your streak to see your body recover in real time.
+        Start your streak to unlock what your body can do — one day at a time.
       </div>
-      <div style="display:flex;align-items:center;gap:0;margin-bottom:4px;" id="bodyTimelineDots"></div>
-      <div style="display:flex;align-items:center;gap:0;" id="bodyTimelineLabels"></div>
+      <div class="body-timeline-wrap" style="width:100%;overflow:visible;">
+        <div style="display:flex;align-items:center;gap:0;margin-bottom:4px;width:100%;" id="bodyTimelineDots"></div>
+        <div style="display:flex;align-items:center;gap:0;width:100%;" id="bodyTimelineLabels"></div>
+      </div>
       <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(60,60,67,0.08);font-size:10px;color:rgba(60,60,67,0.35);line-height:1.5;font-style:italic;">
         Recovery timelines are approximate and vary by individual.
       </div>
@@ -1459,6 +1477,11 @@ const DataManager = {
       scoredDays:                 {},   // { 'YYYY-MM-DD': true } — dates counted in currentScore (current journey)
       journeyStartKey:            null, // date key when current journey began — streak only counts scoredDays
       completedJourneys:          [],   // [{ attempt, score:{success,failures}, date }]
+      bodyTimelineInstallAt:      null, // first app open — Start→Day 1 dot advances after 12h
+      bodyTimelineWeekBlock:      0,    // streak milestone (7,14,21) — which week strip is held
+      bodyTimelineWeekHoldCal:    0,    // calendar day through which that strip stays visible
+      drinkDayFrozenStreak:       0,    // achieved streak held on the drinking calendar day
+      drinkDayFrozenKey:          '',   // date key for drinkDayFrozenStreak
     };
   },
 
@@ -1532,6 +1555,11 @@ const DataManager = {
     if (!data.dailyLog)         data.dailyLog         = {};
     if (!data.scoredDays)       data.scoredDays       = {};
     if (!data.completedJourneys) data.completedJourneys = [];
+    if (!data.bodyTimelineInstallAt) data.bodyTimelineInstallAt = new Date().toISOString();
+    data.bodyTimelineWeekBlock   = Math.max(0, parseInt(data.bodyTimelineWeekBlock,   10) || 0);
+    data.bodyTimelineWeekHoldCal = Math.max(0, parseInt(data.bodyTimelineWeekHoldCal, 10) || 0);
+    data.drinkDayFrozenStreak      = Math.max(0, parseInt(data.drinkDayFrozenStreak,      10) || 0);
+    if (typeof data.drinkDayFrozenKey !== 'string') data.drinkDayFrozenKey = '';
 
     // Coerce number fields — guard against string corruption from manual edits
     data.calendarDay           = Math.max(1, parseInt(data.calendarDay)           || 1);
@@ -1776,7 +1804,8 @@ function recordDrinkDay(d, key) {
   if (d.journeyStartKey && key < d.journeyStartKey) return false;
 
   recalculateStreakFromLog(d);
-  d.streakPeakAtRunStart = Math.max(d.longestStreak | 0, d.currentStreak | 0);
+  const streakBeforeDrink = d.currentStreak | 0;
+  d.streakPeakAtRunStart = Math.max(d.longestStreak | 0, streakBeforeDrink);
 
   if (d.dailyLog[key] === 'drinking' && d.scoredDays[key]) return false;
 
@@ -1792,6 +1821,8 @@ function recordDrinkDay(d, key) {
 
   d.dailyLog[key] = 'drinking';
   d.scoredDays[key] = true;
+  d.drinkDayFrozenStreak = streakBeforeDrink;
+  d.drinkDayFrozenKey = key;
   d.currentScore.failures++;
   d.totalFailures++;
   d.celebratedStreakMilestones = {};
@@ -1813,6 +1844,82 @@ function reconcileDrinkLogToScore(d) {
     if (recordDrinkDay(d, key)) changed = true;
   }
   return changed;
+}
+
+function isDrinkingDayToday(data) {
+  if (!data) return false;
+  const todayKey = dateKey(getAppToday(data));
+  const log = data.dailyLog || {};
+  const scored = data.scoredDays || {};
+  return log[todayKey] === 'drinking' && !!scored[todayKey];
+}
+
+// New calendar day before logging — yesterday extended the streak; dot travels toward the next day
+function isBodyTimelineGapDay(data, streak) {
+  if (!data || (streak | 0) <= 0) return false;
+  if (isDrinkingDayToday(data)) return false;
+  const today = getAppToday(data);
+  const todayKey = dateKey(today);
+  const log = data.dailyLog || {};
+  const scored = data.scoredDays || {};
+  if (log[todayKey] === 'sober' && scored[todayKey]) return false;
+  const yest = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1, 12, 0, 0);
+  const yk = dateKey(yest);
+  return log[yk] === 'sober' && !!scored[yk];
+}
+
+// First calendar day after a logged drink — Day 1 copy before sober is logged
+function isPostDrinkRestartDay(data) {
+  if (!data || (data.currentStreak | 0) > 0) return false;
+  if (isDrinkingDayToday(data)) return false;
+  const today = getAppToday(data);
+  const yest = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1, 12, 0, 0);
+  const yestKey = dateKey(yest);
+  const todayKey = dateKey(today);
+  const log = data.dailyLog || {};
+  const scored = data.scoredDays || {};
+  return log[yestKey] === 'drinking' && !!scored[yestKey] && log[todayKey] !== 'sober';
+}
+
+function inferStreakBeforeTodayDrink(data) {
+  if (!data?.dailyLog || !data.scoredDays) return 0;
+  const today = getAppToday(data);
+  let cursor = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1, 12, 0, 0);
+  const startKey = data.journeyStartKey || null;
+  let streak = 0;
+  while (true) {
+    const key = dateKey(cursor);
+    if (startKey && key < startKey) break;
+    const entry = data.dailyLog[key];
+    if (entry === 'sober' && data.scoredDays[key]) {
+      streak++;
+      cursor.setDate(cursor.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
+// Achieved streak shown in UI — frozen on the drinking day, resets next calendar day
+function getDisplayStreak(data) {
+  if (!data) return 0;
+  if (isDrinkingDayToday(data)) {
+    const todayKey = dateKey(getAppToday(data));
+    if (data.drinkDayFrozenKey === todayKey) {
+      const frozen = data.drinkDayFrozenStreak | 0;
+      if (frozen > 0) return frozen;
+    }
+    const inferred = inferStreakBeforeTodayDrink(data);
+    if (inferred > 0) return inferred;
+  }
+  return data.currentStreak | 0;
+}
+
+function clearDrinkDayFrozenStreak(d) {
+  if (!d) return;
+  d.drinkDayFrozenStreak = 0;
+  d.drinkDayFrozenKey = '';
 }
 
 // Rebuild consecutive sober-day streak from dailyLog (single source of truth for streak + body timeline)
@@ -1900,11 +2007,12 @@ function recalculateStreakFromLog(d) {
 
 function refreshStreakUI(data) {
   recalculateStreakFromLog(data);
+  syncBodyTimelineWeekHold(data);
   if (typeof UI !== 'undefined' && UI.renderStreakMilestones) {
     UI.renderStreakMilestones(data);
   }
   renderBodyTimeline(data);
-  renderScienceTimeline(data.currentStreak | 0);
+  renderScienceTimeline(getDisplayStreak(data));
 }
 
 // Dev-only catch-up trace (visible when CONFIG.showTestUI is true)
@@ -2088,7 +2196,7 @@ const UI = {
     this.renderPrimary(data);
     this.renderStreakMilestones(data);
     renderBodyTimeline(data);
-    renderScienceTimeline(data.currentStreak | 0);
+    renderScienceTimeline(getDisplayStreak(data));
     this.renderButtons(data);
     this.renderJourneyTrophies(data);
     renderMonthGrid(data);
@@ -2147,7 +2255,7 @@ const UI = {
   },
 
   renderStreakMilestones(data) {
-    const streak = data.currentStreak | 0;
+    const streak = getDisplayStreak(data);
     const best   = data.longestStreak;
 
     // Find index of next unachieved milestone
@@ -2401,6 +2509,7 @@ const Tracker = {
     this.data.calendarDay++;
     this.data.todayStatus = 'none';
     this.data.todaySuccessLogged = false;
+    clearDrinkDayFrozenStreak(this.data);
     if (!this.data.dailyLog) this.data.dailyLog = {};
 
     const yestKey = calendarYesterdayKey(this.data);
@@ -2583,6 +2692,7 @@ const Tracker = {
     d.calendarDay++;
     d.todayStatus = 'none';
     d.todaySuccessLogged = false;
+    clearDrinkDayFrozenStreak(d);
 
     DataManager._rebuildScoredDays(d);
     recalculateStreakFromLog(d);
@@ -2687,6 +2797,8 @@ const Tracker = {
     if (!this._recordDrinkDay(d, key)) return;
     d.todayStatus = 'failed';
     recalculateStreakFromLog(d);
+    d.bodyTimelineWeekBlock = 0;
+    d.bodyTimelineWeekHoldCal = 0;
     d.personalBestCelebrated = false;
     d.celebratedStreakMilestones = {};
     d.celebratedScienceMilestones = {};
@@ -2760,6 +2872,9 @@ const Tracker = {
     if ((d.currentStreak | 0) > (d.longestStreak | 0)) d.longestStreak = d.currentStreak | 0;
     d.currentStreak = 0;
     d.calendarDay = 1;
+    d.bodyTimelineWeekBlock = 0;
+    d.bodyTimelineWeekHoldCal = 0;
+    clearDrinkDayFrozenStreak(d);
     d.todayStatus = 'none';
     d.todaySuccessLogged = false;
     d.inPersonalBest = false;
@@ -3623,6 +3738,32 @@ function getBodyTimelineWindow(streak) {
   return { start, end: start + WINDOW - 1, displayDay: streak };
 }
 
+// Remember which calendar day a week milestone (7, 14, 21) was achieved — hold that strip through that day
+function syncBodyTimelineWeekHold(data) {
+  if (!data) return;
+  const streak = data.currentStreak | 0;
+  const cal = data.calendarDay | 0;
+  if (streak >= 7 && streak % 7 === 0) {
+    if ((data.bodyTimelineWeekBlock | 0) !== streak) {
+      data.bodyTimelineWeekBlock   = streak;
+      data.bodyTimelineWeekHoldCal = cal;
+    }
+  }
+}
+
+function getBodyTimelineTimelineDay(data, streak) {
+  if (streak <= 0) return 0;
+  const cal = data.calendarDay | 0;
+  const block   = data.bodyTimelineWeekBlock | 0;
+  const holdCal = data.bodyTimelineWeekHoldCal | 0;
+  // Sitting on day 7 / 14 / 21 — keep current strip until the next calendar day
+  if (block >= 7 && block % 7 === 0 && streak >= block && streak < block + 1 && holdCal > 0) {
+    if (cal <= holdCal) return streak;
+    return block + 1;
+  }
+  return streak;
+}
+
 // 0 before noon, 0.5 after — active dot sits halfway toward the next day
 function getBodyTimelineHalfProgress() {
   const now = new Date();
@@ -3630,29 +3771,59 @@ function getBodyTimelineHalfProgress() {
   return hours >= 12 ? 0.5 : 0;
 }
 
+// Start→Day 1: at install stay on Start; after 12 hours sit halfway toward Day 1
+function getBodyTimelineStartProgress(installAt) {
+  if (!installAt) return 0;
+  const hours = (Date.now() - new Date(installAt).getTime()) / 3600000;
+  return hours >= 12 ? 0.5 : 0;
+}
+
 const BODY_TIMELINE_FIXED_COL = 14;
 const BODY_TIMELINE_FIXED_R   = 7;
 const BODY_TIMELINE_NEXT_R    = 4;
-
+const BODY_TIMELINE_START_COL = 12;
+const BODY_TIMELINE_START_R   = 6;
 function bodyTimelineSpanToNext(bridgeW) {
   return bridgeW + (BODY_TIMELINE_FIXED_COL - BODY_TIMELINE_FIXED_R) + BODY_TIMELINE_NEXT_R;
 }
 
-function positionBodyTimelineActiveDot(dotsEl) {
+function bodyTimelineSpanStartToDay1(bridgeW) {
+  return bridgeW + (BODY_TIMELINE_START_COL - BODY_TIMELINE_START_R) + BODY_TIMELINE_NEXT_R;
+}
+
+// Prior milestone day + bridge into each new 7-day strip (7→8, 14→15, …)
+function getBodyTimelineWeekAnchor(timelineDay) {
+  if ((timelineDay | 0) <= 7) return null;
+  const { start } = getBodyTimelineWindow(timelineDay);
+  return start > 1 ? start - 1 : null;
+}
+
+function positionBodyTimelineActiveDot(dotsEl, data) {
   const wrap = dotsEl.querySelector('.body-timeline-dot-active-wrap[data-active="1"]');
   if (!wrap) return;
-  const col = wrap.closest('.body-timeline-current-col');
+
+  const isGapActive = wrap.dataset.gapActive === '1';
+  const col = wrap.closest('.body-timeline-current-col, .body-timeline-start-col');
   if (!col) return;
 
-  const progress = getBodyTimelineHalfProgress();
+  const isStartActive = wrap.dataset.startActive === '1';
+  const isWeekAnchorActive = wrap.dataset.weekAnchorActive === '1';
+  const isBridgeOrigin = isStartActive || isWeekAnchorActive;
+  const progress = isStartActive
+    ? getBodyTimelineStartProgress(data?.bodyTimelineInstallAt)
+    : getBodyTimelineHalfProgress();
   const bridge = col.nextElementSibling;
   const fillEl = bridge?.querySelector('.body-timeline-bridge-fill');
-  let centerX = BODY_TIMELINE_FIXED_R;
-  if (progress > 0 && bridge?.classList.contains('body-timeline-bridge--live')) {
+  const spanFn = isBridgeOrigin ? bodyTimelineSpanStartToDay1 : bodyTimelineSpanToNext;
+  const originR = isBridgeOrigin ? BODY_TIMELINE_START_R : BODY_TIMELINE_FIXED_R;
+  const originCol = isBridgeOrigin ? BODY_TIMELINE_START_COL : BODY_TIMELINE_FIXED_COL;
+  let centerX = originR;
+  const bridgeLive = bridge?.classList.contains('body-timeline-bridge--live');
+  if (bridgeLive && (progress > 0 || isGapActive)) {
     const bridgeW = bridge.offsetWidth;
-    centerX = BODY_TIMELINE_FIXED_R + progress * bodyTimelineSpanToNext(bridgeW);
+    centerX = originR + progress * spanFn(bridgeW);
     if (fillEl && bridgeW > 0) {
-      const fillPx = Math.max(0, Math.min(bridgeW, centerX - BODY_TIMELINE_FIXED_COL));
+      const fillPx = Math.max(0, Math.min(bridgeW, centerX - originCol));
       fillEl.style.width = `${(fillPx / bridgeW) * 100}%`;
     }
   } else if (fillEl) {
@@ -3668,91 +3839,206 @@ function getBodyFact(day) {
   return {
     organ: '🌟',
     title: `Day ${day}`,
-    text: 'Each sober day your body keeps healing — stronger circulation, clearer mind, steadier mood.',
+    text: 'Each sober day ahead can bring stronger circulation, a clearer mind, and a steadier mood — keep going.',
   };
 }
 
+// Shared strip state — keep dot position and explanatory copy in sync
+function getBodyTimelineVisualState(data, streak) {
+  syncBodyTimelineWeekHold(data);
+  const timelineDay = getBodyTimelineTimelineDay(data, streak);
+  const { start, end } = getBodyTimelineWindow(timelineDay);
+  const weekAnchor = getBodyTimelineWeekAnchor(timelineDay);
+  const showWeekAnchor = weekAnchor !== null;
+  const weekAnchorDotActive = showWeekAnchor && streak < start;
+  const holdBlock = data.bodyTimelineWeekBlock | 0;
+  const holdCal = data.bodyTimelineWeekHoldCal | 0;
+  const onMilestoneHold = holdBlock === streak && streak >= 7 && streak % 7 === 0 && (data.calendarDay | 0) <= holdCal;
+  return { timelineDay, start, end, weekAnchor, showWeekAnchor, weekAnchorDotActive, onMilestoneHold };
+}
+
+// Which day's copy matches the active dot — same rules as renderBodyTimeline
+function getBodyTimelineDisplayDay(data, streak, visual) {
+  if (streak <= 0) {
+    if (isPostDrinkRestartDay(data)) return 1;
+    return getBodyTimelineStartProgress(data?.bodyTimelineInstallAt) >= 0.5 ? 1 : 0;
+  }
+  const v = visual || getBodyTimelineVisualState(data, streak);
+  const half = getBodyTimelineHalfProgress();
+
+  if (v.weekAnchorDotActive) {
+    // New week strip is live — show entry day (8, 15, 22), not prior week anchor
+    return v.weekAnchor + 1;
+  }
+  if (v.onMilestoneHold) return streak;
+  if (isBodyTimelineGapDay(data, streak)) {
+    const target = streak + 1;
+    if (half >= 0.5 && target < v.end) return target + 1;
+    return target;
+  }
+  if (half >= 0.5 && streak < v.end) return streak + 1;
+  return streak;
+}
+
+function applyBodyTimelineContent(titleEl, textEl, displayDay) {
+  const fact = getBodyFact(displayDay);
+  titleEl.textContent = `${fact.organ} ${fact.title}`;
+  textEl.textContent  = fact.text;
+}
+
 const BODY_FACTS = {
-  0:  { organ:'🕐', title:'Your body today',           text:'Start your streak to see your body recover in real time.' },
-  1:  { organ:'🫧', title:'Day 1 — Clearing',          text:'Heart rate normalising. Blood alcohol clearing from your system. First step taken.' },
-  2:  { organ:'💧', title:'Day 2 — Hydrating',         text:'Fully hydrated. Blood alcohol at zero. Brain fog beginning to lift.' },
-  3:  { organ:'🧬', title:'Day 3 — Bloodstream clear', text:'Alcohol fully cleared from bloodstream. Liver enzymes returning to normal.' },
-  4:  { organ:'🌙', title:'Day 4 — Sleep returns',     text:'REM sleep returning. You will notice deeper, more restful sleep tonight.' },
-  5:  { organ:'❤️', title:'Day 5 — Heart easing',      text:'Blood pressure measurably lower. Heart working less hard.' },
-  6:  { organ:'⚡', title:'Day 6 — Energy rising',     text:'Natural energy returning. Less fatigue, more focus.' },
-  7:  { organ:'🧠', title:'Day 7 — Brain resetting',   text:'Brain chemistry actively resetting. Dopamine receptors recovering. Anxiety measurably lower.' },
-  8:  { organ:'💧', title:'Day 8 — Clarity',           text:'Mental clarity noticeably sharper. Kidneys functioning at full efficiency.' },
-  9:  { organ:'🫁', title:'Day 9 — Breathing',         text:'Lung function improving. Immune cells rebuilding.' },
-  10: { organ:'🌱', title:'Day 10 — Rebuilding',       text:'Liver cells actively repairing. Fatty deposits beginning to clear. Blood sugar stabilising.' },
-  11: { organ:'🧠', title:'Day 11 — Mood',             text:'Serotonin levels rising naturally. Mood more stable.' },
-  12: { organ:'🫀', title:'Day 12 — Circulation',      text:'Blood circulation improved. Skin hydration visibly better.' },
-  13: { organ:'😴', title:'Day 13 — Deep sleep',       text:'Deep sleep cycles lengthening. Body repairing overnight.' },
-  14: { organ:'🌿', title:'Day 14 — Two weeks',        text:'Two weeks. Liver cleared significant fatty buildup. Blood pressure dropped 5-10 mmHg. Brain fog — gone.' },
-  15: { organ:'💪', title:'Day 15 — Strength',         text:'Muscle recovery improving. You may notice better physical performance.' },
-  16: { organ:'🧠', title:'Day 16 — Memory',           text:'Working memory measurably improving. Concentration spans lengthening.' },
-  17: { organ:'🫁', title:'Day 17 — Immunity',         text:'White blood cell count normalising. Immune response stronger.' },
-  18: { organ:'🌱', title:'Day 18 — Gut health',       text:'Gut microbiome recovering. Bloating and discomfort reducing.' },
-  19: { organ:'🫀', title:'Day 19 — Cholesterol',      text:'LDL cholesterol beginning to drop. Cardiovascular risk reducing.' },
-  20: { organ:'⚡', title:'Day 20 — Vitality',         text:'Energy levels significantly higher than Day 1. Natural dopamine system functioning.' },
-  21: { organ:'💚', title:'Day 21 — Three weeks',      text:'Three weeks. Immune system substantially stronger. Inflammation markers reduced.' },
-  22: { organ:'🧠', title:'Day 22 — Rewiring',         text:'Brain neuroplasticity actively rewiring reward pathways. Cravings weaker.' },
-  23: { organ:'🫁', title:'Day 23 — Oxygen',           text:'Oxygen carrying capacity improved. You are measurably fitter than three weeks ago.' },
-  24: { organ:'🌿', title:'Day 24 — Skin',             text:'Skin collagen production increasing. Puffiness reducing.' },
-  25: { organ:'🫀', title:'Day 25 — Heart',            text:'Coronary artery dilation improving. Heart attack risk measurably lower.' },
-  26: { organ:'💧', title:'Day 26 — Liver',            text:'Liver enzymes now within normal range for most people.' },
-  27: { organ:'😴', title:'Day 27 — Rest',             text:'Sleep architecture fully restored. Night waking significantly reduced.' },
-  28: { organ:'💎', title:'Day 28 — One month',        text:'One month. Liver function largely restored. Brain chemistry stabilised. You are measurably healthier than Day 1.' },
+  0:  { organ:'🕐', title:'Your body today',           text:'Start your streak to unlock what your body can do — one day at a time.' },
+  1:  { organ:'🫧', title:'Day 1 — Clearing',          text:'Your heart rate will begin to settle. Alcohol will start leaving your system. The first step unlocks everything ahead.' },
+  2:  { organ:'💧', title:'Day 2 — Hydrating',         text:'Your body will rehydrate fully. Blood alcohol can drop to zero. Brain fog will start to lift.' },
+  3:  { organ:'🧬', title:'Day 3 — Bloodstream clear', text:'Alcohol can clear from your bloodstream. Liver enzymes will move back toward normal.' },
+  4:  { organ:'🌙', title:'Day 4 — Sleep returns',     text:'REM sleep can return. Deeper, more restful nights lie ahead.' },
+  5:  { organ:'❤️', title:'Day 5 — Heart easing',      text:'Blood pressure can fall measurably. Your heart will work less hard.' },
+  6:  { organ:'⚡', title:'Day 6 — Energy rising',     text:'Natural energy will return. Less fatigue, more focus — within reach.' },
+  7:  { organ:'🧠', title:'Day 7 — Brain resetting',   text:'Brain chemistry will reset. Dopamine receptors recover. Anxiety can drop measurably.' },
+  8:  { organ:'💧', title:'Day 8 — Clarity',           text:'Mental clarity sharpens. Kidneys can work at full efficiency again.' },
+  9:  { organ:'🫁', title:'Day 9 — Breathing',         text:'Lung function improves. Immune cells rebuild — your body fighting back.' },
+  10: { organ:'🌱', title:'Day 10 — Rebuilding',       text:'Liver cells repair actively. Fatty deposits begin to clear. Blood sugar steadies.' },
+  11: { organ:'🧠', title:'Day 11 — Mood',             text:'Serotonin rises naturally. Mood can stabilise — a reward worth chasing.' },
+  12: { organ:'🫀', title:'Day 12 — Circulation',      text:'Blood circulation improves. Skin hydration looks visibly better.' },
+  13: { organ:'😴', title:'Day 13 — Deep sleep',       text:'Deep sleep cycles lengthen. Your body repairs more each night.' },
+  14: { organ:'🌿', title:'Day 14 — Two weeks',        text:'Real change takes hold. Liver can clear fatty buildup. Blood pressure may drop 5–10 mmHg. Brain fog fades.' },
+  15: { organ:'💪', title:'Day 15 — Strength',         text:'Muscle recovery improves. Better physical performance awaits.' },
+  16: { organ:'🧠', title:'Day 16 — Memory',           text:'Working memory improves measurably. Concentration spans grow longer.' },
+  17: { organ:'🫁', title:'Day 17 — Immunity',         text:'White blood cells normalise. Immune response grows stronger.' },
+  18: { organ:'🌱', title:'Day 18 — Gut health',       text:'Gut microbiome recovers. Bloating and discomfort ease.' },
+  19: { organ:'🫀', title:'Day 19 — Cholesterol',      text:'LDL cholesterol begins to drop. Cardiovascular risk falls.' },
+  20: { organ:'⚡', title:'Day 20 — Vitality',         text:'Energy rises well above Day 1. Natural dopamine system comes back online.' },
+  21: { organ:'💚', title:'Day 21 — Three weeks',      text:'Immune system grows stronger. Inflammation markers can fall — keep going.' },
+  22: { organ:'🧠', title:'Day 22 — Rewiring',         text:'Brain rewires reward pathways. Cravings grow weaker day by day.' },
+  23: { organ:'🫁', title:'Day 23 — Oxygen',           text:'Oxygen-carrying capacity improves. You will feel measurably fitter than three weeks ago.' },
+  24: { organ:'🌿', title:'Day 24 — Skin',             text:'Skin collagen production rises. Puffiness fades.' },
+  25: { organ:'🫀', title:'Day 25 — Heart',            text:'Coronary arteries dilate better. Heart attack risk can fall measurably.' },
+  26: { organ:'💧', title:'Day 26 — Liver',            text:'Liver enzymes can sit in the normal range — for most people, within reach.' },
+  27: { organ:'😴', title:'Day 27 — Rest',             text:'Sleep architecture restores fully. Night waking drops significantly.' },
+  28: { organ:'💎', title:'Day 28 — One month',        text:'Liver function largely restores. Brain chemistry stabilises. You will be measurably healthier than Day 1.' },
 };
 
 function isStreakBroken(data) {
   if (!data || !data.currentScore) return false;
   ensureScoreNumbers(data);
-  if ((data.currentStreak | 0) > 0 || data.currentScore.success === 0) return false;
+  if ((data.currentStreak | 0) > 0) return false;
+  if ((data.currentScore.success | 0) === 0) return false;
   const log = data.dailyLog || {};
   const scored = data.scoredDays || {};
   const todayKey = dateKey(getAppToday(data));
-  const yest = getAppToday(data);
-  yest.setDate(yest.getDate() - 1);
-  const yestKey = dateKey(yest);
-  if (log[todayKey] === 'drinking' && scored[todayKey]) return true;
-  if (log[yestKey] === 'drinking' && scored[yestKey] && log[todayKey] !== 'sober') return true;
-  return false;
+  // Drinking-day message only on the calendar day the drink was logged
+  return log[todayKey] === 'drinking' && !!scored[todayKey];
 }
 
 function renderBodyTimeline(data) {
-  const streak  = data.currentStreak | 0;
-  const broken  = streak === 0 && isStreakBroken(data);
+  const streak  = getDisplayStreak(data);
+  const broken  = isStreakBroken(data);
   const titleEl = el('bodyTimelineTitle');
   const textEl  = el('bodyTimelineText');
   const dotsEl  = el('bodyTimelineDots');
   const labelsEl = el('bodyTimelineLabels');
   if (!titleEl || !textEl || !dotsEl) return;
 
-  const { start, end } = getBodyTimelineWindow(streak);
+  const visual = getBodyTimelineVisualState(data, streak);
+  const { timelineDay, start, end, weekAnchor, showWeekAnchor, weekAnchorDotActive } = visual;
 
   if (broken) {
     titleEl.textContent = '🍺 Drinking Day Logged';
     textEl.textContent  = 'Tomorrow is a new opportunity to build your streak again. Your Journey continues. Beat your best score.';
-  } else if (streak === 0) {
-    titleEl.textContent = '🕐 Your body today';
-    textEl.textContent  = BODY_FACTS[0].text;
   } else {
-    const fact = getBodyFact(streak);
-    titleEl.textContent = `${fact.organ} ${fact.title}`;
-    textEl.textContent  = fact.text;
+    applyBodyTimelineContent(titleEl, textEl, getBodyTimelineDisplayDay(data, streak, visual));
   }
 
-  // Progress bar — one dot per day in the current 7-day window
+  // Progress bar — Start (week 1 only) + one dot per day in the current 7-day window
   let html = '';
   let labelHtml = '';
+  const green = '#34c759';
+  const amber = '#ff9500';
+  const dim   = 'rgba(60,60,67,0.15)';
+  const showStart = start === 1;
+
+  if (showStart) {
+    const startIsPast = streak >= 1;
+    const startIsActive = streak === 0;
+
+    if (startIsActive) {
+      html += `<div class="body-timeline-start-col">
+        <div class="body-timeline-start-dot body-timeline-start-dot--idle"></div>
+        <div class="body-timeline-dot-active-wrap" data-active="1" data-start-active="1">
+          <div class="body-timeline-dot-active"></div>
+        </div>
+      </div>`;
+    } else {
+      html += `<div class="body-timeline-past-col">
+        <div class="body-timeline-start-dot body-timeline-start-dot--past"></div>
+      </div>`;
+    }
+
+    labelHtml += `<div style="flex:0 0 12px;min-width:12px;display:flex;justify-content:flex-start;">
+      <span class="body-timeline-day-label" style="color:${startIsPast ? green : dim};">Start</span>
+    </div>`;
+
+    if (startIsActive) {
+      html += `<div class="body-timeline-bridge-to-next body-timeline-bridge--live body-timeline-bridge--start" style="flex:1;display:flex;height:2px;align-self:center;">
+        <div class="body-timeline-bridge-fill" style="width:0%;background:${green};height:2px;flex-shrink:0;"></div>
+        <div style="flex:1;background:${dim};height:2px;"></div>
+      </div>`;
+    } else {
+      html += `<div class="body-timeline-bridge-to-next" style="flex:1;height:2px;background:${green};align-self:center;"></div>`;
+    }
+    labelHtml += `<div style="flex:1;"></div>`;
+  }
+
+  const drinkingToday = isDrinkingDayToday(data);
+
+  // New week strip — Day 7→8 (or 14→15, …) bridge for the full 8–14 / 15–21 phase
+  const drinkAtWeekAnchor = showWeekAnchor && drinkingToday && streak === weekAnchor;
+  if (showWeekAnchor) {
+    const weekBridgeDone = streak >= start && !drinkAtWeekAnchor;
+    const weekBridgeLive = weekAnchorDotActive && !drinkingToday;
+    const weekActiveDot = weekBridgeLive
+      ? '<div class="body-timeline-dot-active-wrap" data-active="1" data-week-anchor-active="1"><div class="body-timeline-dot-active"></div></div>'
+      : '';
+    if (drinkAtWeekAnchor) {
+      html += '<div class="body-timeline-start-col"><div class="body-timeline-dot-fixed body-timeline-dot-fixed--drink" style="width:12px;height:12px;"></div></div>';
+    } else {
+      html += '<div class="body-timeline-start-col"><div class="body-timeline-start-dot body-timeline-start-dot--past"></div>' + weekActiveDot + '</div>';
+    }
+    labelHtml += `<div style="flex:0 0 12px;min-width:12px;display:flex;justify-content:flex-start;">
+      <span class="body-timeline-day-label" style="color:${drinkAtWeekAnchor ? amber : green};">Day ${weekAnchor}</span>
+    </div>`;
+    if (weekBridgeLive) {
+      html += `<div class="body-timeline-bridge-to-next body-timeline-bridge--live body-timeline-bridge--week-anchor" style="flex:1;display:flex;height:2px;align-self:center;">
+        <div class="body-timeline-bridge-fill" style="width:0%;background:${green};height:2px;flex-shrink:0;"></div>
+        <div style="flex:1;background:${dim};height:2px;"></div>
+      </div>`;
+    } else {
+      html += `<div class="body-timeline-bridge-to-next" style="flex:1;height:2px;background:${weekBridgeDone ? green : dim};align-self:center;"></div>`;
+    }
+    labelHtml += `<div style="flex:1;"></div>`;
+  }
+
+  const freezeDot = drinkingToday;
+  const onGapDay = isBodyTimelineGapDay(data, streak);
+
   for (let i = start; i <= end; i++) {
     const isPast    = streak > 0 && i < streak;
-    const isCurrent = streak > 0 && i === streak;
-    const green     = '#34c759';
-    const dim       = 'rgba(60,60,67,0.15)';
-    const labelColor = (isPast || isCurrent) ? green : dim;
+    const isDrinkDay = drinkingToday && streak > 0 && i === streak && !drinkAtWeekAnchor;
+    const isGapOrigin = onGapDay && i === streak && !weekAnchorDotActive && !drinkingToday;
+    const isCurrent = streak > 0 && i === streak && !weekAnchorDotActive && !onGapDay && !drinkingToday;
+    const labelColor = isDrinkDay ? amber : ((isPast || isCurrent || isGapOrigin) ? green : dim);
 
-    if (isCurrent) {
+    if (isDrinkDay) {
+      html += `<div class="body-timeline-current-col">
+        <div class="body-timeline-dot-fixed body-timeline-dot-fixed--drink"></div>
+      </div>`;
+    } else if (isGapOrigin) {
+      html += `<div class="body-timeline-current-col">
+        <div class="body-timeline-dot-active-wrap" data-active="1" data-gap-active="1">
+          <div class="body-timeline-dot-active body-timeline-dot-active--full"></div>
+        </div>
+      </div>`;
+    } else if (isCurrent) {
       html += `<div class="body-timeline-current-col">
         <div class="body-timeline-dot-fixed"></div>
         <div class="body-timeline-dot-active-wrap" data-active="1">
@@ -3767,21 +4053,22 @@ function renderBodyTimeline(data) {
         <div style="width:8px;height:8px;border-radius:50%;background:${dim};flex-shrink:0;"></div></div>`;
     }
 
-    const dotFlex = isCurrent ? '0 0 14px' : (isPast ? '0 0 12px' : '0 0 8px');
-    const minW = isCurrent ? '14px' : (isPast ? '12px' : '8px');
-    const labelJustify = i === start ? 'flex-start' : (i === end ? 'flex-end' : 'center');
+    const dotFlex = (isCurrent || isGapOrigin) ? '0 0 14px' : (isPast ? '0 0 12px' : '0 0 8px');
+    const minW = (isCurrent || isGapOrigin) ? '14px' : (isPast ? '12px' : '8px');
+    const labelJustify = (i === start && !showStart && !showWeekAnchor) ? 'flex-start' : (i === end ? 'flex-end' : 'center');
     labelHtml += `<div style="flex:${dotFlex};min-width:${minW};display:flex;justify-content:${labelJustify};">
       <span class="body-timeline-day-label" style="color:${labelColor};">Day ${i}</span>
     </div>`;
 
     if (i < end) {
-      if (isCurrent) {
+      if ((isCurrent || isGapOrigin) && !freezeDot) {
         html += `<div class="body-timeline-bridge-to-next body-timeline-bridge--live" style="flex:1;display:flex;height:2px;align-self:center;">
           <div class="body-timeline-bridge-fill" style="width:0%;background:${green};height:2px;flex-shrink:0;"></div>
           <div style="flex:1;background:${dim};height:2px;"></div>
         </div>`;
       } else {
-        html += `<div class="body-timeline-bridge-to-next" style="flex:1;height:2px;background:${isPast?green:dim};align-self:center;"></div>`;
+        const lineGreen = isPast && !isDrinkDay;
+        html += `<div class="body-timeline-bridge-to-next" style="flex:1;height:2px;background:${lineGreen ? green : dim};align-self:center;"></div>`;
       }
       labelHtml += `<div style="flex:1;"></div>`;
     }
@@ -3789,7 +4076,14 @@ function renderBodyTimeline(data) {
 
   dotsEl.innerHTML = html;
   if (labelsEl) labelsEl.innerHTML = labelHtml;
-  requestAnimationFrame(() => positionBodyTimelineActiveDot(dotsEl));
+  if (!freezeDot) scheduleBodyTimelineDotPosition(dotsEl, data);
+}
+
+function scheduleBodyTimelineDotPosition(dotsEl, data) {
+  requestAnimationFrame(() => {
+    positionBodyTimelineActiveDot(dotsEl, data);
+    requestAnimationFrame(() => positionBodyTimelineActiveDot(dotsEl, data));
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════
