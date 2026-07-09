@@ -1477,7 +1477,7 @@ const DataManager = {
       scoredDays:                 {},   // { 'YYYY-MM-DD': true } — dates counted in currentScore (current journey)
       journeyStartKey:            null, // date key when current journey began — streak only counts scoredDays
       completedJourneys:          [],   // [{ attempt, score:{success,failures}, date }]
-      bodyTimelineInstallAt:      null, // first app open — Start→Day 1 dot advances after 12h
+      bodyTimelineInstallAt:      null, // legacy first-open timestamp (timeline uses calendar noon)
       bodyTimelineWeekBlock:      0,    // streak milestone (7,14,21) — which week strip is held
       bodyTimelineWeekHoldCal:    0,    // calendar day through which that strip stays visible
       drinkDayFrozenStreak:       0,    // achieved streak held on the drinking calendar day
@@ -3771,12 +3771,7 @@ function getBodyTimelineHalfProgress() {
   return hours >= 12 ? 0.5 : 0;
 }
 
-// Start→Day 1: at install stay on Start; after 12 hours sit halfway toward Day 1
-function getBodyTimelineStartProgress(installAt) {
-  if (!installAt) return 0;
-  const hours = (Date.now() - new Date(installAt).getTime()) / 3600000;
-  return hours >= 12 ? 0.5 : 0;
-}
+// Start→Day 1: before noon stay on Start; after noon sit halfway toward Day 1
 
 const BODY_TIMELINE_FIXED_COL = 14;
 const BODY_TIMELINE_FIXED_R   = 7;
@@ -3809,9 +3804,7 @@ function positionBodyTimelineActiveDot(dotsEl, data) {
   const isStartActive = wrap.dataset.startActive === '1';
   const isWeekAnchorActive = wrap.dataset.weekAnchorActive === '1';
   const isBridgeOrigin = isStartActive || isWeekAnchorActive;
-  const progress = isStartActive
-    ? (isPostDrinkRestartDay(data) ? getBodyTimelineHalfProgress() : getBodyTimelineStartProgress(data?.bodyTimelineInstallAt))
-    : getBodyTimelineHalfProgress();
+  const progress = getBodyTimelineHalfProgress();
   const bridge = col.nextElementSibling;
   const fillEl = bridge?.querySelector('.body-timeline-bridge-fill');
   const spanFn = isBridgeOrigin ? bodyTimelineSpanStartToDay1 : bodyTimelineSpanToNext;
@@ -3861,7 +3854,7 @@ function getBodyTimelineVisualState(data, streak) {
 function getBodyTimelineDisplayDay(data, streak, visual) {
   if (streak <= 0) {
     if (isPostDrinkRestartDay(data)) return 1;
-    return getBodyTimelineStartProgress(data?.bodyTimelineInstallAt) >= 0.5 ? 1 : 0;
+    return getBodyTimelineHalfProgress() >= 0.5 ? 1 : 0;
   }
   const v = visual || getBodyTimelineVisualState(data, streak);
   const half = getBodyTimelineHalfProgress();
