@@ -3810,7 +3810,7 @@ function positionBodyTimelineActiveDot(dotsEl, data) {
   const isWeekAnchorActive = wrap.dataset.weekAnchorActive === '1';
   const isBridgeOrigin = isStartActive || isWeekAnchorActive;
   const progress = isStartActive
-    ? getBodyTimelineStartProgress(data?.bodyTimelineInstallAt)
+    ? (isPostDrinkRestartDay(data) ? getBodyTimelineHalfProgress() : getBodyTimelineStartProgress(data?.bodyTimelineInstallAt))
     : getBodyTimelineHalfProgress();
   const bridge = col.nextElementSibling;
   const fillEl = bridge?.querySelector('.body-timeline-bridge-fill');
