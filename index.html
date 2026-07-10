@@ -217,6 +217,7 @@ body.loaded { background: var(--bg); }
 #bodyTimelineDots { position:relative; overflow:visible; min-height:14px; width:100%; }
 #bodyTimelineLabels { overflow:visible; width:100%; }
 .body-timeline-bridge-to-next { min-width:10px; flex:1 1 10px; }
+.body-timeline-bridge--gap { overflow:visible; }
 #bodyTimelineCard { overflow:visible; }
 #bodyTimelineCard .body-timeline-wrap { overflow:visible; }
 .body-timeline-day-label { font-size:8px; white-space:nowrap; line-height:1; }
@@ -327,8 +328,7 @@ body.loaded { background: var(--bg); }
 .current-card .card-value { font-size:44px; color:#34c759; }
 .current-card.inactive .card-value { color:var(--label2); font-size:38px; }
 .best-card .card-value { font-size:30px; color:#ff9500; }
-.best-card .score-explain { font-size:10px; color:rgba(255,149,0,0.85); margin-top:2px; }
-.best-card .score-explain.is-new-best { color:var(--label2); }
+.best-card .score-explain { font-size:11px; color:var(--label2); margin-top:2px; }
 
 .score-dash {
   background:linear-gradient(90deg,var(--green),#ff9500);
@@ -655,7 +655,7 @@ body.test-ui-active .toast.show {
             <div class="milestone-status">—</div>
           </div>
           <div class="milestone-row" id="jm-100">
-            <div class="milestone-left"><div class="milestone-icon">💎</div><div class="milestone-text"><div class="milestone-name" data-label="100 Days — Occasional Drinker">100 Days</div></div></div>
+            <div class="milestone-left"><div class="milestone-icon">💎</div><div class="milestone-text"><div class="milestone-name" data-label="100 Days — Weekend Drinker">100 Days</div></div></div>
             <div class="milestone-status">—</div>
           </div>
         </div>
@@ -667,7 +667,7 @@ body.test-ui-active .toast.show {
             <div class="milestone-status">—</div>
           </div>
           <div class="milestone-row" id="jm-200">
-            <div class="milestone-left"><div class="milestone-icon">👑</div><div class="milestone-text"><div class="milestone-name" data-label="200 Days — Total Command">200 Days</div></div></div>
+            <div class="milestone-left"><div class="milestone-icon">👑</div><div class="milestone-text"><div class="milestone-name" data-label="200 Days — Occasional Drinker">200 Days</div></div></div>
             <div class="milestone-status">—</div>
           </div>
         </div>
@@ -1482,6 +1482,7 @@ const DataManager = {
       bodyTimelineWeekHoldCal:    0,    // calendar day through which that strip stays visible
       drinkDayFrozenStreak:       0,    // achieved streak held on the drinking calendar day
       drinkDayFrozenKey:          '',   // date key for drinkDayFrozenStreak
+      drinkDayFrozenProgress:     0,    // 0 or 0.5 — timeline half-progress when drink was logged
     };
   },
 
@@ -1560,6 +1561,7 @@ const DataManager = {
     data.bodyTimelineWeekHoldCal = Math.max(0, parseInt(data.bodyTimelineWeekHoldCal, 10) || 0);
     data.drinkDayFrozenStreak      = Math.max(0, parseInt(data.drinkDayFrozenStreak,      10) || 0);
     if (typeof data.drinkDayFrozenKey !== 'string') data.drinkDayFrozenKey = '';
+    data.drinkDayFrozenProgress = Number(data.drinkDayFrozenProgress) >= 0.5 ? 0.5 : 0;
 
     // Coerce number fields — guard against string corruption from manual edits
     data.calendarDay           = Math.max(1, parseInt(data.calendarDay)           || 1);
@@ -1823,6 +1825,7 @@ function recordDrinkDay(d, key) {
   d.scoredDays[key] = true;
   d.drinkDayFrozenStreak = streakBeforeDrink;
   d.drinkDayFrozenKey = key;
+  d.drinkDayFrozenProgress = getHalfProgressAtTime(new Date());
   d.currentScore.failures++;
   d.totalFailures++;
   d.celebratedStreakMilestones = {};
@@ -1854,20 +1857,6 @@ function isDrinkingDayToday(data) {
   return log[todayKey] === 'drinking' && !!scored[todayKey];
 }
 
-// New calendar day before logging — yesterday extended the streak; dot travels toward the next day
-function isBodyTimelineGapDay(data, streak) {
-  if (!data || (streak | 0) <= 0) return false;
-  if (isDrinkingDayToday(data)) return false;
-  const today = getAppToday(data);
-  const todayKey = dateKey(today);
-  const log = data.dailyLog || {};
-  const scored = data.scoredDays || {};
-  if (log[todayKey] === 'sober' && scored[todayKey]) return false;
-  const yest = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1, 12, 0, 0);
-  const yk = dateKey(yest);
-  return log[yk] === 'sober' && !!scored[yk];
-}
-
 // First calendar day after a logged drink — Day 1 copy before sober is logged
 function isPostDrinkRestartDay(data) {
   if (!data || (data.currentStreak | 0) > 0) return false;
@@ -1878,7 +1867,7 @@ function isPostDrinkRestartDay(data) {
   const todayKey = dateKey(today);
   const log = data.dailyLog || {};
   const scored = data.scoredDays || {};
-  return log[yestKey] === 'drinking' && !!scored[yestKey] && log[todayKey] !== 'sober';
+  return log[yestKey] === 'drinking' && log[todayKey] !== 'sober';
 }
 
 function inferStreakBeforeTodayDrink(data) {
@@ -1920,6 +1909,7 @@ function clearDrinkDayFrozenStreak(d) {
   if (!d) return;
   d.drinkDayFrozenStreak = 0;
   d.drinkDayFrozenKey = '';
+  d.drinkDayFrozenProgress = 0;
 }
 
 // Rebuild consecutive sober-day streak from dailyLog (single source of truth for streak + body timeline)
@@ -1950,19 +1940,23 @@ function recalculateStreakFromLog(d) {
     const yestKey = dateKey(yest);
     const yestEntry = d.dailyLog[yestKey];
 
-    if (yestEntry === 'drinking' && scored[yestKey]) {
-      d.currentStreak  = 0;
-      d.inPersonalBest = false;
-      return 0;
+    if (yestEntry === 'drinking') {
+      const sk = d.journeyStartKey || null;
+      if (!sk || yestKey >= sk) {
+        d.currentStreak  = 0;
+        d.inPersonalBest = false;
+        return 0;
+      }
     }
 
-    if (yestEntry === 'sober' && scored[yestKey]) {
+    if (yestEntry === 'sober') {
+      const startKeyEarly = d.journeyStartKey || null;
+      if (!scored[yestKey] && startKeyEarly && yestKey < startKeyEarly) {
+        d.currentStreak  = 0;
+        d.inPersonalBest = false;
+        return 0;
+      }
       cursor = yest;
-    } else if (yestEntry === 'sober' && !scored[yestKey]) {
-      // Prior-journey sober on calendar — does not continue this journey's streak
-      d.currentStreak  = 0;
-      d.inPersonalBest = false;
-      return 0;
     } else {
       // Yesterday not logged yet (catch-up modal pending) — count auto-sober run before it
       cursor.setDate(cursor.getDate() - 2);
@@ -1979,14 +1973,17 @@ function recalculateStreakFromLog(d) {
 
     const entry = d.dailyLog[key];
 
-    if (entry === 'sober' && scored[key]) {
+    if (entry === 'sober') {
+      if (startKey && key < startKey) {
+        cursor.setDate(cursor.getDate() - 1);
+        continue;
+      }
       streak++;
       cursor.setDate(cursor.getDate() - 1);
     } else if (entry === 'drinking' && scored[key]) {
       break;
-    } else if (entry === 'sober' && !scored[key] && startKey && key < startKey) {
-      // Calendar relic before this journey — skip without breaking
-      cursor.setDate(cursor.getDate() - 1);
+    } else if (entry === 'drinking' && startKey && key >= startKey) {
+      break;
     } else if (entry === undefined && key === yestKey) {
       // Yesterday not logged yet (catch-up modal) — keep counting earlier sober days
       cursor.setDate(cursor.getDate() - 1);
@@ -2092,9 +2089,9 @@ const JOURNEY_TROPHIES = [
   { days:50,  el:'jm-50',  c:{ emoji:'🌱', title:'Half Century!',       msg:"50 sober days. Five for every one. You have built a pattern that your body now expects. Keep it." }},
   { days:60,  el:'jm-60',  c:{ emoji:'✨', title:'Turning Point!',      msg:"60 sober days. Six sober days for every drinking day. You are approaching every clinical safe limit. The summit is visible." }},
   { days:80,  el:'jm-80',  c:{ emoji:'🏔️', title:'Low Risk!',          msg:"80 sober days. You are drinking less often than most people globally.\n\nAt this frequency — you are low risk IF each drinking day stays within:\n🥃 Whisky — 1 peg (60ml) or 🍺 Beer — 1 bottle (330ml)\n\nYou control the days. Now control the pour." }},
-  { days:100, el:'jm-100', c:{ emoji:'💎', title:'Occasional Drinker!', msg:"100 days. Occasional drinker by every clinical definition.\n\nThey said quit. You said control. You have conquered.\n\nWHO: No level of alcohol is completely safe. Less is always better." }},
+  { days:100, el:'jm-100', c:{ emoji:'💎', title:'Weekend Drinker!', msg:"100 sober days. Weekend drinker by frequency — body fully recovers between occasions.\n\n2–4 drinking days a month, 3–4 pegs each, never binge. You control the days. Now control the pour." }},
   { days:150, el:'jm-150', hiddenUntil:80,  c:{ emoji:'🏆', title:'Sustained Control!', msg:"150 sober days in one journey. You are not just occasional — you are in control.\n\nYour body has had months to heal. This pattern is yours now." }},
-  { days:200, el:'jm-200', hiddenUntil:100, c:{ emoji:'👑', title:'Total Command!',     msg:"200 sober days. Fifteen sober days for every drinking day.\n\nYou have proven this is not luck. This is who you are." }},
+  { days:200, el:'jm-200', hiddenUntil:100, c:{ emoji:'👑', title:'Occasional Drinker!', msg:"200 sober days. Occasional drinker by every clinical definition.\n\nThey said quit. You said control. Less is always better — WHO: no level of alcohol is completely safe." }},
 ];
 
 const JOURNEY_SOBER_TARGET_DAYS = JOURNEY_TROPHIES.map(m => m.days);
@@ -2344,6 +2341,10 @@ const UI = {
       const count  = (data.journeyTrophies && data.journeyTrophies[m.days]) || 0;
       const nameEl = row.querySelector('.milestone-name');
       const statEl = row.querySelector('.milestone-status');
+      const alwaysShowLabel = m.days === 100 || m.days === 200;
+      const milestoneLabel = alwaysShowLabel
+        ? nameEl.dataset.label
+        : nameEl.dataset.label.split(' — ')[0];
 
       if (current >= m.days) {
         row.classList.add('milestone-active');
@@ -2355,13 +2356,13 @@ const UI = {
         row.classList.remove('milestone-active');
         nameEl.className  = 'milestone-name';
         statEl.className  = 'milestone-status';
-        nameEl.textContent = nameEl.dataset.label.split(' — ')[0];
+        nameEl.textContent = milestoneLabel;
         statEl.textContent = journeyTrophyStatusDisplay(m.days, count, false);
       } else {
         row.classList.remove('milestone-active');
         nameEl.className  = 'milestone-name';
         statEl.className  = 'milestone-status';
-        nameEl.textContent = nameEl.dataset.label.split(' — ')[0];
+        nameEl.textContent = milestoneLabel;
         statEl.textContent = journeyTrophyStatusDisplay(m.days, count, false);
       }
     });
@@ -3730,15 +3731,15 @@ function _dailyMsg(streak, score) {
 // ═══════════════════════════════════════════════════════════════
 
 // Rolling 7-day windows: 1–7, then 8–14 after day 7, 15–21 after day 14, etc.
-function getBodyTimelineWindow(streak) {
+function getBodyTimelineWindow(timelineDay) {
   const WINDOW = 7;
-  if (streak <= 0) return { start: 1, end: WINDOW, displayDay: 0 };
-  const blockIndex = Math.floor((streak - 1) / WINDOW);
+  const day = timelineDay | 0;
+  if (day <= 0) return { start: 1, end: WINDOW };
+  const blockIndex = Math.floor((day - 1) / WINDOW);
   const start = blockIndex * WINDOW + 1;
-  return { start, end: start + WINDOW - 1, displayDay: streak };
+  return { start, end: start + WINDOW - 1 };
 }
 
-// Remember which calendar day a week milestone (7, 14, 21) was achieved — hold that strip through that day
 function syncBodyTimelineWeekHold(data) {
   if (!data) return;
   const streak = data.currentStreak | 0;
@@ -3752,11 +3753,10 @@ function syncBodyTimelineWeekHold(data) {
 }
 
 function getBodyTimelineTimelineDay(data, streak) {
-  if (streak <= 0) return 0;
+  if ((streak | 0) <= 0) return 0;
   const cal = data.calendarDay | 0;
   const block   = data.bodyTimelineWeekBlock | 0;
   const holdCal = data.bodyTimelineWeekHoldCal | 0;
-  // Sitting on day 7 / 14 / 21 — keep current strip until the next calendar day
   if (block >= 7 && block % 7 === 0 && streak >= block && streak < block + 1 && holdCal > 0) {
     if (cal <= holdCal) return streak;
     return block + 1;
@@ -3764,20 +3764,51 @@ function getBodyTimelineTimelineDay(data, streak) {
   return streak;
 }
 
-// 0 before noon, 0.5 after — active dot sits halfway toward the next day
-function getBodyTimelineHalfProgress() {
-  const now = new Date();
-  const hours = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
+// 0 before noon, 0.5 after — dot moves halfway toward the next target
+function getHalfProgressAtTime(when) {
+  const t = when instanceof Date ? when : new Date(when);
+  if (isNaN(t.getTime())) return 0;
+  const hours = t.getHours() + t.getMinutes() / 60 + t.getSeconds() / 3600;
   return hours >= 12 ? 0.5 : 0;
 }
 
-// Start→Day 1: before noon stay on Start; after noon sit halfway toward Day 1
+function getBodyTimelineHalfProgress(data) {
+  if (CONFIG.showTestUI && data && data.simulatedToday) {
+    const sim = new Date(data.simulatedToday);
+    if (!isNaN(sim.getTime())) {
+      const hours = sim.getHours() + sim.getMinutes() / 60;
+      if (hours !== 12 || sim.getMinutes() !== 0) {
+        return hours >= 12 ? 0.5 : 0;
+      }
+    }
+  }
+  return getHalfProgressAtTime(new Date());
+}
+
+// Half-progress frozen when the user logged a drink (wall-clock at tap time)
+function getDrinkDayFrozenProgress(data) {
+  if (!data || !isDrinkingDayToday(data)) return 0;
+  const todayKey = dateKey(getAppToday(data));
+  if (data.drinkDayFrozenKey !== todayKey) return 0;
+  return Number(data.drinkDayFrozenProgress) >= 0.5 ? 0.5 : 0;
+}
+
+function bodyTimelineDrinkBridgeHtml(drinkProgress, green, amber, dim) {
+  if (Number(drinkProgress) >= 0.5) {
+    return `<div class="body-timeline-bridge-to-next body-timeline-bridge--drink-split" style="flex:1;display:flex;height:2px;align-self:center;">
+      <div style="flex:1;background:${green};height:2px;"></div>
+      <div style="flex:1;background:${amber};height:2px;"></div>
+    </div>`;
+  }
+  return `<div class="body-timeline-bridge-to-next" style="flex:1;height:2px;background:${amber};align-self:center;"></div>`;
+}
 
 const BODY_TIMELINE_FIXED_COL = 14;
 const BODY_TIMELINE_FIXED_R   = 7;
 const BODY_TIMELINE_NEXT_R    = 4;
 const BODY_TIMELINE_START_COL = 12;
 const BODY_TIMELINE_START_R   = 6;
+
 function bodyTimelineSpanToNext(bridgeW) {
   return bridgeW + (BODY_TIMELINE_FIXED_COL - BODY_TIMELINE_FIXED_R) + BODY_TIMELINE_NEXT_R;
 }
@@ -3786,42 +3817,122 @@ function bodyTimelineSpanStartToDay1(bridgeW) {
   return bridgeW + (BODY_TIMELINE_START_COL - BODY_TIMELINE_START_R) + BODY_TIMELINE_NEXT_R;
 }
 
-// Prior milestone day + bridge into each new 7-day strip (7→8, 14→15, …)
 function getBodyTimelineWeekAnchor(timelineDay) {
   if ((timelineDay | 0) <= 7) return null;
   const { start } = getBodyTimelineWindow(timelineDay);
   return start > 1 ? start - 1 : null;
 }
 
-function positionBodyTimelineActiveDot(dotsEl, data) {
+// Single source of truth for dot behaviour
+function getBodyTimelinePhase(data) {
+  const drinkingToday = isDrinkingDayToday(data);
+  const today = getAppToday(data);
+  const todayKey = dateKey(today);
+  const log = data.dailyLog || {};
+  const scored = data.scoredDays || {};
+  const loggedSoberToday = log[todayKey] === 'sober' && !!scored[todayKey];
+
+  const yest = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1, 12, 0, 0);
+  const yestKey = dateKey(yest);
+  const yesterdaySober = log[yestKey] === 'sober';
+  const postDrinkRestart = isPostDrinkRestartDay(data);
+
+  let streak = getDisplayStreak(data);
+  if (postDrinkRestart) streak = 0;
+
+  syncBodyTimelineWeekHold(data);
+
+  let anchorDay = 0;
+  let travel = false;
+  let frozen = false;
+  let amber = false;
+
+  if (drinkingToday) {
+    const achievedBeforeDrink = getDisplayStreak(data);
+    streak = achievedBeforeDrink;
+    // Amber sits on the day being attempted (Day 3 after 2 sober days), not the last achieved day
+    anchorDay = Math.max(1, achievedBeforeDrink + 1);
+    frozen = true;
+    amber = true;
+  } else if (loggedSoberToday) {
+    anchorDay = data.currentStreak | 0;
+    streak = anchorDay;
+    frozen = true;
+  } else if (postDrinkRestart) {
+    anchorDay = 0;
+    travel = true;
+  } else if ((streak | 0) > 0 && yesterdaySober) {
+    anchorDay = streak;
+    travel = true;
+  } else {
+    anchorDay = 0;
+    travel = true;
+  }
+
+  // Post-drink and fresh journeys always use week-one strip with Start visible
+  const timelineDay = postDrinkRestart ? 0 : ((streak | 0) > 0 ? getBodyTimelineTimelineDay(data, streak) : 0);
+  let stripDay;
+  if (postDrinkRestart || (anchorDay === 0 && travel && !frozen)) {
+    stripDay = 1;
+  } else if (amber && frozen && anchorDay > 0) {
+    stripDay = Math.max(anchorDay, timelineDay > 0 ? timelineDay : 1);
+  } else {
+    stripDay = timelineDay > 0 ? timelineDay : 1;
+  }
+  const { start, end } = getBodyTimelineWindow(stripDay);
+  const weekAnchor = getBodyTimelineWeekAnchor(stripDay);
+  const showWeekAnchor = weekAnchor !== null;
+
+  const holdBlock = data.bodyTimelineWeekBlock | 0;
+  const holdCal = data.bodyTimelineWeekHoldCal | 0;
+  const onMilestoneHold = holdBlock === streak && streak >= 7 && streak % 7 === 0 && (data.calendarDay | 0) <= holdCal;
+
+  const progress = (travel && !frozen) ? getBodyTimelineHalfProgress(data) : 0;
+  const drinkBridgeProgress = (amber && frozen) ? getDrinkDayFrozenProgress(data) : 0;
+  const travelFromWeekAnchor = showWeekAnchor && travel && anchorDay === weekAnchor && !frozen;
+
+  return {
+    streak, anchorDay, travel, frozen, amber, progress, drinkBridgeProgress,
+    timelineDay, start, end, weekAnchor, showWeekAnchor,
+    travelFromWeekAnchor, onMilestoneHold, postDrinkRestart,
+  };
+}
+
+function positionBodyTimelineActiveDot(dotsEl) {
   const wrap = dotsEl.querySelector('.body-timeline-dot-active-wrap[data-active="1"]');
   if (!wrap) return;
 
-  const isGapActive = wrap.dataset.gapActive === '1';
   const col = wrap.closest('.body-timeline-current-col, .body-timeline-start-col');
   if (!col) return;
 
-  const isStartActive = wrap.dataset.startActive === '1';
-  const isWeekAnchorActive = wrap.dataset.weekAnchorActive === '1';
-  const isBridgeOrigin = isStartActive || isWeekAnchorActive;
-  const progress = getBodyTimelineHalfProgress();
+  const isStart = wrap.dataset.startActive === '1';
+  const isWeekAnchor = wrap.dataset.weekAnchorActive === '1';
+  const bridgeOrigin = isStart || isWeekAnchor;
+  const progress = parseFloat(wrap.dataset.progress || '0') || 0;
   const bridge = col.nextElementSibling;
   const fillEl = bridge?.querySelector('.body-timeline-bridge-fill');
-  const spanFn = isBridgeOrigin ? bodyTimelineSpanStartToDay1 : bodyTimelineSpanToNext;
-  const originR = isBridgeOrigin ? BODY_TIMELINE_START_R : BODY_TIMELINE_FIXED_R;
-  const originCol = isBridgeOrigin ? BODY_TIMELINE_START_COL : BODY_TIMELINE_FIXED_COL;
-  let centerX = originR;
+  const spanFn = bridgeOrigin ? bodyTimelineSpanStartToDay1 : bodyTimelineSpanToNext;
+  const originR = bridgeOrigin ? BODY_TIMELINE_START_R : BODY_TIMELINE_FIXED_R;
+  const originCol = bridgeOrigin ? BODY_TIMELINE_START_COL : BODY_TIMELINE_FIXED_COL;
   const bridgeLive = bridge?.classList.contains('body-timeline-bridge--live');
-  if (bridgeLive && (progress > 0 || isGapActive)) {
-    const bridgeW = bridge.offsetWidth;
-    centerX = originR + progress * spanFn(bridgeW);
-    if (fillEl && bridgeW > 0) {
-      const fillPx = Math.max(0, Math.min(bridgeW, centerX - originCol));
-      fillEl.style.width = `${(fillPx / bridgeW) * 100}%`;
+  let centerX = originR;
+
+  if (bridgeLive) {
+    const bridgeW = bridge ? bridge.offsetWidth : 0;
+    centerX = originR;
+    if (progress > 0 && bridgeW > 0) {
+      centerX = originR + progress * spanFn(bridgeW);
+      if (fillEl) {
+        const fillPx = Math.max(0, Math.min(bridgeW, centerX - originCol));
+        fillEl.style.width = `${(fillPx / bridgeW) * 100}%`;
+      }
+    } else if (fillEl) {
+      fillEl.style.width = '0%';
     }
   } else if (fillEl) {
     fillEl.style.width = '0%';
   }
+
   wrap.style.left = `${centerX}px`;
   wrap.style.top = '50%';
   wrap.style.transform = 'translate(-50%, -50%)';
@@ -3836,41 +3947,26 @@ function getBodyFact(day) {
   };
 }
 
-// Shared strip state — keep dot position and explanatory copy in sync
-function getBodyTimelineVisualState(data, streak) {
-  syncBodyTimelineWeekHold(data);
-  const timelineDay = getBodyTimelineTimelineDay(data, streak);
-  const { start, end } = getBodyTimelineWindow(timelineDay);
-  const weekAnchor = getBodyTimelineWeekAnchor(timelineDay);
-  const showWeekAnchor = weekAnchor !== null;
-  const weekAnchorDotActive = showWeekAnchor && streak < start;
-  const holdBlock = data.bodyTimelineWeekBlock | 0;
-  const holdCal = data.bodyTimelineWeekHoldCal | 0;
-  const onMilestoneHold = holdBlock === streak && streak >= 7 && streak % 7 === 0 && (data.calendarDay | 0) <= holdCal;
-  return { timelineDay, start, end, weekAnchor, showWeekAnchor, weekAnchorDotActive, onMilestoneHold };
-}
-
-// Which day's copy matches the active dot — same rules as renderBodyTimeline
-function getBodyTimelineDisplayDay(data, streak, visual) {
-  if (streak <= 0) {
+function getBodyTimelineDisplayDay(data, phase) {
+  const p = phase || getBodyTimelinePhase(data);
+  if (p.amber && p.frozen) return Math.max(0, p.anchorDay);
+  if (p.anchorDay <= 0) {
     if (isPostDrinkRestartDay(data)) return 1;
-    return getBodyTimelineHalfProgress() >= 0.5 ? 1 : 0;
+    if (p.travel && p.progress >= 0.5) return 1;
+    return 0;
   }
-  const v = visual || getBodyTimelineVisualState(data, streak);
-  const half = getBodyTimelineHalfProgress();
-
-  if (v.weekAnchorDotActive) {
-    // New week strip is live — show entry day (8, 15, 22), not prior week anchor
-    return v.weekAnchor + 1;
+  if (p.frozen || p.onMilestoneHold) return p.anchorDay;
+  if (p.travelFromWeekAnchor) {
+    const target = p.weekAnchor + 1;
+    if (p.progress >= 0.5 && target <= p.end) return target;
+    return p.anchorDay;
   }
-  if (v.onMilestoneHold) return streak;
-  if (isBodyTimelineGapDay(data, streak)) {
-    const target = streak + 1;
-    if (half >= 0.5 && target < v.end) return target + 1;
-    return target;
+  if (p.travel) {
+    const target = p.anchorDay + 1;
+    if (p.progress >= 0.5 && target <= p.end) return target;
+    return p.anchorDay;
   }
-  if (half >= 0.5 && streak < v.end) return streak + 1;
-  return streak;
+  return p.anchorDay;
 }
 
 function applyBodyTimelineContent(titleEl, textEl, displayDay) {
@@ -3919,149 +4015,143 @@ function isStreakBroken(data) {
   const log = data.dailyLog || {};
   const scored = data.scoredDays || {};
   const todayKey = dateKey(getAppToday(data));
-  // Drinking-day message only on the calendar day the drink was logged
   return log[todayKey] === 'drinking' && !!scored[todayKey];
 }
 
 function renderBodyTimeline(data) {
-  const streak  = getDisplayStreak(data);
-  const broken  = isStreakBroken(data);
+  const phase = getBodyTimelinePhase(data);
+  const broken = isStreakBroken(data);
   const titleEl = el('bodyTimelineTitle');
   const textEl  = el('bodyTimelineText');
   const dotsEl  = el('bodyTimelineDots');
   const labelsEl = el('bodyTimelineLabels');
   if (!titleEl || !textEl || !dotsEl) return;
 
-  const visual = getBodyTimelineVisualState(data, streak);
-  const { timelineDay, start, end, weekAnchor, showWeekAnchor, weekAnchorDotActive } = visual;
-
   if (broken) {
     titleEl.textContent = '🍺 Drinking Day Logged';
     textEl.textContent  = 'Tomorrow is a new opportunity to build your streak again. Your Journey continues. Beat your best score.';
   } else {
-    applyBodyTimelineContent(titleEl, textEl, getBodyTimelineDisplayDay(data, streak, visual));
+    applyBodyTimelineContent(titleEl, textEl, getBodyTimelineDisplayDay(data, phase));
   }
 
-  // Progress bar — Start (week 1 only) + one dot per day in the current 7-day window
-  let html = '';
-  let labelHtml = '';
   const green = '#34c759';
   const amber = '#ff9500';
   const dim   = 'rgba(60,60,67,0.15)';
+  const { start, end, streak, anchorDay, travel, frozen, amber: isAmber, progress,
+          drinkBridgeProgress, showWeekAnchor, weekAnchor, travelFromWeekAnchor } = phase;
   const showStart = start === 1;
+  let html = '';
+  let labelHtml = '';
 
+  const liveBridge = (extraClass) =>
+    `<div class="body-timeline-bridge-to-next body-timeline-bridge--live${extraClass ? ' ' + extraClass : ''}" style="flex:1;display:flex;height:2px;align-self:center;">
+      <div class="body-timeline-bridge-fill" style="width:0%;background:${green};height:2px;flex-shrink:0;"></div>
+      <div style="flex:1;background:${dim};height:2px;"></div></div>`;
+
+  const solidBridge = (color) =>
+    `<div class="body-timeline-bridge-to-next" style="flex:1;height:2px;background:${color};align-self:center;"></div>`;
+
+  // Start column (week-one strip)
   if (showStart) {
-    const startIsPast = streak >= 1;
-    const startIsActive = streak === 0;
-
-    if (startIsActive) {
+    const atStart = anchorDay === 0;
+    const startPast = (phase.postDrinkRestart ? false : streak >= 1) || anchorDay > 0;
+    if (isAmber && frozen && atStart) {
+      html += `<div class="body-timeline-start-col"><div class="body-timeline-dot-fixed body-timeline-dot-fixed--drink"></div></div>`;
+      html += bodyTimelineDrinkBridgeHtml(drinkBridgeProgress, green, amber, dim);
+    } else if (isAmber && frozen && anchorDay === 1) {
+      html += `<div class="body-timeline-past-col"><div class="body-timeline-start-dot body-timeline-start-dot--past"></div></div>`;
+      html += bodyTimelineDrinkBridgeHtml(drinkBridgeProgress, green, amber, dim);
+    } else if (atStart && travel && !frozen) {
       html += `<div class="body-timeline-start-col">
-        <div class="body-timeline-start-dot body-timeline-start-dot--idle"></div>
-        <div class="body-timeline-dot-active-wrap" data-active="1" data-start-active="1">
-          <div class="body-timeline-dot-active"></div>
-        </div>
-      </div>`;
+        <div class="body-timeline-dot-fixed"></div>
+        <div class="body-timeline-dot-active-wrap" data-active="1" data-start-active="1" data-progress="${progress}">
+          <div class="body-timeline-dot-active"></div></div></div>`;
+      html += liveBridge('body-timeline-bridge--start');
+    } else if (startPast) {
+      html += `<div class="body-timeline-past-col"><div class="body-timeline-start-dot body-timeline-start-dot--past"></div></div>`;
+      html += solidBridge(green);
     } else {
-      html += `<div class="body-timeline-past-col">
-        <div class="body-timeline-start-dot body-timeline-start-dot--past"></div>
-      </div>`;
+      html += `<div class="body-timeline-past-col"><div class="body-timeline-start-dot body-timeline-start-dot--idle"></div></div>`;
+      html += solidBridge(dim);
     }
-
     labelHtml += `<div style="flex:0 0 12px;min-width:12px;display:flex;justify-content:flex-start;">
-      <span class="body-timeline-day-label" style="color:${startIsPast ? green : dim};">Start</span>
-    </div>`;
-
-    if (startIsActive) {
-      html += `<div class="body-timeline-bridge-to-next body-timeline-bridge--live body-timeline-bridge--start" style="flex:1;display:flex;height:2px;align-self:center;">
-        <div class="body-timeline-bridge-fill" style="width:0%;background:${green};height:2px;flex-shrink:0;"></div>
-        <div style="flex:1;background:${dim};height:2px;"></div>
-      </div>`;
-    } else {
-      html += `<div class="body-timeline-bridge-to-next" style="flex:1;height:2px;background:${green};align-self:center;"></div>`;
-    }
+      <span class="body-timeline-day-label" style="color:${(isAmber && frozen && atStart) ? amber : (startPast ? green : dim)};">Start</span></div>`;
     labelHtml += `<div style="flex:1;"></div>`;
   }
 
-  const drinkingToday = isDrinkingDayToday(data);
-
-  // New week strip — Day 7→8 (or 14→15, …) bridge for the full 8–14 / 15–21 phase
-  const drinkAtWeekAnchor = showWeekAnchor && drinkingToday && streak === weekAnchor;
+  // Prior-week anchor column (7→8, 14→15, …)
   if (showWeekAnchor) {
-    const weekBridgeDone = streak >= start && !drinkAtWeekAnchor;
-    const weekBridgeLive = weekAnchorDotActive && !drinkingToday;
-    const weekActiveDot = weekBridgeLive
-      ? '<div class="body-timeline-dot-active-wrap" data-active="1" data-week-anchor-active="1"><div class="body-timeline-dot-active"></div></div>'
-      : '';
-    if (drinkAtWeekAnchor) {
-      html += '<div class="body-timeline-start-col"><div class="body-timeline-dot-fixed body-timeline-dot-fixed--drink" style="width:12px;height:12px;"></div></div>';
+    const atAnchor = anchorDay === weekAnchor;
+    const anchorDrink = isAmber && frozen && atAnchor;
+    const anchorTravel = travelFromWeekAnchor;
+    const anchorFrozen = frozen && atAnchor && !isAmber;
+
+    if (anchorDrink) {
+      html += `<div class="body-timeline-start-col"><div class="body-timeline-dot-fixed body-timeline-dot-fixed--drink"></div></div>`;
+      html += solidBridge(dim);
+    } else if (isAmber && frozen && anchorDay === weekAnchor + 1) {
+      html += `<div class="body-timeline-start-col"><div class="body-timeline-start-dot body-timeline-start-dot--past"></div></div>`;
+      html += bodyTimelineDrinkBridgeHtml(drinkBridgeProgress, green, amber, dim);
+    } else if (anchorTravel) {
+      html += `<div class="body-timeline-start-col">
+        <div class="body-timeline-start-dot body-timeline-start-dot--past"></div>
+        <div class="body-timeline-dot-active-wrap" data-active="1" data-week-anchor-active="1" data-progress="${progress}">
+          <div class="body-timeline-dot-active"></div></div></div>`;
+      html += liveBridge('body-timeline-bridge--week-anchor');
+    } else if (anchorFrozen) {
+      html += `<div class="body-timeline-start-col"><div class="body-timeline-dot-fixed"></div></div>`;
+      html += solidBridge(green);
     } else {
-      html += '<div class="body-timeline-start-col"><div class="body-timeline-start-dot body-timeline-start-dot--past"></div>' + weekActiveDot + '</div>';
+      html += `<div class="body-timeline-start-col"><div class="body-timeline-start-dot body-timeline-start-dot--past"></div></div>`;
+      html += solidBridge(green);
     }
     labelHtml += `<div style="flex:0 0 12px;min-width:12px;display:flex;justify-content:flex-start;">
-      <span class="body-timeline-day-label" style="color:${drinkAtWeekAnchor ? amber : green};">Day ${weekAnchor}</span>
-    </div>`;
-    if (weekBridgeLive) {
-      html += `<div class="body-timeline-bridge-to-next body-timeline-bridge--live body-timeline-bridge--week-anchor" style="flex:1;display:flex;height:2px;align-self:center;">
-        <div class="body-timeline-bridge-fill" style="width:0%;background:${green};height:2px;flex-shrink:0;"></div>
-        <div style="flex:1;background:${dim};height:2px;"></div>
-      </div>`;
-    } else {
-      html += `<div class="body-timeline-bridge-to-next" style="flex:1;height:2px;background:${weekBridgeDone ? green : dim};align-self:center;"></div>`;
-    }
+      <span class="body-timeline-day-label" style="color:${anchorDrink ? amber : green};">Day ${weekAnchor}</span></div>`;
     labelHtml += `<div style="flex:1;"></div>`;
   }
-
-  const freezeDot = drinkingToday;
-  const onGapDay = isBodyTimelineGapDay(data, streak);
 
   for (let i = start; i <= end; i++) {
-    const isPast    = streak > 0 && i < streak;
-    const isDrinkDay = drinkingToday && streak > 0 && i === streak && !drinkAtWeekAnchor;
-    const isGapOrigin = onGapDay && i === streak && !weekAnchorDotActive && !drinkingToday;
-    const isCurrent = streak > 0 && i === streak && !weekAnchorDotActive && !onGapDay && !drinkingToday;
-    const labelColor = isDrinkDay ? amber : ((isPast || isCurrent || isGapOrigin) ? green : dim);
+    if (showWeekAnchor && i === weekAnchor) continue;
 
-    if (isDrinkDay) {
-      html += `<div class="body-timeline-current-col">
-        <div class="body-timeline-dot-fixed body-timeline-dot-fixed--drink"></div>
-      </div>`;
-    } else if (isGapOrigin) {
-      html += `<div class="body-timeline-current-col">
-        <div class="body-timeline-dot-active-wrap" data-active="1" data-gap-active="1">
-          <div class="body-timeline-dot-active body-timeline-dot-active--full"></div>
-        </div>
-      </div>`;
-    } else if (isCurrent) {
+    const isAnchor = anchorDay > 0 && i === anchorDay;
+    const isPast = (streak > 0 && i < anchorDay) || (anchorDay > 0 && i < anchorDay);
+    const onColumn = isAnchor || isPast || (isAmber && frozen && i === anchorDay);
+
+    let labelColor = dim;
+    if (isAmber && frozen && i === anchorDay) labelColor = amber;
+    else if (isPast || isAnchor) labelColor = green;
+
+    if (isAmber && frozen && i === anchorDay) {
+      html += `<div class="body-timeline-current-col"><div class="body-timeline-dot-fixed body-timeline-dot-fixed--drink"></div></div>`;
+    } else if (isAnchor && frozen) {
+      html += `<div class="body-timeline-current-col"><div class="body-timeline-dot-fixed"></div></div>`;
+    } else if (isAnchor && travel) {
       html += `<div class="body-timeline-current-col">
         <div class="body-timeline-dot-fixed"></div>
-        <div class="body-timeline-dot-active-wrap" data-active="1">
-          <div class="body-timeline-dot-active"></div>
-        </div>
-      </div>`;
+        <div class="body-timeline-dot-active-wrap" data-active="1" data-progress="${progress}">
+          <div class="body-timeline-dot-active"></div></div></div>`;
     } else if (isPast) {
-      html += `<div class="body-timeline-past-col">
-        <div class="body-timeline-dot-fixed body-timeline-dot-fixed--sm"></div></div>`;
+      html += `<div class="body-timeline-past-col"><div class="body-timeline-dot-fixed body-timeline-dot-fixed--sm"></div></div>`;
     } else {
       html += `<div style="flex:0 0 8px;min-width:8px;display:flex;justify-content:center;align-items:center;">
         <div style="width:8px;height:8px;border-radius:50%;background:${dim};flex-shrink:0;"></div></div>`;
     }
 
-    const dotFlex = (isCurrent || isGapOrigin) ? '0 0 14px' : (isPast ? '0 0 12px' : '0 0 8px');
-    const minW = (isCurrent || isGapOrigin) ? '14px' : (isPast ? '12px' : '8px');
+    const colW = (isAnchor && (travel || frozen)) ? '14px' : (isPast ? '12px' : '8px');
+    const colFlex = (isAnchor && (travel || frozen)) ? '0 0 14px' : (isPast ? '0 0 12px' : '0 0 8px');
     const labelJustify = (i === start && !showStart && !showWeekAnchor) ? 'flex-start' : (i === end ? 'flex-end' : 'center');
-    labelHtml += `<div style="flex:${dotFlex};min-width:${minW};display:flex;justify-content:${labelJustify};">
-      <span class="body-timeline-day-label" style="color:${labelColor};">Day ${i}</span>
-    </div>`;
+    labelHtml += `<div style="flex:${colFlex};min-width:${colW};display:flex;justify-content:${labelJustify};">
+      <span class="body-timeline-day-label" style="color:${labelColor};">Day ${i}</span></div>`;
 
     if (i < end) {
-      if ((isCurrent || isGapOrigin) && !freezeDot) {
-        html += `<div class="body-timeline-bridge-to-next body-timeline-bridge--live" style="flex:1;display:flex;height:2px;align-self:center;">
-          <div class="body-timeline-bridge-fill" style="width:0%;background:${green};height:2px;flex-shrink:0;"></div>
-          <div style="flex:1;background:${dim};height:2px;"></div>
-        </div>`;
+      const bridgeLive = isAnchor && travel && !frozen;
+      const bridgeToDrink = isAmber && frozen && i === anchorDay - 1;
+      if (bridgeLive) {
+        html += liveBridge('');
+      } else if (bridgeToDrink) {
+        html += bodyTimelineDrinkBridgeHtml(drinkBridgeProgress, green, amber, dim);
       } else {
-        const lineGreen = isPast && !isDrinkDay;
-        html += `<div class="body-timeline-bridge-to-next" style="flex:1;height:2px;background:${lineGreen ? green : dim};align-self:center;"></div>`;
+        html += solidBridge(isPast ? green : dim);
       }
       labelHtml += `<div style="flex:1;"></div>`;
     }
@@ -4069,7 +4159,10 @@ function renderBodyTimeline(data) {
 
   dotsEl.innerHTML = html;
   if (labelsEl) labelsEl.innerHTML = labelHtml;
-  if (!freezeDot) scheduleBodyTimelineDotPosition(dotsEl, data);
+  if (!(phase.amber && phase.frozen)) {
+    positionBodyTimelineActiveDot(dotsEl);
+    scheduleBodyTimelineDotPosition(dotsEl);
+  }
 }
 
 function scheduleBodyTimelineDotPosition(dotsEl, data) {
