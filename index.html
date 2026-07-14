@@ -437,6 +437,180 @@ body.loaded { background: var(--bg); }
 .milestone-status.golden   { color:var(--orange); }
 
 /* MODALS */
+/* PREMIUM */
+.premium-lock-overlay {
+  position:absolute; inset:0; z-index:3;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:8px; padding:20px 16px; text-align:center; cursor:pointer;
+  background:rgba(255,255,255,0.72);
+  backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px);
+  border:none; font-family:inherit; width:100%; box-sizing:border-box;
+}
+.premium-lock-overlay .lock-icon { font-size:22px; line-height:1; }
+.premium-lock-overlay .lock-title { font-size:14px; font-weight:700; color:#1c1c1e; }
+.premium-lock-overlay .lock-sub { font-size:12px; color:var(--label2); line-height:1.4; max-width:240px; }
+.premium-lock-overlay .lock-cta {
+  margin-top:4px; font-size:12px; font-weight:700; color:#1e7a34;
+  background:rgba(52,199,89,0.14); border-radius:999px; padding:7px 14px;
+}
+.feature-locked { position:relative; }
+.feature-locked > *:not(.premium-lock-overlay) { pointer-events:none; user-select:none; }
+.milestone-row.milestone-premium-locked { opacity:0.55; position:relative; }
+.milestone-row.milestone-premium-locked::after {
+  content:'✦'; position:absolute; right:8px; top:50%; transform:translateY(-50%);
+  font-size:11px; color:#b88900;
+}
+.streak-signal {
+  display:none; align-items:center; justify-content:space-between; gap:12px;
+  padding:12px 14px; border-radius:14px;
+  background:linear-gradient(135deg, rgba(52,199,89,0.12), rgba(52,199,89,0.05));
+  border:1px solid rgba(52,199,89,0.22);
+}
+.streak-signal.show { display:flex; }
+.streak-signal-left { min-width:0; }
+.streak-signal-label { font-size:11px; font-weight:600; color:var(--label2); margin-bottom:2px; }
+.streak-signal-value { font-size:22px; font-weight:800; color:#1e9e3e; letter-spacing:-0.4px; line-height:1.1; }
+.streak-signal-sub { font-size:11px; color:var(--label3); margin-top:4px; line-height:1.35; }
+.streak-signal-unlock {
+  flex-shrink:0; border:none; cursor:pointer; font-family:inherit;
+  font-size:11px; font-weight:700; color:#1e7a34;
+  background:rgba(52,199,89,0.14); border-radius:999px; padding:8px 10px;
+}
+.body-timeline-full[hidden] { display:none !important; }
+.seg-btn.seg-locked::after {
+  content:'✦'; font-size:9px; margin-left:4px; color:#b88900; vertical-align:super;
+}
+.stage-label.stage-premium-locked { opacity:0.55; }
+.stage-label.stage-premium-locked::after { content:' ✦'; color:#b88900; font-size:11px; }
+
+.premium-entry {
+  width:100%; background:none; border:none; cursor:pointer; font-family:inherit;
+  padding:14px 16px; display:flex; justify-content:space-between; align-items:center; min-height:44px;
+  -webkit-tap-highlight-color:transparent;
+}
+.premium-entry:active { background:var(--bg3); }
+.premium-entry-title { font-size:13px; font-weight:700; color:#1c1c1e; }
+.premium-entry-status {
+  font-size:12px; font-weight:600; color:var(--label3);
+  padding:4px 10px; border-radius:999px; background:var(--bg3);
+}
+.premium-entry-status.is-premium {
+  color:#8a5a00; background:rgba(255,204,0,0.22);
+}
+
+.premium-sheet {
+  display:none; position:fixed; inset:0; z-index:1002;
+  background:rgba(0,0,0,0.5); align-items:flex-end; justify-content:center;
+}
+.premium-sheet.open { display:flex; }
+.premium-sheet-card {
+  width:100%; max-width:480px; max-height:92vh; overflow-y:auto;
+  background:var(--card); border-radius:24px 24px 0 0;
+  padding:12px 20px calc(28px + env(safe-area-inset-bottom));
+  animation:premiumSheetUp 0.28s cubic-bezier(0.22,1,0.36,1);
+}
+@keyframes premiumSheetUp {
+  from { transform:translateY(24px); opacity:0.6; }
+  to { transform:translateY(0); opacity:1; }
+}
+.premium-handle {
+  width:36px; height:4px; border-radius:2px; background:#e0e0e0; margin:4px auto 16px;
+}
+.premium-hero {
+  text-align:center; padding:4px 8px 18px;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(52,199,89,0.16), transparent 70%),
+    linear-gradient(180deg, rgba(255,204,0,0.08), transparent 60%);
+  border-radius:16px; margin-bottom:16px;
+}
+.premium-hero-mark {
+  width:56px; height:56px; margin:0 auto 10px; border-radius:16px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:28px;
+  background:linear-gradient(160deg, #ffe08a, #f0b429);
+  box-shadow:0 8px 20px rgba(180,120,0,0.22);
+}
+.premium-hero h2 {
+  margin:0 0 6px; font-size:22px; font-weight:800; letter-spacing:-0.3px; color:#1c1c1e;
+}
+.premium-hero p {
+  margin:0; font-size:14px; line-height:1.45; color:var(--label2);
+}
+.premium-benefits { list-style:none; margin:0 0 18px; padding:0; }
+.premium-benefits li {
+  display:flex; gap:10px; align-items:flex-start;
+  padding:9px 0; border-bottom:1px solid rgba(60,60,67,0.08);
+  font-size:14px; line-height:1.4; color:var(--label);
+}
+.premium-benefits li:last-child { border-bottom:none; }
+.premium-benefits .check {
+  flex-shrink:0; width:22px; height:22px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(52,199,89,0.15); color:#1e9e3e; font-size:12px; font-weight:800;
+  margin-top:1px;
+}
+.premium-plans { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+.premium-plan {
+  position:relative; text-align:left; cursor:pointer; font-family:inherit;
+  padding:14px 12px; border-radius:14px; border:1.5px solid var(--separator);
+  background:var(--card); color:var(--label); transition:border-color 0.15s, background 0.15s;
+}
+.premium-plan.selected {
+  border-color:var(--green); background:rgba(52,199,89,0.08);
+}
+.premium-plan .plan-badge {
+  position:absolute; top:-9px; right:10px;
+  font-size:10px; font-weight:700; letter-spacing:0.3px; text-transform:uppercase;
+  color:#8a5a00; background:#ffe08a; padding:3px 8px; border-radius:999px;
+}
+.premium-plan .plan-name { font-size:12px; font-weight:600; color:var(--label2); margin-bottom:4px; }
+.premium-plan .plan-price { font-size:20px; font-weight:800; letter-spacing:-0.4px; }
+.premium-plan .plan-note { font-size:11px; color:var(--label3); margin-top:4px; }
+.premium-cta {
+  width:100%; height:52px; border:none; border-radius:14px; cursor:pointer; font-family:inherit;
+  font-size:16px; font-weight:700; color:white;
+  background:linear-gradient(180deg, #2ecc55, #1e9e3e);
+  box-shadow:0 6px 16px rgba(30,158,62,0.28);
+}
+.premium-cta:active { opacity:0.9; }
+.premium-cta:disabled { opacity:0.45; cursor:default; box-shadow:none; }
+.premium-footnote {
+  margin:12px 0 0; text-align:center; font-size:11px; line-height:1.45; color:var(--label3);
+}
+.premium-secondary {
+  display:flex; justify-content:center; gap:18px; margin-top:12px;
+}
+.premium-link {
+  background:none; border:none; cursor:pointer; font-family:inherit;
+  font-size:13px; font-weight:600; color:var(--blue); padding:8px;
+}
+.premium-active-banner {
+  display:none; text-align:center; padding:12px; margin-bottom:14px;
+  border-radius:12px; background:rgba(52,199,89,0.12); color:#1e7a34;
+  font-size:13px; font-weight:600;
+}
+.premium-active-banner.show { display:block; }
+
+/* BACKUP / IMPORT-EXPORT */
+.backup-actions { display:grid; grid-template-columns:minmax(0,1fr); row-gap:8px; width:100%; }
+.btn-backup, .btn-reset-data {
+  display:block; width:100%; box-sizing:border-box; margin:0;
+  font-size:13px; padding:11px 10px; border-radius:12px; cursor:pointer;
+  font-family:inherit; transition:all 0.2s; -webkit-appearance:none; appearance:none;
+}
+.btn-backup {
+  background:transparent; color:var(--label); border:1px solid var(--separator); font-weight:600;
+}
+.btn-backup:active { background:var(--bg3); border-color:var(--green); color:var(--green); }
+.btn-reset-data {
+  background:transparent; color:var(--label2); border:1px solid var(--separator); font-weight:500;
+}
+.btn-reset-data:active { border-color:var(--red); color:var(--red); }
+.backup-status {
+  margin:2px 0 4px; font-size:12px; color:var(--label3); text-align:center;
+}
+#resetConfirmWrap input:focus { border-color:var(--red); }
+
 .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); z-index:1000; justify-content:center; align-items:center; padding:20px; }
 .modal.active { display:flex; }
 body.modal-open { overflow:hidden; position:fixed; width:100%; }
@@ -568,18 +742,28 @@ body.test-ui-active .toast.show {
   <!-- BODY TIMELINE CARD — daily personal update -->
   <div class="card" id="bodyTimelineCard" style="animation:fadeInUp 0.4s ease 0.08s both;margin-top:10px;">
     <div style="padding:14px 16px 16px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <div style="font-size:13px;font-weight:700;color:#1c1c1e;" id="bodyTimelineTitle">🫀 Your body today</div>
+      <div class="streak-signal" id="streakSignal">
+        <div class="streak-signal-left">
+          <div class="streak-signal-label">Current streak</div>
+          <div class="streak-signal-value" id="streakSignalValue">0 days</div>
+          <div class="streak-signal-sub" id="streakSignalSub">Full weekly timeline is a Premium feature</div>
+        </div>
+        <button type="button" class="streak-signal-unlock" onclick="SoberTracker.openPremium()">Unlock timeline</button>
       </div>
-      <div style="font-size:13px;color:rgba(60,60,67,0.65);line-height:1.6;margin-bottom:14px;" id="bodyTimelineText">
-        Start your streak to unlock what your body can do — one day at a time.
-      </div>
-      <div class="body-timeline-wrap" style="width:100%;overflow:visible;">
-        <div style="display:flex;align-items:center;gap:0;margin-bottom:4px;width:100%;" id="bodyTimelineDots"></div>
-        <div style="display:flex;align-items:center;gap:0;width:100%;" id="bodyTimelineLabels"></div>
-      </div>
-      <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(60,60,67,0.08);font-size:10px;color:rgba(60,60,67,0.35);line-height:1.5;font-style:italic;">
-        Recovery timelines are approximate and vary by individual.
+      <div class="body-timeline-full" id="bodyTimelineFull">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div style="font-size:13px;font-weight:700;color:#1c1c1e;" id="bodyTimelineTitle">🫀 Your body today</div>
+        </div>
+        <div style="font-size:13px;color:rgba(60,60,67,0.65);line-height:1.6;margin-bottom:14px;" id="bodyTimelineText">
+          Start your streak to unlock what your body can do — one day at a time.
+        </div>
+        <div class="body-timeline-wrap" style="width:100%;overflow:visible;">
+          <div style="display:flex;align-items:center;gap:0;margin-bottom:4px;width:100%;" id="bodyTimelineDots"></div>
+          <div style="display:flex;align-items:center;gap:0;width:100%;" id="bodyTimelineLabels"></div>
+        </div>
+        <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(60,60,67,0.08);font-size:10px;color:rgba(60,60,67,0.35);line-height:1.5;font-style:italic;">
+          Recovery timelines are approximate and vary by individual.
+        </div>
       </div>
     </div>
   </div>
@@ -675,18 +859,20 @@ body.test-ui-active .toast.show {
     </div>
 
 
-    <!-- Science Tab -->
-    <div class="tab-content">
-      <div class="journey-tab-header">
-        <div class="journey-mechanic">What happens to your body when you stop drinking?</div>
+    <!-- Progress / Science Tab -->
+    <div class="tab-content" id="progressTabContent">
+      <div id="progressTabInner">
+        <div class="journey-tab-header">
+          <div class="journey-mechanic">What happens to your body when you stop drinking?</div>
+        </div>
+        <div id="scienceTimeline" style="padding-top:11px;padding-bottom:4px;"></div>
       </div>
-      <div id="scienceTimeline" style="padding-top:11px;padding-bottom:4px;"></div>
     </div>
 
   </div>
 
   <!-- METER CARD -->
-  <div class="card" style="animation:fadeInUp 0.4s ease 0.2s both;margin-top:12px;">
+  <div class="card" id="riskMeterCard" data-premium-feature="meter" style="animation:fadeInUp 0.4s ease 0.2s both;margin-top:12px;">
     <div style="padding:12px 16px 20px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
         <div style="font-size:13px;font-weight:700;color:#1c1c1e;">Drinking Risk Meter</div>
@@ -767,7 +953,7 @@ body.test-ui-active .toast.show {
   </div>
 
   <!-- KNOWLEDGE CARD -->
-  <div id="didYouKnowCard" style="animation:fadeInUp 0.4s ease 0.42s both;margin-top:12px;border-radius:16px;overflow:hidden;position:relative;background:white;box-shadow:0 2px 12px rgba(0,0,0,0.07);">
+  <div id="didYouKnowCard" data-premium-feature="knowledge" style="animation:fadeInUp 0.4s ease 0.42s both;margin-top:12px;border-radius:16px;overflow:hidden;position:relative;background:white;box-shadow:0 2px 12px rgba(0,0,0,0.07);">
     <div id="dykTopBar" style="height:3px;background:linear-gradient(90deg,#34c759,#248a3d);"></div>
     <button onclick="SoberTracker.dykPrev()" style="position:absolute;left:0;top:3px;bottom:0;background:none;border:none;cursor:pointer;padding:0 10px;display:flex;align-items:center;z-index:2;min-width:36px;"><span style="font-size:28px;color:#34c759;line-height:1;">‹</span></button>
     <button onclick="SoberTracker.dykNext()" style="position:absolute;right:0;top:3px;bottom:0;background:none;border:none;cursor:pointer;padding:0 10px;display:flex;align-items:center;z-index:2;min-width:36px;"><span style="font-size:28px;color:#34c759;line-height:1;">›</span></button>
@@ -783,7 +969,7 @@ body.test-ui-active .toast.show {
 
 
   <!-- MONTHLY GRID -->
-  <div class="card" id="monthGridCard" style="animation:fadeInUp 0.4s ease 0.3s both;margin-top:12px;">
+  <div class="card" id="monthGridCard" data-premium-feature="monthGrid" style="animation:fadeInUp 0.4s ease 0.3s both;margin-top:12px;">
     <button onclick="SoberTracker.toggleMonthGrid()" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;min-height:44px;">
       <div style="font-size:13px;font-weight:700;color:#1c1c1e;">📅 Calendar</div>
       <span id="monthGridToggleBtn" style="font-size:12px;font-weight:500;color:rgba(60,60,67,0.4);">Show ▾</span>
@@ -810,7 +996,7 @@ body.test-ui-active .toast.show {
   </div>
 
   <!-- JOURNEY HISTORY CHART (shown from Journey 2+) -->
-  <div class="card" id="journeyChartCard" style="animation:fadeInUp 0.4s ease 0.35s both;margin-top:12px;">
+  <div class="card" id="journeyChartCard" data-premium-feature="journeyChart" style="animation:fadeInUp 0.4s ease 0.35s both;margin-top:12px;">
     <button onclick="SoberTracker.toggleJourneyChart()" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;min-height:44px;">
       <div>
         <div style="font-size:13px;font-weight:700;color:#1c1c1e;">📈 Journeys</div>
@@ -838,7 +1024,7 @@ body.test-ui-active .toast.show {
   </div>
 
   <!-- LIFETIME STATS — journey # (attempt), all-time sober & drink days (grow every log) -->
-  <div class="card" id="lifetimeStatsCard" style="display:none;animation:fadeInUp 0.4s ease 0.4s both;margin-top:12px;">
+  <div class="card" id="lifetimeStatsCard" data-premium-feature="lifetime" style="display:none;animation:fadeInUp 0.4s ease 0.4s both;margin-top:12px;">
     <button onclick="SoberTracker.toggleLifetimeStats()" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;min-height:44px;">
       <div style="font-size:13px;font-weight:700;color:#1c1c1e;">📊 Lifetime</div>
       <span id="lifetimeStatsToggleBtn" style="font-size:12px;font-weight:500;color:rgba(60,60,67,0.4);">Show ▾</span>
@@ -858,6 +1044,31 @@ body.test-ui-active .toast.show {
           <div style="font-size:10px;color:rgba(60,60,67,0.4);margin-top:2px;">Drink Days</div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- PREMIUM -->
+  <div class="card" id="premiumEntryCard" style="animation:fadeInUp 0.4s ease 0.42s both;margin-top:12px;">
+    <button type="button" class="premium-entry" onclick="SoberTracker.openPremium()" id="premiumEntryBtn">
+      <div class="premium-entry-title">✦ Premium</div>
+      <span class="premium-entry-status" id="premiumEntryStatus">Upgrade</span>
+    </button>
+  </div>
+
+  <!-- IMPORT / EXPORT (collapsible) -->
+  <div class="card" id="backupPanelCard" style="animation:fadeInUp 0.4s ease 0.45s both;margin-top:12px;">
+    <button type="button" onclick="SoberTracker.toggleBackupPanel()" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;min-height:44px;" aria-expanded="false" aria-controls="backupPanelBody" id="backupPanelToggle">
+      <div style="font-size:13px;font-weight:700;color:#1c1c1e;">💾 Import / Export</div>
+      <span id="backupPanelToggleBtn" style="font-size:12px;font-weight:500;color:rgba(60,60,67,0.4);">Show ▾</span>
+    </button>
+    <div id="backupPanelBody" style="display:none;padding:0 16px 16px;">
+      <div class="backup-actions">
+        <button type="button" class="btn-backup" onclick="SoberTracker.exportBackup()">Export Progress</button>
+        <button type="button" class="btn-backup" onclick="SoberTracker.importBackup()">Import Progress</button>
+        <p class="backup-status" id="lastBackupLabel">Last exported: Never</p>
+        <button type="button" class="btn-reset-data" onclick="SoberTracker.requestDeleteData()">↺ Delete All Data</button>
+      </div>
+      <input type="file" id="importFileInput" accept=".json,application/json" hidden>
     </div>
   </div>
 
@@ -1289,14 +1500,58 @@ body.test-ui-active .toast.show {
   </div>
 </div>
 
+<!-- PREMIUM PAYWALL -->
+<div class="premium-sheet" id="premiumSheet" onclick="if(event.target===this)SoberTracker.closePremium()">
+  <div class="premium-sheet-card" role="dialog" aria-modal="true" aria-labelledby="premiumSheetTitle">
+    <div class="premium-handle" aria-hidden="true"></div>
+    <div class="premium-active-banner" id="premiumActiveBanner">You’re on Premium</div>
+    <div class="premium-hero">
+      <div class="premium-hero-mark" aria-hidden="true">✦</div>
+      <h2 id="premiumSheetTitle">Sober Journey Premium</h2>
+      <p>Go farther with tools built for the long journey — not just the perfect day.</p>
+    </div>
+    <ul class="premium-benefits">
+      <li><span class="check">✓</span><span><strong>Full weekly timeline</strong> — your body recovery strip, day by day</span></li>
+      <li><span class="check">✓</span><span><strong>Progress tab</strong> — what happens to your body when you stop</span></li>
+      <li><span class="check">✓</span><span><strong>Journey past 50</strong> — Turning Point, Low Risk, Weekend Drinker & beyond</span></li>
+      <li><span class="check">✓</span><span><strong>Calendar, graphs & Lifetime</strong> — plus knowledge cards and risk meter</span></li>
+    </ul>
+    <div class="premium-plans" id="premiumPlans">
+      <button type="button" class="premium-plan" data-plan="monthly" onclick="SoberTracker.selectPremiumPlan('monthly')" id="planMonthly">
+        <div class="plan-name">Monthly</div>
+        <div class="plan-price">₹149</div>
+        <div class="plan-note">per month</div>
+      </button>
+      <button type="button" class="premium-plan selected" data-plan="yearly" onclick="SoberTracker.selectPremiumPlan('yearly')" id="planYearly">
+        <span class="plan-badge">Best value</span>
+        <div class="plan-name">Yearly</div>
+        <div class="plan-price">₹999</div>
+        <div class="plan-note">₹83/mo · save 44%</div>
+      </button>
+    </div>
+    <button type="button" class="premium-cta" id="premiumCtaBtn" onclick="SoberTracker.subscribePremium()">Start Yearly — ₹999</button>
+    <p class="premium-footnote" id="premiumFootnote">Cancel anytime. Payments will use App Store / Play Billing when published. For now this unlocks Premium on this device so you can try the experience.</p>
+    <div class="premium-secondary">
+      <button type="button" class="premium-link" onclick="SoberTracker.restorePremium()">Restore</button>
+      <button type="button" class="premium-link" onclick="SoberTracker.closePremium()">Not now</button>
+    </div>
+  </div>
+</div>
+
 <!-- CONFIRM MODAL -->
 <div class="modal" id="confirmModal">
   <div class="modal-content">
     <div class="modal-title" id="modalMessage">Are you sure?</div>
+    <div id="resetConfirmWrap" style="display:none;padding:0 20px 16px;">
+      <p style="font-size:13px;color:var(--label2);margin:0 0 10px;line-height:1.5;text-align:center;">This erases all journeys, streaks, and history on this device. Type <strong>RESET</strong> to confirm.</p>
+      <input id="resetConfirmInput" type="text" placeholder="Type RESET" autocomplete="off" autocapitalize="characters"
+        oninput="SoberTracker.checkResetConfirmInput()"
+        style="width:100%;padding:11px 14px;border:1.5px solid var(--separator);border-radius:10px;font-size:16px;font-family:inherit;outline:none;letter-spacing:1px;text-transform:uppercase;box-sizing:border-box;"/>
+    </div>
     <div class="modal-divider"></div>
     <div class="modal-actions">
       <button class="modal-action" onclick="SoberTracker.closeModal()">Cancel</button>
-      <button class="modal-action confirm" onclick="SoberTracker.confirmAction()">Confirm</button>
+      <button class="modal-action confirm" id="modalConfirmBtn" onclick="SoberTracker.confirmAction()">Confirm</button>
     </div>
   </div>
 </div>
@@ -1396,7 +1651,16 @@ const AUDIT_HARMFUL_SCORE    = 6;    // score >= this → Harmful zone
 const AUDIT_HAZARDOUS_SCORE  = 4;    // score >= this → Hazardous zone
 const AUDIT_LOW_RISK_SCORE   = 1;    // score >= this → Low Risk zone
 const CATCHUP_MAX_DAYS       = 30;   // max missed days processed per catch-up
-const MAX_COMPLETED_JOURNEYS = 20;   // journey history cap
+const MAX_COMPLETED_JOURNEYS = 20;   // free journey history cap
+const MAX_COMPLETED_JOURNEYS_PREMIUM = 100; // premium journey history cap
+const PREMIUM_KEY = 'sj_premium';
+const TRIAL_KEY = 'sj_trialStartedAt';
+const TRIAL_DAYS = 14;
+const FREE_JOURNEY_MILESTONE_DAYS = 50;
+const PREMIUM_PLANS = {
+  monthly: { id: 'monthly', label: 'Monthly', priceLabel: '₹149', cta: 'Start Monthly — ₹149', days: 31 },
+  yearly:  { id: 'yearly',  label: 'Yearly',  priceLabel: '₹999', cta: 'Start Yearly — ₹999',  days: 366 },
+};
 const MS_PER_DAY             = 86400000; // milliseconds in one day
 const CONFETTI_DURATION_MS   = 4000; // how long confetti stays on screen
 const TOAST_DURATION_MS      = 3200; // how long toast message shows
@@ -2200,6 +2464,7 @@ const UI = {
     renderJourneyChart(data);
     renderJourneyEndCard(data);
     renderLifetimeStats(data);
+    renderPremiumLocks(data);
     // Note: MeterController.updateFromJourney is NOT called here.
     // AUDIT-C score only changes when user takes the test — not on daily logging.
     // updateFromJourney is called directly from AuditOnboarding._save() instead.
@@ -2345,27 +2610,38 @@ const UI = {
       const milestoneLabel = alwaysShowLabel
         ? nameEl.dataset.label
         : nameEl.dataset.label.split(' — ')[0];
+      const premLocked = isJourneyMilestonePremiumLocked(m.days);
+      row.classList.toggle('milestone-premium-locked', premLocked);
+      row.onclick = premLocked ? () => Tracker.openPremium() : null;
+      if (premLocked) row.style.cursor = 'pointer';
+      else row.style.cursor = '';
 
       if (current >= m.days) {
         row.classList.add('milestone-active');
         nameEl.className  = 'milestone-name achieved';
         statEl.className  = 'milestone-status achieved';
         nameEl.textContent = nameEl.dataset.label;
-        statEl.textContent = journeyTrophyStatusDisplay(m.days, count, true);
+        statEl.textContent = premLocked ? 'Premium' : journeyTrophyStatusDisplay(m.days, count, true);
       } else if (nextMilestone && m.days === nextMilestone.days) {
         row.classList.remove('milestone-active');
         nameEl.className  = 'milestone-name';
         statEl.className  = 'milestone-status';
         nameEl.textContent = milestoneLabel;
-        statEl.textContent = journeyTrophyStatusDisplay(m.days, count, false);
+        statEl.textContent = premLocked ? 'Premium' : journeyTrophyStatusDisplay(m.days, count, false);
       } else {
         row.classList.remove('milestone-active');
         nameEl.className  = 'milestone-name';
         statEl.className  = 'milestone-status';
         nameEl.textContent = milestoneLabel;
-        statEl.textContent = journeyTrophyStatusDisplay(m.days, count, false);
+        statEl.textContent = premLocked ? 'Premium' : journeyTrophyStatusDisplay(m.days, count, false);
       }
     });
+
+    const taking = el('takingControlStage');
+    const stageLabel = taking && taking.previousElementSibling;
+    if (stageLabel && stageLabel.classList.contains('stage-label')) {
+      stageLabel.classList.toggle('stage-premium-locked', !hasPremiumAccess());
+    }
   },
 
   showModal(msg) {
@@ -2411,6 +2687,253 @@ const MidnightTimer = {
 // milestone checks, celebrations, journey management.
 // UI calls come in here, data gets saved, UI re-renders.
 // ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+// BACKUP — export / import / delete local progress
+// ═══════════════════════════════════════════════════════════════
+const BACKUP_FORMAT = 'sober-journey-backup';
+const BACKUP_VERSION = 1;
+const LAST_BACKUP_KEY = 'sj_lastBackupAt';
+
+let pendingImportBackup = null;
+
+function buildBackupPayload(data) {
+  const state = AuditSession.forPersist(data || Tracker.data || DataManager.load());
+  return {
+    format: BACKUP_FORMAT,
+    version: BACKUP_VERSION,
+    exportedAt: new Date().toISOString(),
+    onboardingComplete: localStorage.getItem('sj_onboarded') === '1',
+    state: JSON.parse(JSON.stringify(state)),
+  };
+}
+
+function parseBackupJson(text) {
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch (e) {
+    return { ok: false, error: 'invalid-json' };
+  }
+  if (!parsed || typeof parsed !== 'object') return { ok: false, error: 'invalid-json' };
+
+  let saved = parsed;
+  let exportedAt = null;
+  let onboardingComplete = null;
+
+  if (parsed.format === BACKUP_FORMAT) {
+    if (!parsed.state || typeof parsed.state !== 'object') return { ok: false, error: 'missing-state' };
+    saved = parsed.state;
+    exportedAt = parsed.exportedAt || null;
+    onboardingComplete = parsed.onboardingComplete;
+  }
+
+  if (typeof saved.attempt !== 'number' || !saved.currentScore || typeof saved.currentScore !== 'object') {
+    return { ok: false, error: 'not-backup' };
+  }
+
+  return {
+    ok: true,
+    state: DataManager._migrate(saved),
+    exportedAt,
+    onboardingComplete,
+  };
+}
+
+function recordLastBackupAt(iso) {
+  try { localStorage.setItem(LAST_BACKUP_KEY, iso || new Date().toISOString()); } catch (e) {}
+}
+
+function clearLastBackupAt() {
+  try { localStorage.removeItem(LAST_BACKUP_KEY); } catch (e) {}
+}
+
+function formatLastBackupLabel() {
+  let raw = null;
+  try { raw = localStorage.getItem(LAST_BACKUP_KEY); } catch (e) {}
+  if (!raw) return 'Never';
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return 'Never';
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function renderBackupStatus() {
+  const label = el('lastBackupLabel');
+  if (label) label.textContent = 'Last exported: ' + formatLastBackupLabel();
+}
+
+function downloadBackupFile(json, filename) {
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+function formatImportConfirmMessage(backup) {
+  if (!backup) return 'Restore this export? Current progress on this device will be replaced.';
+  const when = backup.exportedAt
+    ? new Date(backup.exportedAt).toLocaleString()
+    : 'an earlier save';
+  const journey = (backup.state && backup.state.attempt) || 1;
+  return `Restore progress exported ${when}? (Journey ${journey}) This replaces your current progress on this device.`;
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// PREMIUM — local entitlement (billing wiring later)
+// ═══════════════════════════════════════════════════════════════
+let selectedPremiumPlan = 'yearly';
+
+function getPremiumRecord() {
+  try {
+    const raw = localStorage.getItem(PREMIUM_KEY);
+    if (!raw) return null;
+    const rec = JSON.parse(raw);
+    if (!rec || typeof rec !== 'object') return null;
+    return rec;
+  } catch (e) {
+    return null;
+  }
+}
+
+function isPremiumActive() {
+  const rec = getPremiumRecord();
+  if (!rec || !rec.active) return false;
+  if (rec.expiresAt) {
+    const exp = new Date(rec.expiresAt).getTime();
+    if (!Number.isNaN(exp) && Date.now() > exp) return false;
+  }
+  return true;
+}
+
+function ensureTrialStarted() {
+  try {
+    if (!localStorage.getItem(TRIAL_KEY)) {
+      localStorage.setItem(TRIAL_KEY, new Date().toISOString());
+    }
+  } catch (e) {}
+}
+
+function getTrialStartedAt() {
+  try {
+    const raw = localStorage.getItem(TRIAL_KEY);
+    if (!raw) return null;
+    const d = new Date(raw);
+    return Number.isNaN(d.getTime()) ? null : d;
+  } catch (e) {
+    return null;
+  }
+}
+
+function isTrialActive() {
+  if (isPremiumActive()) return false;
+  const start = getTrialStartedAt();
+  if (!start) return true; // first session before stamp — treat as trial
+  const ends = start.getTime() + (TRIAL_DAYS * MS_PER_DAY);
+  return Date.now() <= ends;
+}
+
+function hasPremiumAccess() {
+  return isPremiumActive() || isTrialActive();
+}
+
+function trialDaysLeft() {
+  const start = getTrialStartedAt();
+  if (!start) return TRIAL_DAYS;
+  const ends = start.getTime() + (TRIAL_DAYS * MS_PER_DAY);
+  return Math.max(0, Math.ceil((ends - Date.now()) / MS_PER_DAY));
+}
+
+function journeyHistoryCap() {
+  return hasPremiumAccess() ? MAX_COMPLETED_JOURNEYS_PREMIUM : MAX_COMPLETED_JOURNEYS;
+}
+
+function isJourneyMilestonePremiumLocked(days) {
+  return !hasPremiumAccess() && (days | 0) > FREE_JOURNEY_MILESTONE_DAYS;
+}
+
+function savePremiumRecord(rec) {
+  try { localStorage.setItem(PREMIUM_KEY, JSON.stringify(rec)); } catch (e) {}
+}
+
+function clearPremiumRecord() {
+  try { localStorage.removeItem(PREMIUM_KEY); } catch (e) {}
+}
+
+function makePremiumLockOverlay(title, sub) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'premium-lock-overlay';
+  btn.onclick = () => Tracker.openPremium();
+  btn.innerHTML = `<span class="lock-icon">🔒</span>
+    <span class="lock-title">${title}</span>
+    <span class="lock-sub">${sub}</span>
+    <span class="lock-cta">Unlock with Premium</span>`;
+  return btn;
+}
+
+function setFeatureLocked(cardEl, locked, title, sub) {
+  if (!cardEl) return;
+  cardEl.classList.toggle('feature-locked', !!locked);
+  const existing = cardEl.querySelector(':scope > .premium-lock-overlay');
+  if (!locked) {
+    if (existing) existing.remove();
+    return;
+  }
+  if (existing) return;
+  cardEl.appendChild(makePremiumLockOverlay(title, sub));
+}
+
+function renderPremiumLocks(data) {
+  const unlocked = hasPremiumAccess();
+
+  // Progress tab lock badge on segment button
+  const segBtns = document.querySelectorAll('.seg-btn');
+  if (segBtns[2]) segBtns[2].classList.toggle('seg-locked', !unlocked);
+
+  const progressTab = el('progressTabContent');
+  if (progressTab) {
+    progressTab.classList.toggle('feature-locked', !unlocked);
+    let ov = progressTab.querySelector(':scope > .premium-lock-overlay');
+    if (!unlocked && !ov) {
+      progressTab.appendChild(makePremiumLockOverlay(
+        'Progress is Premium',
+        'See how your body recovers over time after your free trial.'
+      ));
+    } else if (unlocked && ov) ov.remove();
+  }
+
+  setFeatureLocked(el('monthGridCard'), !unlocked, 'Monthly calendar', 'Browse your full month history with Premium.');
+  setFeatureLocked(el('journeyChartCard'), !unlocked, 'Journey graphs', 'Compare journeys after your trial with Premium.');
+  setFeatureLocked(el('lifetimeStatsCard'), !unlocked, 'Lifetime stats', 'Career totals unlock with Premium.');
+  setFeatureLocked(el('didYouKnowCard'), !unlocked, 'Knowledge cards', 'Extra insights are part of Premium.');
+  setFeatureLocked(el('riskMeterCard'), !unlocked, 'Risk meter', 'AUDIT-C meter and re-tests are Premium after trial.');
+
+  // Reduce target / low risk can stay tied to meter access
+  setFeatureLocked(el('reductionTargetCard'), !unlocked, 'Reduction target', 'Targets unlock with Premium.');
+}
+
+function renderPremiumEntry() {
+  const status = el('premiumEntryStatus');
+  if (!status) return;
+  if (isPremiumActive()) {
+    status.textContent = 'Active';
+    status.classList.add('is-premium');
+  } else if (isTrialActive()) {
+    const left = trialDaysLeft();
+    status.textContent = left <= 1 ? 'Trial · last day' : `Trial · ${left}d`;
+    status.classList.remove('is-premium');
+  } else {
+    status.textContent = 'Upgrade';
+    status.classList.remove('is-premium');
+  }
+}
+
 const Tracker = {
   data:            null,
   pendingAction:   null,
@@ -2419,6 +2942,7 @@ const Tracker = {
   _currentStreaks: [], // memory-only — not persisted. Used for future analytics.
 
   init() {
+    ensureTrialStarted();
     this.data = DataManager.load();
     if (typeof this.data.dykIndex !== 'number') this.data.dykIndex = 0;
     if (!this.data.journeyStartKey) {
@@ -2715,20 +3239,288 @@ const Tracker = {
 
   showConfirmModal(action) {
     this.pendingAction = action;
-    UI.showModal(action === 'success' ? 'Mark today as sober?' : 'Log a drink? This uses one chance.');
+    const wrap = el('resetConfirmWrap');
+    const input = el('resetConfirmInput');
+    const btn = el('modalConfirmBtn');
+    if (wrap) wrap.style.display = 'none';
+    if (input) input.value = '';
+    if (btn) {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.textContent = 'Confirm';
+    }
+
+    let msg = 'Log a drink? This uses one chance.';
+    if (action === 'success') msg = 'Mark today as sober?';
+    else if (action === 'reset') {
+      msg = 'Delete all data?';
+      if (wrap) wrap.style.display = 'block';
+      if (btn) {
+        btn.textContent = 'Yes, delete all';
+        btn.disabled = true;
+        btn.style.opacity = '0.4';
+      }
+    } else if (action === 'import') {
+      msg = formatImportConfirmMessage(pendingImportBackup);
+      if (btn) btn.textContent = 'Restore progress';
+    }
+    UI.showModal(msg);
+    if (action === 'reset' && input) setTimeout(() => input.focus(), 80);
   },
 
-  closeModal() { UI.hideModal(); this.pendingAction = null; },
+  checkResetConfirmInput() {
+    const input = el('resetConfirmInput');
+    const btn = el('modalConfirmBtn');
+    if (!input || !btn || this.pendingAction !== 'reset') return;
+    const ok = input.value.trim().toUpperCase() === 'RESET';
+    btn.disabled = !ok;
+    btn.style.opacity = ok ? '1' : '0.4';
+  },
+
+  closeModal() {
+    UI.hideModal();
+    this.pendingAction = null;
+    pendingImportBackup = null;
+    const wrap = el('resetConfirmWrap');
+    const input = el('resetConfirmInput');
+    const btn = el('modalConfirmBtn');
+    if (wrap) wrap.style.display = 'none';
+    if (input) input.value = '';
+    if (btn) {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.textContent = 'Confirm';
+    }
+  },
 
   confirmAction() {
-    const a = this.pendingAction; this.closeModal();
+    const a = this.pendingAction;
+    const importBackup = a === 'import' ? pendingImportBackup : null;
+    if (a === 'reset') {
+      const input = el('resetConfirmInput');
+      if (!input || input.value.trim().toUpperCase() !== 'RESET') return;
+    }
+    this.closeModal();
     if (a === 'success') this._doSuccess();
     else if (a === 'fail') this._doFail();
+    else if (a === 'reset') this._deleteAllData();
+    else if (a === 'import') this._restoreImportBackup(importBackup);
+  },
+
+  toggleBackupPanel() {
+    const body = el('backupPanelBody');
+    const btn = el('backupPanelToggleBtn');
+    const toggle = el('backupPanelToggle');
+    if (!body) return;
+    const open = body.style.display !== 'none';
+    body.style.display = open ? 'none' : 'block';
+    if (btn) btn.textContent = open ? 'Show ▾' : 'Hide ▴';
+    if (toggle) toggle.setAttribute('aria-expanded', open ? 'false' : 'true');
+    if (!open) renderBackupStatus();
+  },
+
+  openPremium() {
+    selectedPremiumPlan = selectedPremiumPlan || 'yearly';
+    this.selectPremiumPlan(selectedPremiumPlan);
+    const sheet = el('premiumSheet');
+    const banner = el('premiumActiveBanner');
+    const cta = el('premiumCtaBtn');
+    const active = isPremiumActive();
+    if (banner) {
+      if (active) {
+        banner.textContent = 'You’re on Premium';
+        banner.classList.add('show');
+      } else if (isTrialActive()) {
+        const left = trialDaysLeft();
+        banner.textContent = left <= 1
+          ? 'Free trial ends today'
+          : `Free trial · ${left} days left`;
+        banner.classList.add('show');
+      } else {
+        banner.classList.remove('show');
+      }
+    }
+    if (cta) {
+      cta.disabled = active;
+      if (active) cta.textContent = 'Premium active';
+      else this.selectPremiumPlan(selectedPremiumPlan);
+    }
+    if (sheet) {
+      sheet.classList.add('open');
+      document.body.classList.add('modal-open');
+    }
+  },
+
+  closePremium() {
+    const sheet = el('premiumSheet');
+    if (sheet) sheet.classList.remove('open');
+    document.body.classList.remove('modal-open');
+  },
+
+  selectPremiumPlan(planId) {
+    if (!PREMIUM_PLANS[planId]) return;
+    selectedPremiumPlan = planId;
+    document.querySelectorAll('.premium-plan').forEach((btn) => {
+      btn.classList.toggle('selected', btn.dataset.plan === planId);
+    });
+    const cta = el('premiumCtaBtn');
+    if (cta && !isPremiumActive()) cta.textContent = PREMIUM_PLANS[planId].cta;
+  },
+
+  subscribePremium() {
+    if (isPremiumActive()) {
+      showToast('Premium is already active on this device.');
+      return;
+    }
+    const plan = PREMIUM_PLANS[selectedPremiumPlan] || PREMIUM_PLANS.yearly;
+    const expires = new Date();
+    expires.setDate(expires.getDate() + (plan.days | 0));
+    savePremiumRecord({
+      active: true,
+      plan: plan.id,
+      startedAt: new Date().toISOString(),
+      expiresAt: expires.toISOString(),
+      source: 'local-stub',
+    });
+    renderPremiumEntry();
+    if (this.data) UI.renderAll(this.data);
+    this.closePremium();
+    showToast(plan.id === 'yearly' ? 'Yearly Premium unlocked' : 'Monthly Premium unlocked');
+  },
+
+  restorePremium() {
+    if (isPremiumActive()) {
+      renderPremiumEntry();
+      showToast('Premium restored on this device.');
+      this.closePremium();
+      return;
+    }
+    showToast('No Premium purchase found on this device yet.');
+  },
+
+  exportBackup() {
+    const payload = buildBackupPayload(this.data);
+    const json = JSON.stringify(payload, null, 2);
+    const filename = `sober-journey-backup-${dateKey(getAppToday(this.data))}.json`;
+    const file = new File([json], filename, { type: 'application/json' });
+    const exportedAt = payload.exportedAt;
+
+    const finish = () => {
+      recordLastBackupAt(exportedAt);
+      renderBackupStatus();
+    };
+
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: 'Sober Journey export' })
+        .then(() => {
+          finish();
+          showToast('Export ready — save to Files or iCloud.');
+        })
+        .catch((e) => {
+          if (e && e.name === 'AbortError') return;
+          downloadBackupFile(json, filename);
+          finish();
+          showToast('Export saved to downloads.');
+        });
+      return;
+    }
+
+    downloadBackupFile(json, filename);
+    finish();
+    showToast('Export saved to downloads.');
+  },
+
+  importBackup() {
+    const picker = el('importFileInput');
+    if (!picker) return;
+    picker.onchange = (e) => this._onImportFileSelected(e);
+    picker.click();
+  },
+
+  _onImportFileSelected(e) {
+    const input = e.target;
+    const file = input.files && input.files[0];
+    input.value = '';
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = parseBackupJson(String(reader.result || ''));
+      if (!result.ok) {
+        showToast(result.error === 'invalid-json'
+          ? 'That file is not valid JSON.'
+          : 'That is not a valid Sober Journey export.');
+        return;
+      }
+      pendingImportBackup = result;
+      this.showConfirmModal('import');
+    };
+    reader.onerror = () => showToast('Could not read that file.');
+    reader.readAsText(file);
+  },
+
+  requestDeleteData() {
+    this.showConfirmModal('reset');
+  },
+
+  _restoreImportBackup(backup) {
+    if (!backup || !backup.state) {
+      showToast('Nothing to restore.');
+      return;
+    }
+    DataManager.flush();
+    this.data = DataManager._migrate(JSON.parse(JSON.stringify(backup.state)));
+    AuditSession.clearFields(this.data);
+    if (backup.onboardingComplete === true) {
+      try { localStorage.setItem('sj_onboarded', '1'); } catch (e) {}
+    } else if (backup.onboardingComplete === false) {
+      try { localStorage.removeItem('sj_onboarded'); } catch (e) {}
+    }
+    if (backup.exportedAt) recordLastBackupAt(backup.exportedAt);
+    DataManager.saveNow(this.data);
+    this._celebQueue = [];
+    this._celebrating = false;
+    this.switchTab(0);
+    refreshStreakUI(this.data);
+    UI.renderAll(this.data);
+    renderBackupStatus();
+    renderWelcomeHint(this.data);
+    showToast('Progress restored.');
+  },
+
+  _deleteAllData() {
+    DataManager.flush();
+    try { localStorage.removeItem(DataManager.KEY); } catch (e) {}
+    try { localStorage.removeItem('sj_onboarded'); } catch (e) {}
+    try { localStorage.removeItem('sj_welcome_dismissed'); } catch (e) {}
+    clearLastBackupAt();
+    this.data = DataManager.defaults();
+    this._celebQueue = [];
+    this._celebrating = false;
+    this._currentStreaks = [];
+    DataManager.saveNow(this.data);
+    this.switchTab(0);
+    refreshStreakUI(this.data);
+    UI.renderAll(this.data);
+    renderBackupStatus();
+    renderWelcomeHint(this.data);
+    if (typeof MeterController !== 'undefined' && MeterController.init) {
+      try { MeterController.init(); } catch (e) {}
+    }
+    showToast('All data deleted.');
+    if (typeof Onboarding !== 'undefined' && Onboarding.show) {
+      Onboarding.current = 0;
+      Onboarding.show();
+    }
   },
 
   closeAcknowledge() { el('acknowledgeModal').classList.remove('active'); },
 
   switchTab(idx) {
+    if (idx === 2 && !hasPremiumAccess()) {
+      this.openPremium();
+      // Still show the tab (with overlay) so the lock is visible
+    }
     document.querySelectorAll('.seg-btn').forEach((b,i)     => b.classList.toggle('active', i === idx));
     document.querySelectorAll('.tab-content').forEach((c,i) => c.classList.toggle('active', i === idx));
   },
@@ -2832,8 +3624,9 @@ const Tracker = {
     if (d.journeyPendingReset) return;
     if (!d.completedJourneys) d.completedJourneys = [];
     d.completedJourneys.push({ attempt: d.attempt, score: {...d.currentScore}, date: new Date().toISOString() });
-    if (d.completedJourneys.length > MAX_COMPLETED_JOURNEYS) {
-      d.completedJourneys = d.completedJourneys.slice(-MAX_COMPLETED_JOURNEYS);
+    const histCap = journeyHistoryCap();
+    if (d.completedJourneys.length > histCap) {
+      d.completedJourneys = d.completedJourneys.slice(-histCap);
     }
     const prevBest = d.highestScore.success | 0;
     this._updateBest();
@@ -4019,6 +4812,33 @@ function isStreakBroken(data) {
 }
 
 function renderBodyTimeline(data) {
+  const signal = el('streakSignal');
+  const full = el('bodyTimelineFull');
+  const signalValue = el('streakSignalValue');
+  const signalSub = el('streakSignalSub');
+  const signalStreak = getDisplayStreak(data) | 0;
+
+  if (!hasPremiumAccess()) {
+    if (full) full.hidden = true;
+    if (signal) signal.classList.add('show');
+    if (signalValue) {
+      signalValue.textContent = signalStreak === 1 ? '1 day' : `${signalStreak} days`;
+    }
+    if (signalSub) {
+      if (isStreakBroken(data)) {
+        signalSub.textContent = 'Streak resets tomorrow — unlock the full weekly timeline with Premium';
+      } else if (signalStreak <= 0) {
+        signalSub.textContent = 'Log sober to start — unlock the full weekly timeline with Premium';
+      } else {
+        signalSub.textContent = 'Keep going — unlock the full weekly timeline with Premium';
+      }
+    }
+    return;
+  }
+
+  if (full) full.hidden = false;
+  if (signal) signal.classList.remove('show');
+
   const phase = getBodyTimelinePhase(data);
   const broken = isStreakBroken(data);
   const titleEl = el('bodyTimelineTitle');
@@ -5298,6 +6118,8 @@ UI.renderAll = function(data) {
   renderChances(data);
   renderReductionTarget(data);
   renderDidYouKnow(data);
+  renderBackupStatus();
+  renderPremiumEntry();
 };
 
 // ── DYK FACTS ─────────────────────────────────────────────────
