@@ -1614,13 +1614,14 @@ function formatScoreText(score) {
   return `${s} – ${f}`;
 }
 
-// Best journey comparison — more sober days wins; tie → fewer drinking days wins (50-9 beats 50-10).
-// A 10-drink best (e.g. 51-10) only wins when sober days increased after the 9th drink, not at same sober total.
+// Best journey comparison — more sober days wins; same sober → X-10 beats X-9 (journey-end special case); otherwise fewer drinks wins.
 function isScoreBetterThan(cur, best) {
   const cs = cur.success | 0, cf = cur.failures | 0;
   const bs = best.success | 0, bf = best.failures | 0;
   if (cs > bs) return true;
   if (cs < bs) return false;
+  if (cf === JOURNEY_MAX_FAILURES && bf === (JOURNEY_MAX_FAILURES - 1)) return true;  // X-10 beats X-9
+  if (bf === JOURNEY_MAX_FAILURES && cf === (JOURNEY_MAX_FAILURES - 1)) return false; // X-9 does not beat X-10
   return cf < bf;
 }
 
