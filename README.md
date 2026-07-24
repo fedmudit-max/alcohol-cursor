@@ -2,12 +2,32 @@
 
 Static PWA for GitHub Pages: `https://fedmudit-max.github.io/alcohol-cursor/`
 
+## Project structure
+
+```text
+src/
+├── main.js                 — boot
+├── firebase.js             — Firebase placeholder
+├── config/app.config.js
+├── data/local-storage.js   — DataManager
+├── data/firestore.js       — placeholder
+├── journey/journey.js      — Tracker / SoberTracker
+├── ui/renderAll.js
+├── assessment/audit.js
+├── premium/premium.js
+├── onboarding/onboarding.js
+├── constants/
+└── utils/
+css/base.css
+index.html                  — app shell (HTML + script tags)
+```
+
 ## Deploy
 
 Push these files to GitHub (branch **main**, Pages source **/ root**):
 
-- `index.html`, `manifest.json`, `sw.js`
-- `icon-180.png`, `icon-192.png`, `icon-512.png`
+- `index.html`, `manifest.json`, `sw.js`, `css/`, `src/`
+- `icon-180.png`, `icon-192.png`, `icon-512.png`, `d3.min.js`
 - `.nojekyll` (must be committed — do not gitignore it)
 
 ## Install on phone
@@ -35,7 +55,7 @@ Update full URLs in `manifest.json` (`start_url`, `scope`, `id`, icon `src` path
 
 Use Live Server or `npx serve .` — open the folder URL. Service worker needs `http://`, not `file://`.
 
-## Config (`index.html`)
+## Config (`src/config/app.config.js`)
 
 ```javascript
 const CONFIG = {
