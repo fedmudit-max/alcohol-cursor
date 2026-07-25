@@ -43,17 +43,37 @@ function getHalfProgressAtTime(when) {
   return hours >= 12 ? 0.5 : 0;
 }
 
+// Wall-clock half-progress; simulated noon falls through so real AM/PM still drives the test UI
 function getBodyTimelineHalfProgress(data) {
   if (CONFIG.showTestUI && data && data.simulatedToday) {
     const sim = new Date(data.simulatedToday);
     if (!isNaN(sim.getTime())) {
       const hours = sim.getHours() + sim.getMinutes() / 60;
-      if (hours !== 12 || sim.getMinutes() !== 0) {
+      // Exact noon is the default test stamp — use live clock so afternoon half-dot still works
+      const isDefaultNoon = Math.abs(hours - 12) < 1e-6 && sim.getMinutes() === 0 && sim.getSeconds() === 0;
+      if (!isDefaultNoon) {
         return hours >= 12 ? 0.5 : 0;
       }
     }
   }
   return getHalfProgressAtTime(new Date());
+}
+
+let _lastBodyTimelineHalf = null;
+
+// Re-render when the clock crosses noon (MidnightTimer polls this)
+function refreshBodyTimelineIfHalfChanged(data) {
+  if (!data || typeof renderBodyTimeline !== 'function') return;
+  if (!hasPremiumAccess || !hasPremiumAccess()) return;
+  const phase = getBodyTimelinePhase(data);
+  if (!(phase.travel && !phase.frozen)) {
+    _lastBodyTimelineHalf = null;
+    return;
+  }
+  const half = phase.progress;
+  if (_lastBodyTimelineHalf === half) return;
+  _lastBodyTimelineHalf = half;
+  renderBodyTimeline(data);
 }
 
 // Half-progress frozen when the user logged a drink (wall-clock at tap time)
@@ -105,7 +125,6 @@ function getBodyTimelinePhase(data) {
 
   const yest = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1, 12, 0, 0);
   const yestKey = dateKey(yest);
-  const yesterdaySober = log[yestKey] === 'sober';
   const postDrinkRestart = isPostDrinkRestartDay(data);
 
   let streak = getDisplayStreak(data);
@@ -132,7 +151,8 @@ function getBodyTimelinePhase(data) {
   } else if (postDrinkRestart) {
     anchorDay = 0;
     travel = true;
-  } else if ((streak | 0) > 0 && yesterdaySober) {
+  } else if ((streak | 0) > 0 && log[yestKey] !== 'drinking') {
+    // Yesterday sober OR still pending (catch-up popup) — keep half-dot on the streak day
     anchorDay = streak;
     travel = true;
   } else {

@@ -285,6 +285,8 @@ body.loaded { background: var(--bg); }
   color:rgba(52,199,89,0.35);
   cursor:not-allowed;
 }
+/* Header text sits inside a button, which centers text by default */
+#journeyChartCard > button > div { text-align:left; }
 .journey-chart-frame { display:flex; flex-direction:column; }
 .journey-chart-nav {
   display:flex;
