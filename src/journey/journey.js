@@ -99,6 +99,8 @@ const Tracker = {
       if (CONFIG.showTestUI) {
         showToast(`Test day: ${dateKey(nextDay)} — log sober or drink below`);
       }
+      // Previous simulated day is now "yesterday" — ask if it was never logged
+      promptYesterdayIfNeeded(d, 300);
     }
   },
 
@@ -144,6 +146,8 @@ const Tracker = {
     DataManager.saveNow(d);
     refreshStreakUI(d);
     UI.renderAll(d);
+    // Resume celebrations that were held while yesterday modal was open
+    if (this._celebQueue.length && !this._celebrating) this._showNext();
   },
 
   // Advance lastDayCheck by one calendar day (noon local — avoids DST edge cases)
@@ -528,13 +532,14 @@ const Tracker = {
   // ─── CELEBRATION QUEUE ─────────────────────────────
 
   _queueCelebration(emoji, title, msg) {
-    // If yesterday modal is still showing, wait for it to close first
+    this._celebQueue.push({ emoji, title, msg });
     const ym = el('yesterdayModal');
-    if (ym && ym.classList.contains('active')) {
-      setTimeout(() => this._queueCelebration(emoji, title, msg), 600);
+    const yesterdayOpen = ym && ym.classList.contains('active');
+    // Hold celebrations until yesterday is answered (catch-up / Next Day / 3-Day Gap)
+    if (yesterdayOpen || shouldAskYesterday(this.data)) {
+      if (!yesterdayOpen) promptYesterdayIfNeeded(this.data, 200);
       return;
     }
-    this._celebQueue.push({ emoji, title, msg });
     if (!this._celebrating) this._showNext();
   },
 

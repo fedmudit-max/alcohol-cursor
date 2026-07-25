@@ -12,9 +12,28 @@ function shouldAskYesterday(data) {
   return !data.scoredDays[yestKey];
 }
 
-function promptYesterdayIfNeeded(data, delayMs = 1000) {
+function showYesterdayModal() {
+  const ym = el('yesterdayModal');
+  if (!ym) return;
+  // Celebrations must wait — they steal the same z-index layer if shown first
+  const cm = el('celebrationModal');
+  if (cm) cm.classList.remove('active');
+  if (typeof Tracker !== 'undefined') Tracker._celebrating = false;
+  ym.style.zIndex = '1100';
+  ym.classList.add('active');
+}
+
+function promptYesterdayIfNeeded(data, delayMs = 400) {
   if (!shouldAskYesterday(data)) return;
-  setTimeout(() => el('yesterdayModal').classList.add('active'), delayMs);
+  setTimeout(() => {
+    if (!shouldAskYesterday(data)) return;
+    const ob = el('onboardingOverlay');
+    if (ob && ob.style.display === 'flex') {
+      promptYesterdayIfNeeded(data, 500);
+      return;
+    }
+    showYesterdayModal();
+  }, delayMs);
 }
 
 // Dev-only catch-up trace (visible when CONFIG.showTestUI is true)
@@ -24,8 +43,11 @@ function catchUpLog(label, detail) {
 }
 
 // --- CATCHUP ---
-// Checks if days have passed since last open and advances accordingly.
-// Rule: older missed days → auto-sober; calendar yesterday → always ask if not logged.
+// User returns after n calendar days (daysSince(lastOpen → today) === n):
+//   • Days through (today − 2) and older unlogged days → auto-sober (score++)
+//   • Day (today − 1) = yesterday → popup ask (never auto-log)
+//   • Today → left open for the user to log
+// Example: last open Mon, return Thu (n=3) → auto-sober Mon+Tue, ask about Wed, Thu is today.
 Tracker._catchUp = function() {
   if (!this.data) this.data = DataManager.load();
   const appToday = getAppToday(this.data);
@@ -60,6 +82,7 @@ Tracker._catchUp = function() {
     return;
   }
 
+  // n≥1: auto-sober everything before yesterday, then ask about yesterday
   this._autoSoberMissedDaysBeforeYesterday(this.data, days);
 
   if (this.data.journeyPendingReset) {
@@ -68,14 +91,13 @@ Tracker._catchUp = function() {
     return;
   }
 
-  // Advance to today — never auto-log yesterday; ask the user instead
+  // Land on today — never auto-log yesterday; ask the user instead
   this.data.calendarDay++;
   this.data.todayStatus = 'none';
   this.data.todaySuccessLogged = false;
   clearDrinkDayFrozenStreak(this.data);
   if (!this.data.dailyLog) this.data.dailyLog = {};
 
-  const yestKey = calendarYesterdayKey(this.data);
   if (!this.data.scoredDays) this.data.scoredDays = {};
   const askYesterday = shouldAskYesterday(this.data);
 
@@ -96,17 +118,19 @@ Tracker._catchUp = function() {
     autoSoberAdded: added,
     dailyLog: Object.keys(this.data.dailyLog || {}).sort(),
     askYesterday,
+    yesterdayKey: calendarYesterdayKey(this.data),
   });
   if (CONFIG.showTestUI && added > 0) {
-    showToast(`Catch-up: +${added} sober · ${this.data.currentStreak | 0} day streak`);
+    showToast(`Catch-up: +${added} sober · ask yesterday · ${this.data.currentStreak | 0}d streak`);
   }
 
+  // Always prefer the yesterday prompt over milestone celebrations after a gap
   if (askYesterday) {
-    promptYesterdayIfNeeded(this.data);
+    promptYesterdayIfNeeded(this.data, 200);
   }
 };
 
-// Auto-sober every unlogged calendar day from lastDayCheck up to (not including) yesterday.
+// Auto-sober every unlogged day from last open up to (but never including) calendar yesterday.
 Tracker._autoSoberMissedDaysBeforeYesterday = function(d, days) {
   if (!d.dailyLog) d.dailyLog = {};
   if (!d.scoredDays) d.scoredDays = {};
@@ -116,6 +140,7 @@ Tracker._autoSoberMissedDaysBeforeYesterday = function(d, days) {
   const appToday = getAppToday(d);
   const yesterday = new Date(appToday);
   yesterday.setDate(yesterday.getDate() - 1);
+  const yestKey = dateKey(yesterday);
   const yestNoon = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 12, 0, 0);
 
   const lastOpen = new Date(d.lastDayCheck);
@@ -142,6 +167,8 @@ Tracker._autoSoberMissedDaysBeforeYesterday = function(d, days) {
     if (d.journeyPendingReset) break;
 
     const key = dateKey(cursor);
+    // Hard stop — yesterday is for the popup only
+    if (key >= yestKey) break;
     if (d.journeyStartKey && key < d.journeyStartKey) {
       cursor.setDate(cursor.getDate() + 1);
       continue;
@@ -158,8 +185,10 @@ Tracker._autoSoberMissedDaysBeforeYesterday = function(d, days) {
   recalculateStreakFromLog(d);
 };
 
-// Auto-sober missed days before yesterday. Pre-logged drinks must score via _recordDrinkDay, not a silent flag.
+// Auto-sober a missed day before yesterday. Never call this for calendar yesterday.
 Tracker._processMissedCatchUpDay = function(d, key) {
+  const yestKey = calendarYesterdayKey(d);
+  if (key >= yestKey) return; // yesterday → popup only; today+ never here
   if (d.scoredDays[key]) return;
   if (d.dailyLog[key] === 'drinking') {
     if (journeyDrinkLogKeys(d).length > (d.currentScore.failures | 0)) {
@@ -282,7 +311,8 @@ window.SJ_testCatchUp = function(gapDays) {
   });
   showToast(`3-day gap #${d.gapSimCount}: +${autoAdded} sober · ${dateKey(newToday)} · yesterday +1 more`);
 
-  setTimeout(() => el('yesterdayModal').classList.add('active'), 800);
+  // Show yesterday prompt first (before deferred celebrations from auto-sober)
+  setTimeout(() => showYesterdayModal(), 100);
 };
 
 // Rewind from current app day so Simulate 3-Day Gap works anytime (incl. after Next Day)
