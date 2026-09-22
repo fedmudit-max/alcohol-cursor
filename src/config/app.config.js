@@ -91,11 +91,15 @@ const D3_RETRY_MAX           = 20;   // stop retrying after this many attempts
 // AUDIT-C results stay in memory only for the current page load.
 // Reload or reopening the app clears the test; journey data stays in localStorage.
 
+// Premium: local-stub unlocks on device only — replace with Capacitor Play/App Store billing later.
+const PREMIUM_BILLING_MODE = 'local-stub';
+
 const CONFIG = {
   isProduction:   true,
-  showTestUI:     true,
+  showTestUI:     false,
   showOnboarding: true,
-  buildTag:       'personal-v1',
+  buildTag:       'production',
+  premiumBilling: PREMIUM_BILLING_MODE,
 };
 
 // ═══════════════════════════════════════════════════════════════

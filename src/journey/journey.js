@@ -64,6 +64,7 @@ const Tracker = {
   // --- AUTO ADVANCE ---
   // batchMode=true: skip save/render/celebrations (called from _catchUp loop — saves once after all days)
   autoAdvanceDay(batchMode = false) {
+    if (!CONFIG.showTestUI) return;
     const d = this.data;
     if (!d.dailyLog) d.dailyLog = {};
     if (d.journeyPendingReset) {

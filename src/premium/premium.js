@@ -1,6 +1,8 @@
 /* ===== src/premium/premium.js ===== */
 'use strict';
-// PREMIUM — local entitlement (billing wiring later)
+// PREMIUM — entitlement layer (trial + feature gates).
+// Billing: CONFIG.premiumBilling === 'local-stub' (non-production). Do not ship as paid IAP;
+// wire Capacitor native billing here and set premiumBilling to 'store' when ready.
 // ═══════════════════════════════════════════════════════════════
 let selectedPremiumPlan = 'yearly';
 
@@ -401,17 +403,22 @@ Tracker.subscribePremium = function() {
   const plan = PREMIUM_PLANS[selectedPremiumPlan] || PREMIUM_PLANS.yearly;
   const expires = new Date();
   expires.setDate(expires.getDate() + (plan.days | 0));
+  const billingMode = (CONFIG.premiumBilling || 'local-stub');
   savePremiumRecord({
     active: true,
     plan: plan.id,
     startedAt: new Date().toISOString(),
     expiresAt: expires.toISOString(),
-    source: 'local-stub',
+    source: billingMode,
   });
   renderPremiumEntry();
   if (this.data) UI.renderAll(this.data);
   this.closePremium();
-  showToast(plan.id === 'yearly' ? 'Yearly Premium unlocked' : 'Monthly Premium unlocked');
+  if (billingMode === 'local-stub') {
+    showToast('Premium unlocked on this device (dev stub — not a store purchase).');
+  } else {
+    showToast(plan.id === 'yearly' ? 'Yearly Premium unlocked' : 'Monthly Premium unlocked');
+  }
 };
 
 Tracker.restorePremium = function() {

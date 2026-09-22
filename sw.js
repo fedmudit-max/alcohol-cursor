@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = 'sober-journey-v91';
+const CACHE_NAME = 'sober-journey-v92';
 
 function scopeUrl(path) {
   return new URL(path, self.registration.scope).href;

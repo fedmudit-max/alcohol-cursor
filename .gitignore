@@ -1,4 +1,9 @@
 /tests
 .DS_Store
-/alcohol-backend-testing
+**/.DS_Store
+__MACOSX/
+**/__MACOSX/**
+*.backup.html
 index.monolith.backup.html
+/dist/
+/alcohol-backend-testing

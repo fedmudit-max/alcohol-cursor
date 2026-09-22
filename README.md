@@ -26,9 +26,15 @@ index.html                  — app shell (HTML + script tags)
 
 Push these files to GitHub (branch **main**, Pages source **/ root**):
 
-- `index.html`, `manifest.json`, `sw.js`, `css/`, `src/`
-- `icon-180.png`, `icon-192.png`, `icon-512.png`, `d3.min.js`
+- `index.html`, `manifest.json`, `sw.js`, `css/`, `src/`, `assets/`
+- `d3.min.js`
 - `.nojekyll` (must be committed — do not gitignore it)
+
+**Release folder (optional):** `./scripts/build-release.sh` writes a clean `dist/` tree without `.git`, `.DS_Store`, `__MACOSX`, backup HTML, or dev-only folders. Use `dist/` as the Capacitor `www` root when you wrap the app.
+
+**Before native (Capacitor):** Keep journey/streak/storage logic frozen; fix web issues first. Premium uses `CONFIG.premiumBilling: 'local-stub'` until Play/App Store billing is wired.
+
+**Storage sanity:** `node scripts/storage-sanity.mjs`
 
 ## Install on phone
 
@@ -60,9 +66,10 @@ Use Live Server or `npx serve .` — open the folder URL. Service worker needs `
 ```javascript
 const CONFIG = {
   isProduction:   true,
-  showTestUI:     false,
+  showTestUI:     false,   // true only for local dev (test bar, sim day, SJ_status)
   showOnboarding: true,
-  buildTag:       'personal-v1',
+  buildTag:       'production',
+  premiumBilling: 'local-stub', // non-production until Capacitor store billing
 };
 ```
 

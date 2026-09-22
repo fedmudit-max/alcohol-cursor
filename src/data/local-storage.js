@@ -85,8 +85,9 @@ const DataManager = {
     try {
       const raw = localStorage.getItem(this.KEY);
       if (!raw) return this.defaults();
-      return this._migrate(JSON.parse(raw));
-    } catch(e) {
+      const parsed = JSON.parse(raw);
+      return this._migrate(parsed);
+    } catch (e) {
       console.warn('SoberJourney: localStorage data corrupted — starting fresh.');
       return this.defaults();
     }
@@ -128,7 +129,11 @@ const DataManager = {
   },
 
   _migrate(data) {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      return this.defaults();
+    }
     const def = this.defaults();
+    if (!CONFIG.showTestUI) delete data.simulatedToday;
     // Ensure all keys exist
     for (const k in def) {
       if (!(k in data)) data[k] = def[k];
