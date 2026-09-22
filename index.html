@@ -40,20 +40,20 @@
       </div>
     </div>
     <div class="current-card" id="currentCard">
-      <div class="card-label">Current Journey</div>
+      <div class="card-label">Current Score</div>
       <div class="card-value" id="currentScore">0 – 0</div>
       <div class="score-explain" id="scoreExplain">0 sober days — 0 drinking days</div>
     </div>
     <div id="welcomeHint" class="card" style="display:none;margin-top:8px;animation:fadeInUp 0.35s ease both;">
       <div style="padding:14px 16px;">
         <div style="font-size:14px;font-weight:700;color:#1c1c1e;margin-bottom:6px;">👋 Ready to start?</div>
-        <div style="font-size:13px;color:rgba(60,60,67,0.65);line-height:1.55;margin-bottom:12px;">Tap below to log today. You have <strong>10 drinking days</strong> this journey — use them honestly. Every sober day adds to your score.</div>
+        <div style="font-size:13px;color:rgba(60,60,67,0.65);line-height:1.55;margin-bottom:12px;">Tap below to log today. This journey gives you <strong>10 drinking days</strong> (like <strong>10 wickets</strong>) — each sober day adds a <strong>run</strong> to your total.</div>
         <button type="button" onclick="dismissWelcomeHint()" style="width:100%;padding:10px;background:rgba(52,199,89,0.1);border:1.5px solid rgba(52,199,89,0.25);border-radius:10px;font-size:13px;font-weight:600;color:#248a3d;cursor:pointer;font-family:inherit;">Got it</button>
       </div>
     </div>
     <div class="chances-wrap">
       <div class="chances-shelf-wrap"><div class="chances-shelf"><div class="chances-grid" id="chancesGrid"></div></div></div>
-      <div class="chances-info"><span id="journeyAvailable">10</span> 🥃 drinking days left</div>
+      <div class="chances-info"><span id="journeyAvailable">10</span> drinking days left</div>
     </div>
     <div class="btn-row">
       <button class="btn-primary" id="successBtn" onclick="SoberTracker.handleSuccess()">✓ I Did Not Drink Today</button>
@@ -95,17 +95,14 @@
     <div class="segmented-wrap">
       <div class="segmented">
         <button class="seg-btn active" onclick="SoberTracker.switchTab(0)">Streak</button>
-        <button class="seg-btn" onclick="SoberTracker.switchTab(1)">Journey</button>
+        <button class="seg-btn" onclick="SoberTracker.switchTab(1)">Milestone</button>
         <button class="seg-btn" onclick="SoberTracker.switchTab(2)">Progress</button>
       </div>
     </div>
 
     <!-- Streak Tab -->
     <div class="tab-content active">
-      <div class="journey-tab-header">
-        <div class="journey-mechanic">How many days without a drink?</div>
-      </div>
-      <div class="milestone-list">
+      <div class="milestone-list" id="streakMilestoneList">
         <div class="milestone-row" id="cs-day1"><div class="milestone-left"><div class="milestone-icon">🌞</div><div class="milestone-text"><div class="milestone-name">Day 1</div><div class="milestone-sub" id="cs-day1-sub"></div></div></div><div class="milestone-status">—</div></div>
         <div class="milestone-row" id="cs-day2"><div class="milestone-left"><div class="milestone-icon">🚶</div><div class="milestone-text"><div class="milestone-name">Day 2</div><div class="milestone-sub" id="cs-day2-sub"></div></div></div><div class="milestone-status">—</div></div>
         <div class="milestone-row" id="cs-day3"><div class="milestone-left"><div class="milestone-icon">🔥</div><div class="milestone-text"><div class="milestone-name">Day 3</div><div class="milestone-sub" id="cs-day3-sub"></div></div></div><div class="milestone-status">—</div></div>
@@ -116,78 +113,27 @@
         <div class="milestone-row" id="bestStreakItem"><div class="milestone-left"><div class="milestone-icon">🏆</div><div class="milestone-text"><div class="milestone-name">Personal Best</div></div></div><div class="milestone-status" id="longestStreakDisplay">0</div></div>
       </div>
     </div>
-    <!-- Journey Tab -->
+    <!-- Milestone Tab -->
     <div class="tab-content">
-      <div class="journey-tab-header">
-        <div class="journey-tab-subtitle">Track sober days journey against 10 drinking days. In next journey, go farther.</div>
-      </div>
-      <div class="milestone-list">
-        <div class="stage-label stage-building">Early Battle</div>
-        <div class="milestone-row" id="jm-10">
-          <div class="milestone-left"><div class="milestone-icon">⚡</div><div class="milestone-text"><div class="milestone-name" data-label="10 Days — First Win">10 Days</div></div></div>
-          <div class="milestone-status">—</div>
-        </div>
-        <div class="milestone-row" id="jm-15">
-          <div class="milestone-left"><div class="milestone-icon">🌿</div><div class="milestone-text"><div class="milestone-name" data-label="15 Days — Holding Ground">15 Days</div></div></div>
-          <div class="milestone-status">—</div>
-        </div>
-        <div class="milestone-row" id="jm-20">
-          <div class="milestone-left"><div class="milestone-icon">🌟</div><div class="milestone-text"><div class="milestone-name" data-label="20 Days — Getting Ahead">20 Days</div></div></div>
-          <div class="milestone-status">—</div>
-        </div>
+      <div class="milestone-list" id="journeyMilestoneList">
+        <div class="stage-label stage-building" id="journeyStageEarly">Early Battle</div>
+        <div id="journeySectionEarly"></div>
 
-        <div class="stage-label stage-improving">Moving Forward</div>
-        <div class="milestone-row" id="jm-30">
-          <div class="milestone-left"><div class="milestone-icon">💪</div><div class="milestone-text"><div class="milestone-name" data-label="30 Days — Momentum">30 Days</div></div></div>
-          <div class="milestone-status">—</div>
-        </div>
-        <div class="milestone-row" id="jm-40">
-          <div class="milestone-left"><div class="milestone-icon">🎯</div><div class="milestone-text"><div class="milestone-name" data-label="40 Days — Building Habit">40 Days</div></div></div>
-          <div class="milestone-status">—</div>
-        </div>
-        <div class="milestone-row" id="jm-50">
-          <div class="milestone-left"><div class="milestone-icon">🌱</div><div class="milestone-text"><div class="milestone-name" data-label="50 Days — Half Century">50 Days</div></div></div>
-          <div class="milestone-status">—</div>
-        </div>
+        <div class="stage-label stage-improving" id="journeyStageForward">Moving Forward</div>
+        <div id="journeySectionForward"></div>
 
-        <div class="stage-label stage-safe">Taking Control</div>
-        <div id="takingControlStage">
-          <div class="milestone-row" id="jm-60">
-            <div class="milestone-left"><div class="milestone-icon">✨</div><div class="milestone-text"><div class="milestone-name" data-label="60 Days — Turning Point">60 Days</div></div></div>
-            <div class="milestone-status">—</div>
-          </div>
-          <div class="milestone-row" id="jm-80">
-            <div class="milestone-left"><div class="milestone-icon">🏔️</div><div class="milestone-text"><div class="milestone-name" data-label="80 Days — Low Risk">80 Days</div></div></div>
-            <div class="milestone-status">—</div>
-          </div>
-          <div class="milestone-row" id="jm-100">
-            <div class="milestone-left"><div class="milestone-icon">💎</div><div class="milestone-text"><div class="milestone-name" data-label="100 Days — Weekend Drinker">100 Days</div></div></div>
-            <div class="milestone-status">—</div>
-          </div>
-        </div>
+        <div class="stage-label stage-safe" id="journeyStageControl">Taking Control</div>
+        <div id="journeySectionControl"></div>
 
-        <div class="stage-label stage-incontrol" id="inControlStageLabel" style="display:none;">In Control</div>
-        <div id="inControlStage" style="display:none;">
-          <div class="milestone-row" id="jm-150">
-            <div class="milestone-left"><div class="milestone-icon">🏆</div><div class="milestone-text"><div class="milestone-name" data-label="150 Days — Sustained Control">150 Days</div></div></div>
-            <div class="milestone-status">—</div>
-          </div>
-          <div class="milestone-row" id="jm-200">
-            <div class="milestone-left"><div class="milestone-icon">👑</div><div class="milestone-text"><div class="milestone-name" data-label="200 Days — Occasional Drinker">200 Days</div></div></div>
-            <div class="milestone-status">—</div>
-          </div>
-        </div>
+        <div class="stage-label stage-incontrol" id="inControlStageLabel">In Control</div>
+        <div id="journeySectionInControl"></div>
       </div>
     </div>
-
 
     <!-- Progress / Science Tab -->
     <div class="tab-content" id="progressTabContent">
       <div id="progressTabInner">
-        <div class="journey-tab-header">
-          <div class="journey-mechanic">What happens to your body when you stop drinking?</div>
-        </div>
-        <div id="scienceTimeline" style="padding-top:11px;padding-bottom:4px;"></div>
+        <div id="scienceTimeline" style="padding-top:4px;padding-bottom:4px;"></div>
       </div>
     </div>
 
@@ -220,50 +166,6 @@
       <div id="reductionTargetBody"></div>
     </div>
   </div>
-
-
-  <!-- JOURNEY END SUMMARY — shown when journeyPendingReset=true -->
-  <div class="card" id="journeyEndCard" style="animation:fadeInUp 0.4s ease 0.3s both;margin-top:12px;display:none;">
-    <div style="padding:16px;">
-      <div style="font-size:13px;font-weight:700;color:#1c1c1e;margin-bottom:14px;" id="journeyEndTitle">Journey Complete</div>
-
-      <!-- Score comparison -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
-        <div style="background:rgba(52,199,89,0.08);border-radius:12px;padding:12px;border:1px solid rgba(52,199,89,0.15);">
-          <div style="font-size:10px;color:rgba(60,60,67,0.4);font-weight:600;margin-bottom:4px;">THIS JOURNEY</div>
-          <div style="font-size:28px;font-weight:800;color:#34c759;letter-spacing:-1px;line-height:1;" id="journeyEndCurrent">—</div>
-          <div style="font-size:11px;color:rgba(60,60,67,0.4);margin-top:2px;">sober days</div>
-        </div>
-        <div style="background:rgba(255,149,0,0.08);border-radius:12px;padding:12px;border:1px solid rgba(255,149,0,0.15);">
-          <div style="font-size:10px;color:rgba(60,60,67,0.4);font-weight:600;margin-bottom:4px;">NEXT TARGET</div>
-          <div style="font-size:28px;font-weight:800;color:#ff9500;letter-spacing:-1px;line-height:1;" id="journeyEndBest">—</div>
-          <div style="font-size:11px;color:rgba(60,60,67,0.4);margin-top:2px;">sober days to beat</div>
-        </div>
-      </div>
-
-      <!-- Verdict -->
-      <div style="background:rgba(60,60,67,0.05);border-radius:12px;padding:12px 14px;margin-bottom:14px;">
-        <div style="font-size:13px;color:#1c1c1e;line-height:1.6;font-weight:500;" id="journeyEndVerdict">—</div>
-      </div>
-
-      <!-- All-time career totals (includes the journey that just ended) -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
-        <div style="text-align:center;">
-          <div style="font-size:20px;font-weight:800;color:#1c1c1e;" id="journeyEndTotal">—</div>
-          <div style="font-size:10px;color:rgba(60,60,67,0.4);margin-top:2px;">Finished</div>
-        </div>
-        <div style="text-align:center;">
-          <div style="font-size:20px;font-weight:800;color:#34c759;" id="journeyEndTotalSober">—</div>
-          <div style="font-size:10px;color:rgba(60,60,67,0.4);margin-top:2px;">All-time Sober</div>
-        </div>
-        <div style="text-align:center;">
-          <div style="font-size:20px;font-weight:800;color:rgba(60,60,67,0.4);" id="journeyEndTotalDrink">—</div>
-          <div style="font-size:10px;color:rgba(60,60,67,0.4);margin-top:2px;">All-time Drinks</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
 
   <!-- LOW RISK TARGET ZONE CARD -->
   <div class="card" id="lowRiskZoneCard" style="margin-top:12px;">
@@ -321,7 +223,7 @@
   <div class="card" id="journeyChartCard" data-premium-feature="journeyChart" style="animation:fadeInUp 0.4s ease 0.35s both;margin-top:12px;">
     <button onclick="SoberTracker.toggleJourneyChart()" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;min-height:44px;">
       <div>
-        <div style="font-size:13px;font-weight:700;color:#1c1c1e;">📈 Journeys</div>
+        <div style="font-size:13px;font-weight:700;color:#1c1c1e;">📈 History</div>
         <div id="journeyChartSubLabel" style="display:none;font-size:10px;color:rgba(60,60,67,0.35);margin-top:2px;letter-spacing:0.3px;">Sober days per journey</div>
       </div>
       <span id="journeyChartToggleBtn" style="font-size:12px;font-weight:500;color:rgba(60,60,67,0.4);">Show ▾</span>
@@ -331,7 +233,7 @@
         <div style="display:flex;align-items:stretch;">
           <svg id="journeyYAxis" aria-hidden="true" width="34" height="140" style="flex-shrink:0;"></svg>
           <div style="flex:1;">
-            <svg id="journeyChartInner" role="img" aria-label="Journey history chart — sober days per journey" viewBox="0 0 400 140" width="100%" height="140" style="display:block;overflow:visible;"></svg>
+            <svg id="journeyChartInner" role="img" aria-label="History chart — sober days per journey" viewBox="0 0 400 140" width="100%" height="140" style="display:block;overflow:visible;"></svg>
           </div>
         </div>
         <div id="journeyChartNav" class="journey-chart-nav" style="display:none;">
@@ -369,12 +271,59 @@
     </div>
   </div>
 
+  <!-- HOW 10 DRINKS WORKS -->
+  <div class="card" id="tenDrinksGuideCard" style="animation:fadeInUp 0.4s ease 0.41s both;margin-top:12px;">
+    <button type="button" onclick="SoberTracker.openTenDrinksGuide()" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;min-height:44px;">
+      <div style="font-size:13px;font-weight:700;color:#1c1c1e;">How 10 Drinks helps you cut back or quit</div>
+      <span style="font-size:18px;font-weight:300;color:rgba(60,60,67,0.35);line-height:1;">›</span>
+    </button>
+  </div>
+
+  <!-- REMINDER (Capacitor notifications later) -->
+  <div class="card" id="reminderCard" style="animation:fadeInUp 0.4s ease 0.415s both;margin-top:12px;">
+    <button type="button" onclick="SoberTracker.toggleReminderPanel()" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;min-height:44px;" aria-expanded="false" aria-controls="reminderCardBody" id="reminderPanelToggle">
+      <div style="font-size:13px;font-weight:700;color:#1c1c1e;">🔔 Reminder</div>
+      <span id="reminderPanelToggleBtn" style="font-size:12px;font-weight:500;color:rgba(60,60,67,0.4);">Show ▾</span>
+    </button>
+    <div id="reminderCardBody" style="display:none;padding:0 16px 16px;" class="reminder-card">
+      <p class="reminder-tab-lead">Get a gentle nudge to log sober or drinking for the day.</p>
+      <div class="reminder-settings">
+        <div class="reminder-row">
+          <div class="reminder-row-text">
+            <div class="reminder-row-title">Daily check-in</div>
+            <div class="reminder-row-sub" id="reminderStatusText">Off</div>
+          </div>
+          <label class="reminder-switch" aria-label="Daily check-in reminder">
+            <input type="checkbox" id="reminderDailyEnabled" onchange="SoberTracker.setReminderDailyEnabled(this.checked)">
+            <span class="reminder-switch-slider" aria-hidden="true"></span>
+          </label>
+        </div>
+        <div class="reminder-row reminder-row--time" id="reminderTimeRow">
+          <div class="reminder-row-text">
+            <div class="reminder-row-title">Reminder time</div>
+          </div>
+          <input type="time" id="reminderDailyTime" class="reminder-time-input" value="20:00" onchange="SoberTracker.setReminderDailyTime(this.value)">
+        </div>
+      </div>
+      <p class="reminder-capacitor-note">Alerts will work in the upcoming mobile app. Your choices are saved on this device until then.</p>
+    </div>
+  </div>
+
   <!-- PREMIUM -->
   <div class="card" id="premiumEntryCard" style="animation:fadeInUp 0.4s ease 0.42s both;margin-top:12px;">
-    <button type="button" class="premium-entry" onclick="SoberTracker.openPremium()" id="premiumEntryBtn">
+    <button type="button" class="premium-entry" onclick="SoberTracker.togglePremiumPanel()" id="premiumPanelToggle" aria-expanded="false" aria-controls="premiumPanelBody">
       <div class="premium-entry-title">✦ Premium</div>
-      <span class="premium-entry-status" id="premiumEntryStatus">Upgrade</span>
+      <div class="premium-entry-end">
+        <span class="premium-entry-status" id="premiumEntryStatus">Upgrade</span>
+        <span class="premium-entry-chevron" id="premiumPanelToggleBtn" aria-hidden="true">Show ▾</span>
+      </div>
     </button>
+    <div id="premiumPanelBody" class="premium-panel-inner" style="display:none;">
+      <p class="premium-panel-days" id="premiumPanelDaysLeft"></p>
+      <p class="premium-panel-active-note" id="premiumPanelActiveNote" hidden></p>
+      <button type="button" class="btn-premium-panel" id="premiumPanelSubscribeBtn" onclick="SoberTracker.openPremiumCheckout()">Subscribe</button>
+      <button type="button" class="btn-premium-restore-inline" id="premiumPanelRestoreBtn" onclick="SoberTracker.restorePremium()">Restore purchase</button>
+    </div>
   </div>
 
   <!-- IMPORT / EXPORT (collapsible) -->
@@ -401,8 +350,40 @@
   <div id="testBuildTag"></div>
   <div class="test-bar-grid">
     <button type="button" class="test-btn-next" onclick="if(!this.disabled){this.disabled=true;SoberTracker.autoAdvanceDay();setTimeout(()=>this.disabled=false,600);}">⏭ Next Day</button>
-    <button type="button" class="test-btn-gap" onclick="SJ_testCatchUp(3)">🧪 3-Day Gap</button>
-    <button type="button" class="test-btn-lock" id="testPremiumLockBtn" onclick="SoberTracker.togglePremiumLockPreview()">🔒 Locked</button>
+  </div>
+</div>
+
+<!-- HOW 10 DRINKS WORKS MODAL -->
+<div class="winning-ways-modal" id="tenDrinksGuideModal" role="dialog" aria-modal="true" aria-labelledby="tenDrinksGuideTitle">
+  <div style="background:white;border-radius:24px 24px 0 0;padding:28px 20px 48px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;">
+    <div style="width:36px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 20px;"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div id="tenDrinksGuideTitle" style="font-size:18px;font-weight:800;color:#1c1c1e;">How 10 Drinks helps you cut back or quit</div>
+      <button type="button" onclick="SoberTracker.closeTenDrinksGuide()" aria-label="Close" style="background:rgba(60,60,67,0.08);border:none;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;">✕</button>
+    </div>
+    <div class="ten-drinks-guide">
+      <p class="ten-drinks-guide-h3">Every day has two choices</p>
+      <p>☀️ <strong>✓ I Did Not Drink Today</strong> — your <strong>Sober Score</strong> increases by 1.</p>
+      <p>🍺 <strong>🥃 I Drank Today</strong> — one of the <strong>10 drinking days</strong> is used.</p>
+
+      <p>Each journey has <strong>10 drinking days</strong>. Log as many sober days as you can before 10 drinking days are used. Then this journey ends and a new one starts with 10 drinking days again.</p>
+
+      <div class="ten-drinks-guide-example">
+        <p><strong>Example — Journey 1</strong></p>
+        <p>☀️ 7 sober days<br>🍺 10 drinking days used<br>🏆 Journey score: <strong>7</strong> (sober days when the journey ended)</p>
+        <p><strong>Journey 2</strong> — Beat <strong>7</strong> sober days</p>
+      </div>
+
+      <p><strong>Streak tab</strong> — consecutive sober days in a row.<br>
+      <strong>Personal Best</strong> — longest ever streak.<br>
+      <strong>Milestone tab</strong> — sober days in <em>this</em> journey (10, 15, 20 …).</p>
+
+      <p class="ten-drinks-guide-h3">Drinking Risk Meter</p>
+      <p>It uses <strong>AUDIT-C</strong> (score <strong>0–12</strong>) to show what your drinking level means.</p>
+
+      <p class="ten-drinks-guide-foot">Logging honestly is the win. Each journey is a fresh chance to beat your Best Score.</p>
+    </div>
+    <button type="button" onclick="SoberTracker.closeTenDrinksGuide()" style="width:100%;margin-top:20px;padding:14px;background:#34c759;border:none;border-radius:14px;color:white;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;">Got it</button>
   </div>
 </div>
 
@@ -531,68 +512,8 @@
 
   <div style="width:100%;max-width:360px;">
 
-    <!-- Slide 1 — The mechanic -->
+    <!-- Screen 1 — Daily action -->
     <div class="ob-slide" id="ob-0">
-
-      <div style="font-size:20px;font-weight:700;color:white;line-height:1.65;margin-bottom:16px;">
-        You get <span style="background:rgba(255,255,255,0.15);border-radius:6px;padding:2px 9px;color:#b6ffce;">10 Drinking Days</span> per Journey.<br>
-        Log one when you drink.<br>
-        Every sober day adds to your Score.
-      </div>
-
-      <div style="background:rgba(255,255,255,0.08);border-left:3px solid rgba(255,255,255,0.5);border-radius:0 10px 10px 0;padding:11px 16px;margin-bottom:24px;">
-        <div style="font-size:15px;font-weight:500;color:rgba(255,255,255,0.85);font-style:italic;letter-spacing:0.1px;line-height:1.5;">A drinking day doesn't reset your progress.</div>
-      </div>
-
-      <div style="background:rgba(0,0,0,0.2);border-radius:22px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);">
-
-        <div style="padding:8px 18px;background:rgba(255,255,255,0.06);">
-          <span style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.35);letter-spacing:1.5px;text-transform:uppercase;">Example</span>
-        </div>
-
-        <div style="padding:20px 18px 20px;display:flex;flex-direction:column;gap:10px;">
-
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-
-            <div style="background:rgba(52,199,89,0.18);border-radius:16px;padding:16px 16px 14px;">
-              <div style="font-size:32px;margin-bottom:8px;">☀️</div>
-              <div style="font-size:12px;font-weight:500;color:rgba(255,255,255,0.45);margin-bottom:4px;">Sober days</div>
-              <div style="font-size:44px;font-weight:800;color:#b6ffce;letter-spacing:-2px;line-height:1;">20</div>
-            </div>
-
-            <div style="background:rgba(255,255,255,0.06);border-radius:16px;padding:16px 16px 14px;">
-              <div style="font-size:32px;margin-bottom:8px;">🍺</div>
-              <div style="font-size:12px;font-weight:500;color:rgba(255,255,255,0.45);margin-bottom:4px;">Drinking days used</div>
-              <div style="display:flex;align-items:baseline;gap:2px;">
-                <div style="font-size:44px;font-weight:800;color:rgba(255,255,255,0.45);letter-spacing:-2px;line-height:1;">10</div>
-                <div style="font-size:16px;font-weight:600;color:rgba(255,255,255,0.2);padding-bottom:6px;">/10</div>
-              </div>
-            </div>
-
-          </div>
-
-          <div style="background:rgba(255,208,0,0.12);border-radius:16px;padding:16px 20px;border:1px solid rgba(255,208,0,0.18);display:flex;align-items:center;justify-content:space-between;">
-            <div>
-              <div style="font-size:12px;font-weight:500;color:rgba(255,255,255,0.4);margin-bottom:4px;">Score</div>
-              <div style="font-size:56px;font-weight:800;color:#ffd060;letter-spacing:-3px;line-height:1;">20</div>
-            </div>
-            <div style="font-size:48px;line-height:1;opacity:0.6;">🏆</div>
-          </div>
-
-        </div>
-
-        <div id="ob-mechanic-footer" style="padding:15px 18px;background:rgba(52,199,89,0.15);border-top:1px solid rgba(52,199,89,0.15);">
-          <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.4);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;">Next Journey</div>
-          <div style="font-size:18px;font-weight:800;color:white;letter-spacing:-0.3px;">
-            🎯 Can you go beyond 20?
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- Slide 2 — Daily action -->
-    <div class="ob-slide" id="ob-1" style="display:none;">
       <div style="font-size:28px;font-weight:800;color:white;line-height:1.2;margin-bottom:28px;letter-spacing:-0.5px;">Did you drink<br>today?</div>
 
       <div style="width:100%;background:rgba(52,199,89,0.2);border:1.5px solid rgba(52,199,89,0.4);border-radius:16px;padding:18px 20px;margin-bottom:14px;display:flex;align-items:center;gap:16px;">
@@ -614,66 +535,57 @@
       <div style="font-size:22px;font-weight:800;color:white;letter-spacing:-0.5px;">That's it.</div>
     </div>
 
-    <!-- Slide 3 — Progress -->
-    <div class="ob-slide" id="ob-2" style="display:none;">
+    <!-- Screen 2 — Journey example (matches laotzu101) -->
+    <div class="ob-slide" id="ob-1" style="display:none;">
+      <div class="onboarding-journey-scroll">
+        <div class="onb-journey-example-divider">— Example —</div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;width:100%;">
+        <table class="onb-journey-example-table" aria-label="Example journeys">
+          <thead>
+            <tr>
+              <th scope="col">Journey</th>
+              <th scope="col">Sober days</th>
+              <th scope="col">Drinking days</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>10</td>
+              <td>10</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>15</td>
+              <td>10</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>20</td>
+              <td>10</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>30</td>
+              <td>10</td>
+            </tr>
+          </tbody>
+        </table>
 
-        <div style="background:rgba(0,0,0,0.2);border-radius:20px;padding:16px 12px 14px;border:1px solid rgba(255,255,255,0.08);display:flex;flex-direction:column;">
-          <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.7);text-align:center;line-height:1.5;margin-bottom:12px;">what we think<br>progress looks like</div>
-          <svg viewBox="0 0 120 110" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
-            <defs><marker id="arr1" markerWidth="4" markerHeight="4" refX="2" refY="2" orient="auto"><path d="M0,0 L0,4 L4,2 z" fill="rgba(255,255,255,0.9)"/></marker></defs>
-            <line x1="22" y1="6" x2="22" y2="92" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
-            <line x1="22" y1="92" x2="112" y2="92" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
-            <text x="7" y="52" fill="rgba(255,255,255,0.6)" font-size="6.5" font-family="-apple-system,sans-serif" font-weight="700" transform="rotate(-90,7,52)" text-anchor="middle" letter-spacing="0.8">PROGRESS</text>
-            <text x="67" y="105" fill="rgba(255,255,255,0.6)" font-size="6.5" font-family="-apple-system,sans-serif" font-weight="700" text-anchor="middle" letter-spacing="0.8">TIME</text>
-            <line x1="28" y1="87" x2="104" y2="16" stroke="rgba(255,255,255,0.9)" stroke-width="2.2" stroke-linecap="round" marker-end="url(#arr1)"/>
-          </svg>
-        </div>
-
-        <div style="background:rgba(0,0,0,0.2);border-radius:20px;padding:16px 12px 14px;border:1px solid rgba(255,255,255,0.18);display:flex;flex-direction:column;">
-          <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.7);text-align:center;line-height:1.5;margin-bottom:12px;">what progress<br>actually looks like</div>
-          <svg viewBox="0 0 120 110" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
-            <line x1="22" y1="6" x2="22" y2="92" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
-            <line x1="22" y1="92" x2="112" y2="92" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
-            <text x="7" y="52" fill="rgba(255,255,255,0.6)" font-size="6.5" font-family="-apple-system,sans-serif" font-weight="700" transform="rotate(-90,7,52)" text-anchor="middle" letter-spacing="0.8">PROGRESS</text>
-            <text x="67" y="105" fill="rgba(255,255,255,0.6)" font-size="6.5" font-family="-apple-system,sans-serif" font-weight="700" text-anchor="middle" letter-spacing="0.8">TIME</text>
-            <circle cx="25" cy="89" r="1.8" fill="rgba(255,255,255,0.85)"/>
-            <circle cx="31" cy="83" r="1.8" fill="rgba(255,255,255,0.85)"/>
-            <circle cx="37" cy="78" r="1.8" fill="rgba(255,255,255,0.85)"/>
-            <circle cx="43" cy="82" r="1.8" fill="rgba(255,255,255,0.85)"/>
-            <circle cx="49" cy="76" r="1.8" fill="rgba(255,255,255,0.85)"/>
-            <circle cx="55" cy="71" r="1.8" fill="rgba(255,255,255,0.85)"/>
-            <circle cx="61" cy="75" r="1.8" fill="rgba(255,255,255,0.85)"/>
-            <circle cx="67" cy="69" r="1.8" fill="rgba(255,255,255,0.85)"/>
-            <circle cx="73" cy="63" r="1.8" fill="rgba(255,255,255,0.85)"/>
-            <circle cx="79" cy="68" r="1.8" fill="rgba(255,255,255,0.85)"/>
-            <circle cx="85" cy="61" r="1.8" fill="rgba(255,255,255,0.85)"/>
-            <circle cx="91" cy="55" r="1.8" fill="rgba(255,255,255,0.85)"/>
-            <circle cx="97" cy="59" r="1.8" fill="rgba(255,255,255,0.85)"/>
-            <circle cx="103" cy="52" r="1.8" fill="rgba(255,255,255,0.85)"/>
-            <circle cx="108" cy="44" r="1.8" fill="rgba(255,255,255,0.85)"/>
-            <circle cx="110" cy="36" r="1.8" fill="rgba(255,255,255,0.85)"/>
-            <circle cx="112" cy="28" r="2" fill="white"/>
-            <circle cx="112" cy="28" r="5" fill="rgba(255,255,255,0.15)"/>
-          </svg>
-        </div>
-
+        <p class="onb-journey-goal">Goal: more sober days than your last journey.</p>
       </div>
     </div>
 
   </div>
 
-  <!-- Dots -->
-  <div style="display:flex;gap:8px;margin:32px 0 28px;">
+  <div class="onboarding-dots">
     <div class="ob-dot active" id="ob-dot-0"></div>
     <div class="ob-dot" id="ob-dot-1"></div>
-    <div class="ob-dot" id="ob-dot-2"></div>
   </div>
 
   <div style="width:100%;max-width:360px;">
-    <button id="obNextBtn" onclick="Onboarding.next()" style="width:100%;height:52px;background:white;border:none;border-radius:16px;font-size:17px;font-weight:700;color:#1e9e3e;cursor:pointer;font-family:inherit;margin-bottom:10px;">Next</button>
-    <button onclick="Onboarding.skip()" style="width:100%;min-height:44px;background:transparent;border:none;font-size:14px;font-weight:500;color:rgba(255,255,255,0.45);cursor:pointer;font-family:inherit;">Skip</button>
+    <button type="button" id="obNextBtn" onclick="Onboarding.next()" style="width:100%;height:52px;background:white;border:none;border-radius:16px;font-size:17px;font-weight:700;color:#1e9e3e;cursor:pointer;font-family:inherit;margin-bottom:10px;">Next</button>
+    <button type="button" onclick="Onboarding.skip()" style="width:100%;min-height:44px;background:transparent;border:none;font-size:14px;font-weight:500;color:rgba(255,255,255,0.45);cursor:pointer;font-family:inherit;">Skip</button>
   </div>
 
 </div>
@@ -823,41 +735,35 @@
   </div>
 </div>
 
-<!-- PREMIUM PAYWALL -->
-<div class="premium-sheet" id="premiumSheet" onclick="if(event.target===this)SoberTracker.closePremium()">
-  <div class="premium-sheet-card" role="dialog" aria-modal="true" aria-labelledby="premiumSheetTitle">
-    <div class="premium-handle" aria-hidden="true"></div>
-    <div class="premium-active-banner" id="premiumActiveBanner">You’re on Premium</div>
-    <div class="premium-hero">
-      <div class="premium-hero-mark" aria-hidden="true">✦</div>
-      <h2 id="premiumSheetTitle">Sober Journey Premium</h2>
-      <p>Go farther with tools built for the long journey — not just the perfect day.</p>
-    </div>
-    <ul class="premium-benefits">
-      <li><span class="check">✓</span><span><strong>Full weekly timeline</strong> — your body recovery strip, day by day</span></li>
-      <li><span class="check">✓</span><span><strong>Progress tab</strong> — what happens to your body when you stop</span></li>
-      <li><span class="check">✓</span><span><strong>Journey past 50</strong> — Turning Point, Low Risk, Weekend Drinker & beyond</span></li>
-      <li><span class="check">✓</span><span><strong>Calendar, graphs & Lifetime</strong> — plus knowledge cards and risk meter</span></li>
-    </ul>
-    <div class="premium-plans" id="premiumPlans">
-      <button type="button" class="premium-plan" data-plan="monthly" onclick="SoberTracker.selectPremiumPlan('monthly')" id="planMonthly">
-        <div class="plan-name">Monthly</div>
-        <div class="plan-price">₹149</div>
-        <div class="plan-note">per month</div>
+<!-- PREMIUM PAYWALL (centered overlay — laotzu101 pattern) -->
+<div class="overlay premium-overlay" id="premiumOverlay" aria-hidden="true"
+  onclick="if(event.target===this)SoberTracker.closePremium()">
+  <div class="overlay-card premium-card" role="dialog" aria-modal="true" aria-labelledby="premiumSheetTitle">
+    <div class="premium-title" id="premiumSheetTitle">Choose a plan</div>
+    <div class="premium-subtitle" id="premiumSheetSubtitle" hidden></div>
+    <div class="premium-plans" id="premiumPriceBlock">
+      <button type="button" class="premium-plan" data-plan="monthly" id="planMonthly"
+        onclick="SoberTracker.selectPremiumPlan('monthly')">
+        <div class="premium-plan-label">Monthly</div>
+        <div class="premium-plan-price">
+          <span class="premium-plan-sale">₹149</span>
+        </div>
+        <div class="premium-plan-message">per month</div>
       </button>
-      <button type="button" class="premium-plan selected" data-plan="yearly" onclick="SoberTracker.selectPremiumPlan('yearly')" id="planYearly">
-        <span class="plan-badge">Best value</span>
-        <div class="plan-name">Yearly</div>
-        <div class="plan-price">₹999</div>
-        <div class="plan-note">₹83/mo · save 44%</div>
+      <button type="button" class="premium-plan is-featured is-selected" data-plan="yearly" id="planYearly"
+        onclick="SoberTracker.selectPremiumPlan('yearly')">
+        <div class="premium-plan-label">Annual</div>
+        <div class="premium-plan-price">
+          <span class="premium-plan-list">₹1,788</span>
+          <span class="premium-plan-sale">₹999</span>
+          <span class="premium-plan-off">44% off</span>
+        </div>
+        <div class="premium-plan-message">₹83/mo · best value</div>
       </button>
     </div>
-    <button type="button" class="premium-cta" id="premiumCtaBtn" onclick="SoberTracker.subscribePremium()">Start Yearly — ₹999</button>
-    <p class="premium-footnote" id="premiumFootnote">Cancel anytime. Payments will use App Store / Play Billing when published. For now this unlocks Premium on this device so you can try the experience.</p>
-    <div class="premium-secondary">
-      <button type="button" class="premium-link" onclick="SoberTracker.restorePremium()">Restore</button>
-      <button type="button" class="premium-link" onclick="SoberTracker.closePremium()">Not now</button>
-    </div>
+    <button class="btn-premium-buy" type="button" id="premiumCtaBtn" onclick="SoberTracker.subscribePremium()">Subscribe</button>
+    <button class="btn-premium-restore" type="button" id="premiumRestoreBtn" onclick="SoberTracker.restorePremium()">Restore purchase</button>
+    <button class="btn-premium-later" type="button" id="premiumLaterBtn" onclick="SoberTracker.closePremium()">Not now</button>
   </div>
 </div>
 
@@ -925,6 +831,7 @@
 <script src="src/data/local-storage.js"></script>
 <script src="src/data/firestore.js"></script>
 <script src="src/firebase.js"></script>
+<script src="src/ui/journey-milestones.js"></script>
 <script src="src/ui/dashboard.js"></script>
 <script src="src/ui/body-timeline.js"></script>
 <script src="src/ui/timeline.js"></script>
@@ -933,6 +840,7 @@
 <script src="src/journey/midnight.js"></script>
 <script src="src/journey/daily-msg.js"></script>
 <script src="src/journey/journey.js"></script>
+<script src="src/ui/reminders.js"></script>
 <script src="src/ui/panels.js"></script>
 <script src="src/premium/premium.js"></script>
 <script src="src/data/backup.js"></script>

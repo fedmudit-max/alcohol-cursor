@@ -32,6 +32,14 @@ function showToast(msg) {
   _toastTimer = setTimeout(() => t.classList.remove('show'), TOAST_DURATION_MS);
 }
 
+// Hide boot splash and switch page background off brand green (safe to call multiple times)
+function dismissAppSplash() {
+  const splash = el('splash');
+  if (splash) splash.classList.add('hidden');
+  document.body.classList.add('loaded');
+  document.documentElement.classList.add('loaded');
+}
+
 // ═══════════════════════════════════════════════════════════════
 // MILESTONE DATA
 // ═══════════════════════════════════════════════════════════════

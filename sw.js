@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = 'sober-journey-v6';
+const CACHE_NAME = 'sober-journey-v91';
 
 function scopeUrl(path) {
   return new URL(path, self.registration.scope).href;
@@ -17,7 +17,10 @@ function precacheUrls() {
     scopeUrl('src/config/app.config.js'),
     scopeUrl('src/journey/journey.js'),
     scopeUrl('src/ui/renderAll.js'),
+    scopeUrl('src/ui/history-views.js'),
+    scopeUrl('src/ui/panels.js'),
     scopeUrl('src/data/local-storage.js'),
+    scopeUrl('src/constants/dyk.js'),
     scopeUrl('icon-180.png'),
     scopeUrl('icon-192.png'),
     scopeUrl('icon-512.png'),

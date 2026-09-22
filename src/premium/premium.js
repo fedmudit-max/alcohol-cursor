@@ -4,6 +4,20 @@
 // ═══════════════════════════════════════════════════════════════
 let selectedPremiumPlan = 'yearly';
 
+function premiumDaysLeftLabel() {
+  const left = trialDaysLeft();
+  if (left <= 0) return 'Trial ended';
+  if (left === 1) return '1 day left';
+  return `${left} days left`;
+}
+
+function syncPremiumSubscribeCta() {
+  const buyBtn = el('premiumCtaBtn');
+  if (!buyBtn || buyBtn.hidden) return;
+  const plan = PREMIUM_PLANS[selectedPremiumPlan] || PREMIUM_PLANS.yearly;
+  buyBtn.textContent = plan.id === 'yearly' ? 'Subscribe — Annual ₹999' : 'Subscribe — Monthly ₹149';
+}
+
 function getPremiumRecord() {
   try {
     const raw = localStorage.getItem(PREMIUM_KEY);
@@ -72,11 +86,51 @@ function hasPremiumAccess() {
   return isPremiumActive() || isTrialActive();
 }
 
+function setTrialStartedAtISO(iso) {
+  try {
+    if (iso == null) localStorage.removeItem(TRIAL_KEY);
+    else localStorage.setItem(TRIAL_KEY, iso);
+  } catch (e) {}
+}
+
+/** Dev A1: real free/trial entitlement (not just a visual preview). */
+function applyEntitlementTestState(mode) {
+  setForcePremiumLocked(false);
+  clearPremiumRecord();
+  if (mode === 'trial') {
+    setTrialStartedAtISO(new Date().toISOString());
+    return;
+  }
+  if (mode === 'free') {
+    // Trial started > TRIAL_DAYS ago → expired free tier
+    const past = new Date(Date.now() - ((TRIAL_DAYS + 1) * MS_PER_DAY));
+    setTrialStartedAtISO(past.toISOString());
+  }
+}
+
+function getEntitlementTestMode() {
+  if (isForcePremiumLocked()) return 'locked-preview';
+  if (isPremiumActive()) return 'premium';
+  if (isTrialActive()) return 'trial';
+  return 'free';
+}
+
 function updatePremiumLockTestBtn() {
+  const mode = getEntitlementTestMode();
+  const trialBtn = el('testPremiumTrialBtn');
+  const freeBtn = el('testPremiumFreeBtn');
+  if (trialBtn) {
+    trialBtn.classList.toggle('is-active', mode === 'trial');
+    trialBtn.title = 'A1: active trial — Premium unlocked, status shows Trial · Xd';
+  }
+  if (freeBtn) {
+    freeBtn.classList.toggle('is-active', mode === 'free');
+    freeBtn.title = 'A1: trial expired — Calendar / Journeys / Lifetime / Knowledge locked, status Upgrade';
+  }
+  // Legacy single-button preview (optional; may be removed from HTML)
   const btn = el('testPremiumLockBtn');
   if (!btn) return;
   const locked = isForcePremiumLocked();
-  // Button shows the mode you can switch TO
   btn.textContent = locked ? '✓ Default' : '🔒 Locked';
   btn.classList.toggle('is-locked-preview', locked);
   btn.title = locked
@@ -134,7 +188,6 @@ function setFeatureLocked(cardEl, locked, title, sub) {
 function renderPremiumLocks(data) {
   const unlocked = hasPremiumAccess();
 
-  // Progress tab lock badge on segment button
   const segBtns = document.querySelectorAll('.seg-btn');
   if (segBtns[2]) segBtns[2].classList.toggle('seg-locked', !unlocked);
 
@@ -151,7 +204,7 @@ function renderPremiumLocks(data) {
   }
 
   setFeatureLocked(el('monthGridCard'), !unlocked, 'Monthly calendar', 'Browse your full month history with Premium.');
-  setFeatureLocked(el('journeyChartCard'), !unlocked, 'Journey graphs', 'Compare journeys after your trial with Premium.');
+  setFeatureLocked(el('journeyChartCard'), !unlocked, 'History', 'Compare past journeys after your trial with Premium.');
   setFeatureLocked(el('lifetimeStatsCard'), !unlocked, 'Lifetime stats', 'Career totals unlock with Premium.');
   setFeatureLocked(el('didYouKnowCard'), !unlocked, 'Knowledge cards', 'Extra insights are part of Premium.');
   setFeatureLocked(el('riskMeterCard'), !unlocked, 'Risk meter', 'AUDIT-C meter and re-tests are Premium after trial.');
@@ -160,29 +213,97 @@ function renderPremiumLocks(data) {
   setFeatureLocked(el('reductionTargetCard'), !unlocked, 'Reduction target', 'Targets unlock with Premium.');
 }
 
+function renderPremiumPanelContent() {
+  const daysEl = el('premiumPanelDaysLeft');
+  const noteEl = el('premiumPanelActiveNote');
+  const subBtn = el('premiumPanelSubscribeBtn');
+  const restoreBtn = el('premiumPanelRestoreBtn');
+  const active = isPremiumActive() && !isForcePremiumLocked();
+  const trial = isTrialActive() && !isForcePremiumLocked();
+
+  if (daysEl) {
+    if (active) {
+      daysEl.textContent = '';
+    } else if (trial) {
+      daysEl.textContent = premiumDaysLeftLabel();
+      daysEl.classList.remove('is-ended');
+    } else {
+      daysEl.textContent = 'Trial ended';
+      daysEl.classList.add('is-ended');
+    }
+  }
+  if (noteEl) {
+    if (active) {
+      noteEl.hidden = false;
+      noteEl.textContent = 'You have full Premium access on this device.';
+    } else {
+      noteEl.hidden = true;
+      noteEl.textContent = '';
+    }
+  }
+  if (subBtn) subBtn.hidden = !!active;
+  if (restoreBtn) restoreBtn.hidden = !!active;
+}
+
 function renderPremiumEntry() {
   const status = el('premiumEntryStatus');
   if (!status) return;
   if (isForcePremiumLocked()) {
+    status.hidden = false;
     status.textContent = 'Locked';
     status.classList.remove('is-premium');
+    renderPremiumPanelContent();
     return;
   }
   if (isPremiumActive()) {
+    status.hidden = false;
     status.textContent = 'Active';
     status.classList.add('is-premium');
   } else if (isTrialActive()) {
-    const left = trialDaysLeft();
-    status.textContent = left <= 1 ? 'Trial · last day' : `Trial · ${left}d`;
+    status.textContent = '';
+    status.hidden = true;
     status.classList.remove('is-premium');
   } else {
+    status.hidden = false;
     status.textContent = 'Upgrade';
     status.classList.remove('is-premium');
   }
+  renderPremiumPanelContent();
 }
+
+Tracker.togglePremiumPanel = function() {
+  const body = el('premiumPanelBody');
+  const btn = el('premiumPanelToggleBtn');
+  const toggle = el('premiumPanelToggle');
+  if (!body) return;
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  if (btn) btn.textContent = open ? 'Show \u25be' : 'Hide \u25b4';
+  if (toggle) toggle.setAttribute('aria-expanded', open ? 'false' : 'true');
+  if (!open) renderPremiumPanelContent();
+};
 
 // Paywall sheet + test lock (attached to Tracker for onclick="SoberTracker.…")
 // Load this file after journey.js so Tracker exists.
+
+/** A1 — switch device to trial (unlocked) or free/expired (locked). Dev only. */
+Tracker.setEntitlementTest = function(mode) {
+  if (!CONFIG.showTestUI) return;
+  if (mode !== 'trial' && mode !== 'free') return;
+  applyEntitlementTestState(mode);
+  updatePremiumLockTestBtn();
+  renderPremiumEntry();
+  if (this.data) UI.renderAll(this.data);
+  if (mode === 'trial') {
+    const left = trialDaysLeft();
+    showToast(left <= 1
+      ? 'A1 Trial: badge “last day”, features unlocked'
+      : `A1 Trial: badge “Trial · ${left}d”, features unlocked`);
+  } else {
+    showToast('A1 Free: status “Upgrade”, Premium features locked');
+  }
+};
+
 Tracker.togglePremiumLockPreview = function() {
   if (!CONFIG.showTestUI) return;
   const next = !isForcePremiumLocked();
@@ -192,52 +313,84 @@ Tracker.togglePremiumLockPreview = function() {
   showToast(next ? 'UI: Locked preview' : 'UI: Default (unlocked)');
 };
 
-Tracker.openPremium = function() {
-  selectedPremiumPlan = selectedPremiumPlan || 'yearly';
-  this.selectPremiumPlan(selectedPremiumPlan);
-  const sheet = el('premiumSheet');
-  const banner = el('premiumActiveBanner');
-  const cta = el('premiumCtaBtn');
+function renderPremiumCheckoutSheet() {
+  const titleEl = el('premiumSheetTitle');
+  const subEl = el('premiumSheetSubtitle');
+  const priceBlock = el('premiumPriceBlock');
+  const laterBtn = el('premiumLaterBtn');
+  const buyBtn = el('premiumCtaBtn');
+  const restoreBtn = el('premiumRestoreBtn');
+  if (!titleEl) return;
+
   const active = isPremiumActive();
-  if (banner) {
-    if (active) {
-      banner.textContent = 'You’re on Premium';
-      banner.classList.add('show');
-    } else if (isTrialActive()) {
-      const left = trialDaysLeft();
-      banner.textContent = left <= 1
-        ? 'Free trial ends today'
-        : `Free trial · ${left} days left`;
-      banner.classList.add('show');
-    } else {
-      banner.classList.remove('show');
+
+  if (active) {
+    titleEl.textContent = 'You’re Premium';
+    if (subEl) {
+      subEl.hidden = false;
+      subEl.textContent = 'Full access is on. Subscriptions will use App Store / Play Billing when published; for now this device keeps your unlock.';
     }
+    if (priceBlock) priceBlock.hidden = true;
+    if (laterBtn) laterBtn.textContent = 'Close';
+    if (buyBtn) buyBtn.hidden = true;
+    if (restoreBtn) restoreBtn.hidden = true;
+  } else {
+    titleEl.textContent = 'Choose a plan';
+    if (subEl) subEl.hidden = true;
+    if (priceBlock) priceBlock.hidden = false;
+    if (laterBtn) laterBtn.textContent = isTrialActive() ? 'Not now' : 'Continue with basic logging';
+    if (buyBtn) {
+      buyBtn.hidden = false;
+      buyBtn.disabled = false;
+    }
+    if (restoreBtn) restoreBtn.hidden = false;
+    Tracker.selectPremiumPlan(selectedPremiumPlan || 'yearly');
   }
-  if (cta) {
-    cta.disabled = active;
-    if (active) cta.textContent = 'Premium active';
-    else this.selectPremiumPlan(selectedPremiumPlan);
-  }
-  if (sheet) {
-    sheet.classList.add('open');
+}
+
+function openPremiumOverlay() {
+  const overlay = el('premiumOverlay');
+  if (overlay) {
+    overlay.classList.add('active');
+    overlay.setAttribute('aria-hidden', 'false');
     document.body.classList.add('modal-open');
   }
+}
+
+/** Locked features / unlock CTAs — opens plan picker directly. */
+Tracker.openPremium = function() {
+  selectedPremiumPlan = selectedPremiumPlan || 'yearly';
+  renderPremiumCheckoutSheet();
+  openPremiumOverlay();
+};
+
+/** Premium tab Subscribe — same checkout popup (monthly / annual). */
+Tracker.openPremiumCheckout = function() {
+  if (isPremiumActive()) {
+    showToast('Premium is already active on this device.');
+    return;
+  }
+  selectedPremiumPlan = selectedPremiumPlan || 'yearly';
+  renderPremiumCheckoutSheet();
+  openPremiumOverlay();
 };
 
 Tracker.closePremium = function() {
-  const sheet = el('premiumSheet');
-  if (sheet) sheet.classList.remove('open');
+  const overlay = el('premiumOverlay');
+  if (overlay) {
+    overlay.classList.remove('active');
+    overlay.setAttribute('aria-hidden', 'true');
+  }
   document.body.classList.remove('modal-open');
 };
 
 Tracker.selectPremiumPlan = function(planId) {
   if (!PREMIUM_PLANS[planId]) return;
   selectedPremiumPlan = planId;
-  document.querySelectorAll('.premium-plan').forEach((btn) => {
-    btn.classList.toggle('selected', btn.dataset.plan === planId);
+  document.querySelectorAll('#premiumPriceBlock .premium-plan').forEach((btn) => {
+    btn.classList.toggle('is-selected', btn.dataset.plan === planId);
   });
-  const cta = el('premiumCtaBtn');
-  if (cta && !isPremiumActive()) cta.textContent = PREMIUM_PLANS[planId].cta;
+  syncPremiumSubscribeCta();
 };
 
 Tracker.subscribePremium = function() {

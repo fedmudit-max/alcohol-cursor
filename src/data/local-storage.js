@@ -77,6 +77,7 @@ const DataManager = {
       drinkDayFrozenStreak:       0,    // achieved streak held on the drinking calendar day
       drinkDayFrozenKey:          '',   // date key for drinkDayFrozenStreak
       drinkDayFrozenProgress:     0,    // 0 or 0.5 — timeline half-progress when drink was logged
+      reminders:                  { dailyEnabled: false, dailyTime: '20:00' },
     };
   },
 
@@ -156,6 +157,12 @@ const DataManager = {
     data.drinkDayFrozenStreak      = Math.max(0, parseInt(data.drinkDayFrozenStreak,      10) || 0);
     if (typeof data.drinkDayFrozenKey !== 'string') data.drinkDayFrozenKey = '';
     data.drinkDayFrozenProgress = Number(data.drinkDayFrozenProgress) >= 0.5 ? 0.5 : 0;
+    if (!data.reminders || typeof data.reminders !== 'object') {
+      data.reminders = { ...def.reminders };
+    } else {
+      if (typeof data.reminders.dailyEnabled !== 'boolean') data.reminders.dailyEnabled = false;
+      if (!/^\d{2}:\d{2}$/.test(data.reminders.dailyTime || '')) data.reminders.dailyTime = def.reminders.dailyTime;
+    }
 
     // Coerce number fields — guard against string corruption from manual edits
     data.calendarDay           = Math.max(1, parseInt(data.calendarDay)           || 1);

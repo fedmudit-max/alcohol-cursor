@@ -15,6 +15,7 @@ const Tracker = {
   _currentStreaks: [], // memory-only — not persisted. Used for future analytics.
 
   init() {
+    try {
     ensureTrialStarted();
     this.data = DataManager.load();
     if (typeof this.data.dykIndex !== 'number') this.data.dykIndex = 0;
@@ -52,10 +53,11 @@ const Tracker = {
     ensureJourneyTargetChain(this.data);
     UI.renderAll(this.data);
     MidnightTimer.start();
-    setTimeout(() => {
-      el('splash').classList.add('hidden');
-      document.body.classList.add('loaded');
-    }, 300);
+    } catch (err) {
+      console.error('[SoberJourney] init failed:', err);
+    } finally {
+      setTimeout(dismissAppSplash, 300);
+    }
   },
 
 
@@ -159,10 +161,18 @@ const Tracker = {
 
   handleSuccess() {
     if (this.data.todayStatus === 'failed' || this.data.todaySuccessLogged) return;
+    if (shouldAskYesterday(this.data)) {
+      showYesterdayModal();
+      return;
+    }
     this.showConfirmModal('success');
   },
 
   showConfirmModal(action) {
+    if ((action === 'success' || action === 'fail') && shouldAskYesterday(this.data)) {
+      showYesterdayModal();
+      return;
+    }
     this.pendingAction = action;
     const wrap = el('resetConfirmWrap');
     const input = el('resetConfirmInput');
@@ -237,10 +247,9 @@ const Tracker = {
   switchTab(idx) {
     if (idx === 2 && !hasPremiumAccess()) {
       this.openPremium();
-      // Still show the tab (with overlay) so the lock is visible
     }
-    document.querySelectorAll('.seg-btn').forEach((b,i)     => b.classList.toggle('active', i === idx));
-    document.querySelectorAll('.tab-content').forEach((c,i) => c.classList.toggle('active', i === idx));
+    document.querySelectorAll('.seg-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
+    document.querySelectorAll('.tab-content').forEach((c, i) => c.classList.toggle('active', i === idx));
   },
 
   // --- INTERNAL ---
@@ -313,7 +322,6 @@ const Tracker = {
     d.personalBestCelebrated = false;
     d.celebratedStreakMilestones = {};
     d.celebratedScienceMilestones = {};
-    // Reset Progress tab to default (Streak tab + hide long-term science milestones)
     this.switchTab(0);
     // Reset streak milestone UI
     STREAK_MILESTONES.forEach(m => {
@@ -430,11 +438,19 @@ const Tracker = {
       // Prior-journey drink on this date — allow sober once new journey owns this day
     } else if (d.dailyLog[key] === 'sober') {
       if (d.scoredDays[key]) return false;
-      // Same calendar day from a prior journey — count toward this journey's score
       d.scoredDays[key] = true;
-      d.currentScore.success++;
-      d.totalSuccessfulDays++;
-      this._updateBest();
+      // Log already has sober — only bump score if this day was not counted yet
+      const need = (d.currentScore.success | 0);
+      let marked = 0;
+      const startKey = d.journeyStartKey || null;
+      for (const k of Object.keys(d.scoredDays)) {
+        if (d.dailyLog[k] === 'sober' && (!startKey || k >= startKey) && d.scoredDays[k]) marked++;
+      }
+      if (marked > need) {
+        d.currentScore.success++;
+        d.totalSuccessfulDays++;
+        this._updateBest();
+      }
       ensureScoreNumbers(d);
       return true;
     }

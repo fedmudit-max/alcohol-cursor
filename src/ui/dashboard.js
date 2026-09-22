@@ -1,11 +1,17 @@
 /* ===== src/ui/dashboard.js ===== */
 'use strict';
 
+function streakMilestoneStatusText(streak, targetDays) {
+  const left = (targetDays | 0) - (streak | 0);
+  if (left <= 1) return '';
+  return `${left}d`;
+}
+
 const UI = {
   renderPrimary(data) {
     el('calendarDay').textContent = data.calendarDay;
     el('currentScore').innerHTML  = formatScoreHTML(data.currentScore);
-    el('bestScore').textContent   = formatScoreText(data.highestScore);
+    el('bestScore').textContent   = formatScoreText(getDisplayBestScore(data));
     el('scoreExplain').textContent = `${data.currentScore.success} sober days — ${data.currentScore.failures} drinking days`;
     const target = getNextJourneyTarget(data);
     const bestExplainEl = el('bestScoreExplain');
@@ -33,6 +39,7 @@ const UI = {
 
   renderButtons(data) {
     const sb = el('successBtn'), fb = el('failBtn');
+    const pendingYesterday = shouldAskYesterday(data);
     if (data.journeyPendingReset || (data.currentScore.failures | 0) >= JOURNEY_MAX_FAILURES) {
       sb.disabled = true; sb.classList.remove('logged'); sb.textContent = 'Journey Ended';
       fb.disabled = true; fb.textContent = '🥃 Logged';
@@ -41,7 +48,10 @@ const UI = {
       fb.disabled = true;  fb.textContent = '🥃 Logged';
     } else if (data.todaySuccessLogged) {
       sb.disabled = true; sb.classList.add('logged'); sb.textContent = '✓ Sober Today';
-      fb.disabled = true; fb.textContent = '🥃 Blocked';
+      fb.disabled = true; fb.textContent = '🥃 Logged';
+    } else if (pendingYesterday) {
+      sb.disabled = true; sb.classList.remove('logged'); sb.textContent = '✓ I Did Not Drink Today';
+      fb.disabled = true; fb.textContent = '🥃 I Drank Today';
     } else {
       sb.disabled = false; sb.classList.remove('logged'); sb.textContent = '✓ I Did Not Drink Today';
       fb.disabled = false; fb.textContent = '🥃 I Drank Today';
@@ -51,6 +61,9 @@ const UI = {
   renderStreakMilestones(data) {
     const streak = getDisplayStreak(data);
     const best   = data.longestStreak;
+    const streakBroken = isStreakTabBroken(data);
+    const streakList = el('streakMilestoneList');
+    if (streakList) streakList.classList.toggle('journey-ended', streakBroken);
 
     // Find index of next unachieved milestone
     const nextMilestone = getNextStreakMilestone(streak);
@@ -61,9 +74,34 @@ const UI = {
       const nameEl = row.querySelector('.milestone-name');
       const statEl = row.querySelector('.milestone-status');
       const subEl  = el(`${m.el}-sub`);
+      row.classList.remove(
+        'milestone-active', 'milestone-streak-broken',
+        'milestone-journey-review', 'milestone-journey-ended', 'milestone-journey-ended-idle',
+      );
+
+      if (streakBroken) {
+        if (streak >= m.days) {
+          row.classList.add('milestone-journey-review', 'milestone-journey-ended');
+          nameEl.className = 'milestone-name journey-ended-achieved';
+          statEl.className = 'milestone-status journey-ended-achieved';
+          nameEl.textContent = m.name;
+          statEl.textContent = '✓';
+        } else {
+          nameEl.className = 'milestone-name';
+          statEl.className = 'milestone-status';
+          if (i === nextIdx) {
+            nameEl.textContent = m.name;
+            statEl.textContent = streakMilestoneStatusText(streak, m.days);
+          } else {
+            nameEl.textContent = `Day ${m.days}`;
+            statEl.textContent = '';
+          }
+        }
+        if (subEl) subEl.textContent = '';
+        return;
+      }
 
       if (streak >= m.days) {
-        // Achieved
         row.classList.add('milestone-active');
         nameEl.className  = 'milestone-name achieved';
         statEl.className  = 'milestone-status achieved';
@@ -71,109 +109,61 @@ const UI = {
         statEl.textContent = '✓';
         if (subEl) subEl.textContent = '';
       } else if (i === nextIdx) {
-        // Next target — show label name only
-        row.classList.remove('milestone-active');
         nameEl.className  = 'milestone-name';
         statEl.className  = 'milestone-status';
         nameEl.textContent = m.name;
-        statEl.textContent = `${m.days - streak}d`;
+        statEl.textContent = streakMilestoneStatusText(streak, m.days);
         if (subEl) subEl.textContent = '';
       } else {
-        // Future — just show day number
-        row.classList.remove('milestone-active');
         nameEl.className  = 'milestone-name';
         statEl.className  = 'milestone-status';
         nameEl.textContent = `Day ${m.days}`;
-        statEl.textContent = '—';
+        statEl.textContent = '';
         if (subEl) subEl.textContent = '';
       }
     });
 
-    // Personal best
-    const bsi    = el('bestStreakItem');
-    const bsd    = el('longestStreakDisplay');
-    if (!bsi || !bsd) return;
+    // Personal best — same row styling as Day 1–7 milestones
+    const bsi = el('bestStreakItem');
+    const statEl = el('longestStreakDisplay');
+    if (!bsi || !statEl) return;
     const nameEl = bsi.querySelector('.milestone-name');
-    const statEl = bsi.querySelector('.milestone-status');
-    bsd.textContent = best;
-    if (data.inPersonalBest) {
-      bsi.classList.add('personal-best-active');
-      nameEl.className = 'milestone-name golden';
-      statEl.className = 'milestone-status golden';
-    } else if (best > 0) {
-      bsi.classList.remove('personal-best-active');
-      nameEl.className = 'milestone-name golden';
-      statEl.className = 'milestone-status golden';
+    bsi.classList.remove(
+      'milestone-active', 'milestone-streak-broken',
+      'milestone-journey-review', 'milestone-journey-ended', 'milestone-journey-ended-idle',
+    );
+    nameEl.textContent = 'Personal Best';
+    statEl.textContent = best > 0 ? String(best) : '';
+
+    if (streakBroken) {
+      if (best > 0) {
+        bsi.classList.add('milestone-journey-review', 'milestone-journey-ended');
+        nameEl.className = 'milestone-name journey-ended-achieved';
+        statEl.className = 'milestone-status journey-ended-achieved';
+      } else {
+        bsi.classList.add('milestone-journey-review', 'milestone-journey-ended-idle');
+        nameEl.className = 'milestone-name journey-ended-idle';
+        statEl.className = 'milestone-status journey-ended-idle';
+      }
+      syncStreakTabChrome(data);
+      return;
+    }
+
+    if (best > 0) {
+      if (data.inPersonalBest) bsi.classList.add('milestone-active');
+      nameEl.className = 'milestone-name achieved';
+      statEl.className = 'milestone-status achieved';
     } else {
-      bsi.classList.remove('personal-best-active');
       nameEl.className = 'milestone-name';
       statEl.className = 'milestone-status';
     }
+
+    syncStreakTabChrome(data);
   },
 
   renderJourneyTrophies(data) {
-    const current = data.currentScore.success;
     if (syncJourneyMilestonesRevealed(data)) DataManager.save(data);
-
-    const showInControl = isInControlStageVisible(data);
-    const inControlLabel = el('inControlStageLabel');
-    const inControlStage = el('inControlStage');
-    if (inControlLabel) {
-      inControlLabel.style.display = showInControl ? '' : 'none';
-      inControlLabel.classList.toggle('stage-incontrol-unlocked', showInControl);
-    }
-    if (inControlStage) inControlStage.style.display = showInControl ? '' : 'none';
-
-    const visible = JOURNEY_TROPHIES.filter(m => isJourneyMilestoneVisible(data, m));
-    const nextMilestone = visible.find(m => current < m.days);
-
-    JOURNEY_TROPHIES.forEach(m => {
-      const row = el(m.el); if (!row) return;
-      if (!isJourneyMilestoneVisible(data, m)) {
-        row.style.display = 'none';
-        return;
-      }
-      row.style.display = '';
-
-      const count  = (data.journeyTrophies && data.journeyTrophies[m.days]) || 0;
-      const nameEl = row.querySelector('.milestone-name');
-      const statEl = row.querySelector('.milestone-status');
-      const alwaysShowLabel = m.days === 100 || m.days === 200;
-      const milestoneLabel = alwaysShowLabel
-        ? nameEl.dataset.label
-        : nameEl.dataset.label.split(' — ')[0];
-      const premLocked = isJourneyMilestonePremiumLocked(m.days);
-      row.classList.toggle('milestone-premium-locked', premLocked);
-      row.onclick = premLocked ? () => Tracker.openPremium() : null;
-      if (premLocked) row.style.cursor = 'pointer';
-      else row.style.cursor = '';
-
-      if (current >= m.days) {
-        row.classList.add('milestone-active');
-        nameEl.className  = 'milestone-name achieved';
-        statEl.className  = 'milestone-status achieved';
-        nameEl.textContent = nameEl.dataset.label;
-        statEl.textContent = premLocked ? 'Premium' : journeyTrophyStatusDisplay(m.days, count, true);
-      } else if (nextMilestone && m.days === nextMilestone.days) {
-        row.classList.remove('milestone-active');
-        nameEl.className  = 'milestone-name';
-        statEl.className  = 'milestone-status';
-        nameEl.textContent = milestoneLabel;
-        statEl.textContent = premLocked ? 'Premium' : journeyTrophyStatusDisplay(m.days, count, false);
-      } else {
-        row.classList.remove('milestone-active');
-        nameEl.className  = 'milestone-name';
-        statEl.className  = 'milestone-status';
-        nameEl.textContent = milestoneLabel;
-        statEl.textContent = premLocked ? 'Premium' : journeyTrophyStatusDisplay(m.days, count, false);
-      }
-    });
-
-    const taking = el('takingControlStage');
-    const stageLabel = taking && taking.previousElementSibling;
-    if (stageLabel && stageLabel.classList.contains('stage-label')) {
-      stageLabel.classList.toggle('stage-premium-locked', !hasPremiumAccess());
-    }
+    renderJourneyMilestoneSections(data);
   },
 
   showModal(msg) {
@@ -297,11 +287,6 @@ function renderZoneDetailHtml(zoneDetail, items) {
 }
 
 
-// ═══════════════════════════════════════════════════════════════
-// SCIENCE TIMELINE (Progress tab)
-// Days 1–28 always visible; Day 30+ unlock progressively by streak.
-// hiddenUntil = streak needed before milestone appears in the list.
-// Drinking day resets streak → long-term milestones hide again.
 // ═══════════════════════════════════════════════════════════════
 
 const SCIENCE_NODES = [
@@ -500,7 +485,6 @@ function renderScienceTimeline(currentStreak) {
 
   container.innerHTML = html;
 }
-
 
 // ─────────────────────────────────────────────────────────────
 // GLOBAL ERROR HANDLER

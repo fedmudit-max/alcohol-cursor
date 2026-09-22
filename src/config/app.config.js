@@ -26,9 +26,27 @@ function isScoreBetterThan(cur, best) {
   return cf < bf;
 }
 
+function isFirstJourneyInProgress(data) {
+  if (!data || data.journeyPendingReset) return false;
+  return (data.attempt | 0) === 1 && !(data.completedJourneys || []).length;
+}
+
+// Best Score card — mirrors current score on journey 1 (no prior best yet).
+function getDisplayBestScore(data) {
+  ensureScoreNumbers(data);
+  if (isFirstJourneyInProgress(data)) {
+    return { success: data.currentScore.success | 0, failures: data.currentScore.failures | 0 };
+  }
+  return data.highestScore;
+}
+
 function applyBestScore(data, cur) {
   if (!data.highestScore || typeof data.highestScore !== 'object') {
     data.highestScore = { success: 0, failures: 0 };
+  }
+  if (isFirstJourneyInProgress(data)) {
+    data.highestScore = { success: cur.success | 0, failures: cur.failures | 0 };
+    return;
   }
   if (!isScoreBetterThan(cur, data.highestScore)) return;
   data.highestScore = { success: cur.success | 0, failures: cur.failures | 0 };

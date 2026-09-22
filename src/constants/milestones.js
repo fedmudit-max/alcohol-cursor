@@ -27,17 +27,45 @@ function markStreakOwnedScienceCelebrated(data, day) {
 }
 
 const JOURNEY_TROPHIES = [
-  { days:10,  el:'jm-10',  c:{ emoji:'⚡', title:'First Win!',          msg:"10 sober days. Your first real milestone. Sober days now equal your drinking days. You are no longer losing." }},
-  { days:15,  el:'jm-15',  c:{ emoji:'🌿', title:'Holding Ground!',     msg:"15 sober days. Sober days now outnumber drinking days. For the first time — you are ahead. The tide has turned." }},
-  { days:20,  el:'jm-20',  c:{ emoji:'🌟', title:'Getting Ahead!',      msg:"20 sober days. Twice as many sober days as drinking days. Your liver is getting the recovery it needs." }},
-  { days:30,  el:'jm-30',  c:{ emoji:'💪', title:'Momentum!',           msg:"30 sober days. Three sober days for every drinking day. Your brain is remembering what normal feels like. This is recovery." }},
-  { days:40,  el:'jm-40',  c:{ emoji:'🎯', title:'Building Habit!',     msg:"40 sober days. Four sober days for every drinking day. This is no longer a struggle. This is becoming who you are." }},
-  { days:50,  el:'jm-50',  c:{ emoji:'🌱', title:'Half Century!',       msg:"50 sober days. Five for every one. You have built a pattern that your body now expects. Keep it." }},
-  { days:60,  el:'jm-60',  c:{ emoji:'✨', title:'Turning Point!',      msg:"60 sober days. Six sober days for every drinking day. You are approaching every clinical safe limit. The summit is visible." }},
-  { days:80,  el:'jm-80',  c:{ emoji:'🏔️', title:'Low Risk!',          msg:"80 sober days. You are drinking less often than most people globally.\n\nAt this frequency — you are low risk IF each drinking day stays within:\n🥃 Whisky — 1 peg (60ml) or 🍺 Beer — 1 bottle (330ml)\n\nYou control the days. Now control the pour." }},
-  { days:100, el:'jm-100', c:{ emoji:'💎', title:'Weekend Drinker!', msg:"100 sober days. Weekend drinker by frequency — body fully recovers between occasions.\n\n2–4 drinking days a month, 3–4 pegs each, never binge. You control the days. Now control the pour." }},
-  { days:150, el:'jm-150', hiddenUntil:80,  c:{ emoji:'🏆', title:'Sustained Control!', msg:"150 sober days in one journey. You are not just occasional — you are in control.\n\nYour body has had months to heal. This pattern is yours now." }},
-  { days:200, el:'jm-200', hiddenUntil:100, c:{ emoji:'👑', title:'Occasional Drinker!', msg:"200 sober days. Occasional drinker by every clinical definition.\n\nThey said quit. You said control. Less is always better — WHO: no level of alcohol is completely safe." }},
+  { days:10,  el:'jm-10',  label:'10 Days — First Win',          c:{ emoji:'⚡', title:'First Win!',          msg:"10 sober days. Your first real milestone. Sober days now equal your drinking days. You are no longer losing." }},
+  { days:15,  el:'jm-15',  label:'15 Days — Holding Ground',     c:{ emoji:'🌿', title:'Holding Ground!',     msg:"15 sober days. Sober days now outnumber drinking days. For the first time — you are ahead. The tide has turned." }},
+  { days:20,  el:'jm-20',  label:'20 Days — Getting Ahead',      c:{ emoji:'🌟', title:'Getting Ahead!',      msg:"20 sober days. Twice as many sober days as drinking days. Your liver is getting the recovery it needs." }},
+  { days:30,  el:'jm-30',  label:'30 Days — Momentum',           c:{ emoji:'💪', title:'Momentum!',           msg:"30 sober days. Three sober days for every drinking day. Your brain is remembering what normal feels like. This is recovery." }},
+  { days:40,  el:'jm-40',  label:'40 Days — Building Habit',     c:{ emoji:'🎯', title:'Building Habit!',     msg:"40 sober days. Four sober days for every drinking day. This is no longer a struggle. This is becoming who you are." }},
+  { days:50,  el:'jm-50',  label:'50 Days — Half Century',       c:{ emoji:'🌱', title:'Half Century!',       msg:"50 sober days. Five for every one. You have built a pattern that your body now expects. Keep it." }},
+  { days:60,  el:'jm-60',  label:'60 Days — Turning Point',      c:{ emoji:'✨', title:'Turning Point!',      msg:"60 sober days. Six sober days for every drinking day. You are approaching every clinical safe limit. The summit is visible." }},
+  { days:80,  el:'jm-80',  label:'80 Days — Low Risk',           c:{ emoji:'🏔️', title:'Low Risk!',          msg:"80 sober days. You are drinking less often than most people globally.\n\nAt this frequency — you are low risk IF each drinking day stays within:\n🥃 Whisky — 1 peg (60ml) or 🍺 Beer — 1 bottle (330ml)\n\nYou control the days. Now control the pour." }},
+  { days:100, el:'jm-100', label:'100 Days — Weekend Drinker',   c:{ emoji:'💎', title:'Weekend Drinker!', msg:"100 sober days. Weekend drinker by frequency — body fully recovers between occasions.\n\n2–4 drinking days a month, 3–4 pegs each, never binge. You control the days. Now control the pour." }},
+  { days:150, el:'jm-150', label:'150 Days — Sustained Control', c:{ emoji:'🏆', title:'Sustained Control!', msg:"150 sober days in one journey. You are not just occasional — you are in control.\n\nYour body has had months to heal. This pattern is yours now." }},
+  { days:200, el:'jm-200', label:'200 Days — Occasional Drinker', c:{ emoji:'👑', title:'Occasional Drinker!', msg:"200 sober days. Occasional drinker by every clinical definition.\n\nThey said quit. You said control. Less is always better — WHO: no level of alcohol is completely safe." }},
+];
+
+const JOURNEY_MILESTONE_SECTIONS = [
+  {
+    labelId: 'journeyStageEarly',
+    labelClass: 'stage-building',
+    containerId: 'journeySectionEarly',
+    days: [10, 15, 20],
+    alwaysVisibleDays: [10, 15],
+  },
+  {
+    labelId: 'journeyStageForward',
+    labelClass: 'stage-improving',
+    containerId: 'journeySectionForward',
+    days: [30, 40, 50],
+  },
+  {
+    labelId: 'journeyStageControl',
+    labelClass: 'stage-safe',
+    containerId: 'journeySectionControl',
+    days: [60, 80, 100],
+  },
+  {
+    labelId: 'inControlStageLabel',
+    labelClass: 'stage-incontrol',
+    containerId: 'journeySectionInControl',
+    days: [150, 200],
+  },
 ];
 
 const JOURNEY_SOBER_TARGET_DAYS = JOURNEY_TROPHIES.map(m => m.days);
@@ -84,7 +112,7 @@ const JOURNEY_TROPHY_COUNT_DAYS = new Set([50, 100, 150, 200]);
 
 function journeyTrophyStatusText(days, count) {
   if (!JOURNEY_TROPHY_COUNT_DAYS.has(days)) return '✓';
-  if (count <= 0) return '—';
+  if (count <= 0) return '';
   return `\u00d7${count}`;
 }
 
@@ -93,7 +121,7 @@ function journeyTrophyStatusDisplay(days, count, achieved) {
     return journeyTrophyStatusText(days, count);
   }
   if (achieved) return journeyTrophyStatusText(days, count);
-  return '—';
+  return '';
 }
 
 function syncJourneyMilestonesRevealed(data) {
@@ -101,30 +129,88 @@ function syncJourneyMilestonesRevealed(data) {
   const current = data.currentScore.success | 0;
   const trophies = data.journeyTrophies || {};
   let changed = false;
-  if (current >= 80 || (trophies[150] || 0) > 0) {
+  if (current >= 100 || (trophies[150] || 0) > 0) {
     if (!data.journeyMilestonesRevealed[150]) { data.journeyMilestonesRevealed[150] = true; changed = true; }
   }
-  if (current >= 100 || (trophies[200] || 0) > 0) {
+  if (current >= 150 || (trophies[200] || 0) > 0) {
     if (!data.journeyMilestonesRevealed[200]) { data.journeyMilestonesRevealed[200] = true; changed = true; }
   }
   return changed;
 }
 
-function isJourneyMilestoneVisible(data, m) {
-  if (m.hiddenUntil === undefined) return true;
-  const current = data.currentScore.success | 0;
-  const revealed = data.journeyMilestonesRevealed || {};
-  const count = (data.journeyTrophies && data.journeyTrophies[m.days]) || 0;
-  if (m.days === 150) return current >= m.hiddenUntil || revealed[150] || count > 0;
-  if (m.days === 200) return current >= m.hiddenUntil || revealed[200] || count > 0;
-  return current >= m.hiddenUntil;
+function maxJourneySoberDaysEver(data) {
+  const current = data.currentScore?.success | 0;
+  let max = current;
+  for (const j of data.completedJourneys || []) {
+    const s = j.score?.success | 0;
+    if (s > max) max = s;
+  }
+  return max;
 }
 
-function isInControlStageVisible(data) {
-  const current = data.currentScore.success | 0;
-  const revealed = data.journeyMilestonesRevealed || {};
+function getMilestoneUnlockAt(day, alwaysVisible) {
+  if (alwaysVisible) return 0;
+  const idx = JOURNEY_TROPHIES.findIndex(m => m.days === day);
+  if (idx <= 0) return 0;
+  return JOURNEY_TROPHIES[idx - 1].days;
+}
+
+function isJourneyMilestonePreviouslyAchieved(data, day) {
+  const current = data.currentScore?.success | 0;
+  if (current >= day) return false;
+  return ((data.journeyTrophies && data.journeyTrophies[day]) || 0) > 0;
+}
+
+function isJourneyMilestoneRevealed(data, unlockAt) {
+  const current = data.currentScore?.success | 0;
+  const gate = unlockAt | 0;
+  return current >= gate || maxJourneySoberDaysEver(data) >= gate;
+}
+
+function lockedMilestoneSlotsForSection(unrevealedCount) {
+  if (unrevealedCount <= 0) return 0;
+  if (unrevealedCount > 1) return Math.min(unrevealedCount - 1, 2);
+  return 1;
+}
+
+function countUnrevealedJourneyMilestones(data, milestones) {
+  let n = 0;
+  for (const m of milestones) {
+    if (!isJourneyMilestoneRevealed(data, m.unlockAt)) n++;
+  }
+  return n;
+}
+
+function getNextSectionUnlockAt(data, milestones) {
+  for (const m of milestones) {
+    if (!isJourneyMilestoneRevealed(data, m.unlockAt)) return m.unlockAt;
+  }
+  return 0;
+}
+
+function formatJourneyMilestoneUnlockHint(unlockAt) {
+  const day = unlockAt | 0;
+  if (day <= 0) return 'Keep going to unlock';
+  return `Log ${day} sober day${day === 1 ? '' : 's'} to unlock`;
+}
+
+function isTakingControlStageAchieved(data) {
+  const current = data.currentScore?.success | 0;
+  if (current >= 100) return true;
+  if (maxJourneySoberDaysEver(data) >= 100) return true;
   const trophies = data.journeyTrophies || {};
-  return current >= 80 || revealed[150] || revealed[200] || (trophies[150] || 0) > 0 || (trophies[200] || 0) > 0;
+  return (trophies[100] || 0) > 0 || (trophies[150] || 0) > 0 || (trophies[200] || 0) > 0;
+}
+
+function expandJourneySectionMilestones(section) {
+  const alwaysVisibleDays = section.alwaysVisibleDays || [];
+  return section.days.map(day => {
+    const meta = JOURNEY_TROPHIES.find(m => m.days === day);
+    const alwaysVisible = alwaysVisibleDays.includes(day);
+    return Object.assign({}, meta, {
+      unlockAt: getMilestoneUnlockAt(day, alwaysVisible),
+    });
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════

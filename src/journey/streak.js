@@ -59,6 +59,13 @@ function getDisplayStreak(data) {
   return data.currentStreak | 0;
 }
 
+// Progress tab — consecutive sober run only (not drink-day frozen streak)
+function getScienceTimelineStreak(data) {
+  if (!data) return 0;
+  if (isDrinkingDayToday(data)) return 0;
+  return getDisplayStreak(data);
+}
+
 function clearDrinkDayFrozenStreak(d) {
   if (!d) return;
   d.drinkDayFrozenStreak = 0;
@@ -156,14 +163,25 @@ function recalculateStreakFromLog(d) {
   return streak;
 }
 
+function isStreakTabBroken(data) {
+  if (!data) return false;
+  return isDrinkingDayToday(data) || data.todayStatus === 'failed';
+}
+
+function syncStreakTabChrome(data) {
+  const streakBtn = document.querySelectorAll('.seg-btn')[0];
+  if (streakBtn) streakBtn.classList.toggle('seg-streak-broken', isStreakTabBroken(data));
+}
+
 function refreshStreakUI(data) {
   recalculateStreakFromLog(data);
   syncBodyTimelineWeekHold(data);
   if (typeof UI !== 'undefined' && UI.renderStreakMilestones) {
     UI.renderStreakMilestones(data);
   }
+  syncStreakTabChrome(data);
   renderBodyTimeline(data);
-  renderScienceTimeline(getDisplayStreak(data));
+  renderScienceTimeline(getScienceTimelineStreak(data));
 }
 
 

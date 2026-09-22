@@ -12,7 +12,36 @@ function shouldAskYesterday(data) {
   return !data.scoredDays[yestKey];
 }
 
+// Catch-up opens today fresh; logging today before answering yesterday double-counts (2–0).
+function unwindTodayIfYesterdayPending(d) {
+  if (!d || !shouldAskYesterday(d)) return false;
+  if (!d.dailyLog) d.dailyLog = {};
+  if (!d.scoredDays) d.scoredDays = {};
+  const todayKey = dateKey(getAppToday(d));
+  const yestKey = calendarYesterdayKey(d);
+  if (todayKey === yestKey) return false;
+  if (!d.scoredDays[yestKey] && d.scoredDays[todayKey] && d.dailyLog[todayKey] === 'sober') {
+    ensureScoreNumbers(d);
+    d.currentScore.success = Math.max(0, d.currentScore.success - 1);
+    d.totalSuccessfulDays = Math.max(0, (d.totalSuccessfulDays | 0) - 1);
+    delete d.dailyLog[todayKey];
+    delete d.scoredDays[todayKey];
+    d.todayStatus = 'none';
+    d.todaySuccessLogged = false;
+    DataManager._rebuildScoredDays(d);
+    return true;
+  }
+  return false;
+}
+
 function showYesterdayModal() {
+  const d = typeof Tracker !== 'undefined' ? Tracker.data : null;
+  if (d && unwindTodayIfYesterdayPending(d)) {
+    DataManager.saveNow(d);
+    recalculateStreakFromLog(d);
+    refreshStreakUI(d);
+    UI.renderAll(d);
+  }
   const ym = el('yesterdayModal');
   if (!ym) return;
   // Celebrations must wait — they steal the same z-index layer if shown first

@@ -41,7 +41,7 @@ Tracker.toggleJourneyChart = function() {
   if (btn)      btn.textContent        = open ? 'Show ▾' : 'Hide ▴';
   if (subLabel) subLabel.style.display = open ? 'none' : 'block';
   // Re-render chart when opening — SVG won't draw correctly in display:none
-  if (!open) renderJourneyChart(Tracker.data);
+  if (!open) renderJourneyChart(Tracker.data || DataManager.load());
 };
 
 Tracker.journeyChartOlder = function() {
@@ -61,4 +61,31 @@ Tracker.toggleLifetimeStats = function() {
   const open = body.style.display !== 'none';
   body.style.display = open ? 'none' : 'block';
   if (btn) btn.textContent = open ? 'Show \u25be' : 'Hide \u25b4';
+};
+
+Tracker.toggleReminderPanel = function() {
+  const body = el('reminderCardBody');
+  const btn  = el('reminderPanelToggleBtn');
+  const toggle = el('reminderPanelToggle');
+  if (!body) return;
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  if (btn) btn.textContent = open ? 'Show \u25be' : 'Hide \u25b4';
+  if (toggle) toggle.setAttribute('aria-expanded', open ? 'false' : 'true');
+};
+
+Tracker.openTenDrinksGuide = function() {
+  const m = el('tenDrinksGuideModal');
+  if (m) {
+    m.classList.add('open');
+    document.body.classList.add('modal-open');
+  }
+};
+
+Tracker.closeTenDrinksGuide = function() {
+  const m = el('tenDrinksGuideModal');
+  if (m) {
+    m.classList.remove('open');
+    document.body.classList.remove('modal-open');
+  }
 };

@@ -16,8 +16,14 @@ function boot() {
     }
   }
 
-  // Start the app
-  Tracker.init();
+  // Start the app — always dismiss splash even if init throws
+  try {
+    Tracker.init();
+  } catch (err) {
+    console.error('[SoberJourney] boot failed:', err);
+    dismissAppSplash();
+  }
+  setTimeout(dismissAppSplash, 3000);
 
   renderDidYouKnow(Tracker.data);
 
@@ -64,8 +70,12 @@ window.addEventListener('popstate', function() {
   for (const id of modals) {
     const m = el(id);
     if (m && (m.classList.contains('active') || m.classList.contains('open') || m.style.display === 'flex')) {
-      m.classList.remove('active', 'open');
-      m.style.display = 'none';
+      if (id === 'onboardingOverlay') {
+        Onboarding.hideImmediate();
+      } else {
+        m.classList.remove('active', 'open');
+        m.style.display = 'none';
+      }
       document.body.classList.remove('modal-open');
       // Push state again so next back press works
       history.pushState(null, '', window.location.href);

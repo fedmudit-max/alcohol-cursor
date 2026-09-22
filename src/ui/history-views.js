@@ -10,49 +10,6 @@ function careerTotals(data) {
   };
 }
 
-function renderJourneyEndCard(data) {
-  const card = el('journeyEndCard');
-  if (!card) return;
-
-  // Only show when journey has ended
-  if (!data.journeyPendingReset) { card.style.display = 'none'; return; }
-  card.style.display = 'block';
-
-  const completed = data.completedJourneys || [];
-  const latest    = completed[completed.length - 1];
-  if (!latest) return;
-
-  const thisSober  = latest.score.success;
-  const attempt    = latest.attempt;
-  const nextTarget = getNextJourneyTarget(data);
-  const prevBest   = completed.length >= 2
-    ? Math.max(...completed.slice(0, -1).map(j => j.score.success | 0))
-    : 0;
-  const isNewBest  = attempt > 1 && thisSober > prevBest;
-
-  // Title
-  el('journeyEndTitle').textContent = `Journey ${attempt} Complete`;
-
-  // Scores
-  el('journeyEndCurrent').textContent = thisSober;
-  el('journeyEndBest').textContent    = nextTarget;
-
-  // Verdict — mirrors journey-end popup
-  const dayWord = (n) => n === 1 ? 'day' : 'days';
-  let verdict = `Your journey score: ${thisSober} sober ${dayWord(thisSober)}. `;
-  if (isNewBest) {
-    verdict += `New personal best! Your next target is to beat ${nextTarget} sober ${dayWord(nextTarget)} in your next journey.`;
-  } else {
-    verdict += `Your next target is to beat ${nextTarget} sober ${dayWord(nextTarget)} in your next journey.`;
-  }
-  el('journeyEndVerdict').textContent = verdict;
-
-  const career = careerTotals(data);
-  el('journeyEndTotal').textContent      = career.finished;
-  el('journeyEndTotalSober').textContent = career.sober;
-  el('journeyEndTotalDrink').textContent = career.drinks;
-}
-
 // Lifetime stats — current journey # + all-time sober/drink days (each log adds to totals).
 function renderLifetimeStats(data) {
   const card = el('lifetimeStatsCard');
@@ -193,11 +150,33 @@ function journeyChartVisibleSlice(pts) {
   return { visible: pts.slice(start, start + JOURNEY_CHART_WINDOW), start, maxOffset, offset };
 }
 
+function journeyChartSlotIndex(pointIndex, pointCount, windowSize) {
+  if (pointCount <= 1) return Math.floor((windowSize - 1) / 2);
+  return pointIndex;
+}
+
+function clearJourneyChart(message) {
+  const yAxis = el('journeyYAxis');
+  const inner = el('journeyChartInner');
+  const navRow = el('journeyChartNav');
+  if (yAxis) yAxis.innerHTML = '';
+  if (inner) {
+    inner.innerHTML = message
+      ? `<text x="200" y="70" text-anchor="middle" font-size="12" fill="rgba(134,134,139,0.8)" font-family="-apple-system,sans-serif">${message}</text>`
+      : '';
+  }
+  if (navRow) navRow.style.display = 'none';
+}
+
 // JOURNEY HISTORY CHART
 // ═══════════════════════════════════════════════════════════════
 // Draws the journey history line chart.
 // One dot per completed journey (+ live current). Arrow nav scrolls windows of 6.
 function renderJourneyChart(data) {
+  const yAxis = el('journeyYAxis');
+  const inner = el('journeyChartInner');
+  if (!yAxis || !inner) return;
+
   const completed = (data.completedJourneys || []).filter(j => j && j.score && typeof j.score.success === 'number');
   const card = el('journeyChartCard');
   if (card) card.style.display = 'block';
@@ -205,15 +184,19 @@ function renderJourneyChart(data) {
   const pts = completed.map(j => ({ val:j.score.success, label:`J${j.attempt}` }));
   const currentAlreadyCompleted = completed.some(j => j.attempt === data.attempt);
   if (!data.journeyPendingReset && !currentAlreadyCompleted) {
-    pts.push({ val:data.currentScore.success, label:`J${data.attempt}`, live:true });
+    const current = data.currentScore?.success | 0;
+    pts.push({ val:current, label:`J${data.attempt}`, live:true });
   }
 
-  if (pts.length < 1) return;
+  if (pts.length < 1) {
+    clearJourneyChart('Log your first journey to see history');
+    return;
+  }
 
   if (pts.length > _journeyChartPtsCount) _journeyChartOffset = 0;
   _journeyChartPtsCount = pts.length;
 
-  const { visible: visiblePts, start, maxOffset, offset } = journeyChartVisibleSlice(pts);
+  const { visible: visiblePts, maxOffset, offset } = journeyChartVisibleSlice(pts);
 
   const navRow = el('journeyChartNav');
   const prevBtn = el('journeyChartPrevBtn');
@@ -226,11 +209,11 @@ function renderJourneyChart(data) {
   const chartW = VW - padX * 2;
   const slotStep = chartW / (JOURNEY_CHART_WINDOW - 1);
   const yMax  = Math.max(...pts.map(p=>p.val), 5);
-  const yMaxR = Math.ceil(yMax * 1.25 / 5) * 5;
+  const yMaxR = Math.max(10, Math.ceil(yMax * 1.25 / 5) * 5);
   const fracs = [0, 0.25, 0.5, 0.75, 1];
 
-  el('journeyYAxis').setAttribute('height', H);
-  el('journeyYAxis').innerHTML = `
+  yAxis.setAttribute('height', H);
+  yAxis.innerHTML = `
     <line x1="30" y1="${padT}" x2="30" y2="${padT + cH}" stroke="rgba(0,0,0,0.04)" stroke-width="1"/>
     ${fracs.map(f => {
       const y = padT + cH - f*cH;
@@ -243,9 +226,10 @@ function renderJourneyChart(data) {
   }).join('');
 
   const best   = Math.max(...pts.map(p=>p.val));
+  const visibleCount = visiblePts.length;
   const coords = visiblePts.map((p,i) => ({
     ...p,
-    x: padX + i * slotStep,
+    x: padX + journeyChartSlotIndex(i, visibleCount, JOURNEY_CHART_WINDOW) * slotStep,
     y: padT + cH - (p.val/yMaxR)*cH,
   }));
 
@@ -263,7 +247,7 @@ function renderJourneyChart(data) {
             <text x="${p.x}" y="${padT+cH+16}" text-anchor="middle" font-size="10" fill="rgba(134,134,139,0.9)" font-family="-apple-system,sans-serif">${p.label}</text>`;
   }).join('');
 
-  el('journeyChartInner').innerHTML = `
+  inner.innerHTML = `
     <defs>
       <linearGradient id="jGrad" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%"   stop-color="#34c759" stop-opacity="0.18"/>

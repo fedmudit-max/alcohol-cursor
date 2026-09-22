@@ -1,32 +1,44 @@
 /* ===== src/onboarding/onboarding.js ===== */
 'use strict';
 const Onboarding = {
-  TOTAL: 3,
+  TOTAL: 2,
   current: 0,
+  _skipTimer: null,
+
+  _showOverlay() {
+    const overlay = el('onboardingOverlay');
+    if (!overlay) return;
+    clearTimeout(this._skipTimer);
+    this._skipTimer = null;
+    overlay.style.display = 'flex';
+    overlay.style.flexDirection = 'column';
+    overlay.style.opacity = '1';
+    overlay.style.visibility = 'visible';
+    overlay.style.pointerEvents = 'auto';
+    overlay.style.transition = '';
+  },
+
+  hideImmediate() {
+    clearTimeout(this._skipTimer);
+    this._skipTimer = null;
+    const overlay = el('onboardingOverlay');
+    if (!overlay) return;
+    overlay.style.display = 'none';
+    overlay.style.opacity = '1';
+    overlay.style.visibility = 'visible';
+    overlay.style.pointerEvents = 'none';
+    overlay.style.transition = '';
+    overlay.classList.remove('onboarding-overlay--journey');
+    overlay.style.background = '#1e9e3e';
+  },
 
   show() {
     const done = localStorage.getItem('sj_onboarded');
     if (done) return;
 
-    if (this.current !== 0) {
-      el(`ob-${this.current}`).style.display = 'none';
-      el(`ob-dot-${this.current}`).classList.remove('active');
-      this.current = 0;
-      el('ob-0').style.display = 'block';
-      el('ob-dot-0').classList.add('active');
-      el('obNextBtn').textContent = 'Next';
-    }
-
-    const overlay = el('onboardingOverlay');
-    if (overlay) {
-      overlay.style.display       = 'flex';
-      overlay.style.flexDirection = 'column';
-    }
-    setTimeout(() => this._animateBars(), 400);
-    setTimeout(() => {
-      const footer = el('ob-mechanic-footer');
-      if (footer) footer.style.opacity = '1';
-    }, 1600);
+    this.current = 0;
+    this._showSlide(0);
+    this._showOverlay();
   },
 
   reset() {
@@ -34,58 +46,64 @@ const Onboarding = {
     this.current = 0;
   },
 
+  _showSlide(idx) {
+    for (let i = 0; i < this.TOTAL; i++) {
+      const slide = el(`ob-${i}`);
+      const dot = el(`ob-dot-${i}`);
+      if (slide) slide.style.display = i === idx ? 'block' : 'none';
+      if (dot) dot.classList.toggle('active', i === idx);
+    }
+    const overlay = el('onboardingOverlay');
+    const onJourney = idx === 1;
+    if (overlay) {
+      overlay.classList.toggle('onboarding-overlay--journey', onJourney);
+      overlay.style.background = onJourney ? '#f5f5f7' : '#1e9e3e';
+    }
+    const btn = el('obNextBtn');
+    const skip = overlay && overlay.querySelector('button[onclick="Onboarding.skip()"]');
+    if (btn) {
+      btn.textContent = idx === this.TOTAL - 1 ? 'Start →' : 'Next';
+      if (onJourney) {
+        btn.style.background = 'linear-gradient(180deg, #34c759, #30d158)';
+        btn.style.color = 'white';
+        btn.style.boxShadow = '0 4px 16px rgba(52,199,89,0.4)';
+      } else {
+        btn.style.background = 'white';
+        btn.style.color = '#1e9e3e';
+        btn.style.boxShadow = 'none';
+      }
+    }
+    if (skip) {
+      skip.style.color = onJourney ? 'rgba(60,60,67,0.45)' : 'rgba(255,255,255,0.45)';
+    }
+    const dots = overlay && overlay.querySelector('.onboarding-dots');
+    if (dots) dots.classList.toggle('onboarding-dots--journey', onJourney);
+  },
+
   next() {
     if (this.current < this.TOTAL - 1) {
-      el(`ob-${this.current}`).style.display = 'none';
-      el(`ob-dot-${this.current}`).classList.remove('active');
       this.current++;
-      el(`ob-${this.current}`).style.display = 'block';
-      el(`ob-dot-${this.current}`).classList.add('active');
-      if (this.current === this.TOTAL - 1) {
-        el('obNextBtn').textContent = 'Start →';
-      }
-      if (this.current === 0) this._animateBars();
+      this._showSlide(this.current);
     } else {
       this.skip();
     }
   },
 
-  _animateBars() {
-    const bars = [
-      { id:'1', pct: 28, score:'5',  star:false },
-      { id:'2', pct: 67, score:'12', star:true  },
-      { id:'3', pct: 50, score:'9',  star:false },
-      { id:'4', pct:100, score:'18', star:true  },
-    ];
-    bars.forEach(b => {
-      const bar   = el(`ob-bar-${b.id}`);
-      const label = el(`ob-bar-${b.id}-label`);
-      const score = el(`ob-score-${b.id}`);
-      if (bar)   bar.style.width = `${b.pct}%`;
-      if (label) { label.style.opacity = '1'; label.textContent = b.score; }
-      if (score) {
-        score.textContent = b.star ? '⭐' : '';
-        score.style.color = b.star ? '#34c759' : 'rgba(255,255,255,0.4)';
-      }
-    });
-  },
-
   skip() {
     localStorage.setItem('sj_onboarded', '1');
     const overlay = el('onboardingOverlay');
-    if (overlay) {
-      overlay.style.transition = 'opacity 0.4s ease';
-      overlay.style.opacity = '0';
-      setTimeout(() => { overlay.style.display = 'none'; overlay.style.opacity = '1'; }, 400);
-    }
+    if (!overlay) return;
+    clearTimeout(this._skipTimer);
+    overlay.style.transition = 'opacity 0.4s ease';
+    overlay.style.opacity = '0';
+    overlay.style.pointerEvents = 'none';
+    this._skipTimer = setTimeout(() => {
+      this._skipTimer = null;
+      overlay.style.display = 'none';
+      overlay.style.opacity = '1';
+      overlay.style.transition = '';
+      overlay.classList.remove('onboarding-overlay--journey');
+      overlay.style.background = '#1e9e3e';
+    }, 400);
   }
 };
-
-// ═══════════════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════════════
-// ─────────────────────────────────────────────
-// AUDIT ONBOARDING (Take Test flow)
-// Handles the 3-question AUDIT-C test popup.
-// One question at a time, filters impossible Q3 options based on Q2.
-// Results live in Tracker.data for this session only — AuditSession.forPersist strips them before localStorage write.
-// ─────────────────────────────────────────────
