@@ -3,17 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="description" content="Track sober days, drinking days, and streaks on your harm-reduction journey.">
+<meta name="description" content="10Drinks — track your Journey: sober days, drinking days, streak, and science-backed recovery.">
 <meta name="theme-color" content="#1e9e3e">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Sober Journey">
+<meta name="apple-mobile-web-app-title" content="10Drinks">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.json">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2">
-<link rel="apple-touch-icon" href="icon-180.png?v=2">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
 
-<title>Sober Journey</title>
+<title>10Drinks</title>
 <link rel="stylesheet" href="css/base.css">
 </head>
 <body>
@@ -23,6 +23,19 @@
 <div id="sjBuildBanner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99999;background:#ff3b30;color:#fff;font:700 11px/1.3 -apple-system,system-ui,sans-serif;text-align:center;padding:5px 8px;box-shadow:0 2px 8px rgba(0,0,0,0.25);"></div>
 
 <div class="splash" id="splash" style="z-index:9998;"></div>
+
+<header class="app-top-bar" id="appTopBar">
+  <div class="app-top-bar-brand">
+    <img class="app-top-bar-logo" src="assets/icons/icon-192.png" width="30" height="30" alt="">
+    <span class="app-top-bar-title">10Drinks</span>
+  </div>
+  <button type="button" class="app-top-bar-settings" onclick="SoberTracker.toggleSettings()" aria-label="Settings" aria-haspopup="dialog">
+    <svg class="app-top-bar-settings-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="2"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </button>
+</header>
 
 <div class="scroll-view">
 
@@ -40,14 +53,14 @@
       </div>
     </div>
     <div class="current-card" id="currentCard">
-      <div class="card-label">Current Score</div>
+        <div class="card-label">Current Journey</div>
       <div class="card-value" id="currentScore">0 – 0</div>
       <div class="score-explain" id="scoreExplain">0 sober days — 0 drinking days</div>
     </div>
     <div id="welcomeHint" class="card" style="display:none;margin-top:8px;animation:fadeInUp 0.35s ease both;">
       <div style="padding:14px 16px;">
         <div style="font-size:14px;font-weight:700;color:#1c1c1e;margin-bottom:6px;">👋 Ready to start?</div>
-        <div style="font-size:13px;color:rgba(60,60,67,0.65);line-height:1.55;margin-bottom:12px;">Tap below to log today. This journey gives you <strong>10 drinking days</strong> (like <strong>10 wickets</strong>) — each sober day adds a <strong>run</strong> to your total.</div>
+        <div style="font-size:13px;color:rgba(60,60,67,0.65);line-height:1.55;margin-bottom:12px;"><strong>A Journey is like a football match.</strong><br><br>On a sober day, <strong>you score 1 goal</strong>.<br>On a drinking day, <strong>the opponent scores 1 goal</strong>.<br><br>The match ends when <strong>10 goals are scored against you</strong> — e.g. <strong>12–10</strong>.<br><br><strong>The goal is simple: next match, beat your previous score</strong> — e.g. <strong>15–10</strong>.<br><strong>Strengthen your ability to resist drinking, one match at a time.</strong></div>
         <button type="button" onclick="dismissWelcomeHint()" style="width:100%;padding:10px;background:rgba(52,199,89,0.1);border:1.5px solid rgba(52,199,89,0.25);border-radius:10px;font-size:13px;font-weight:600;color:#248a3d;cursor:pointer;font-family:inherit;">Got it</button>
       </div>
     </div>
@@ -61,42 +74,13 @@
     </div>
   </div>
 
-  <!-- BODY TIMELINE CARD — daily personal update -->
-  <div class="card" id="bodyTimelineCard" style="animation:fadeInUp 0.4s ease 0.08s both;margin-top:10px;">
-    <div style="padding:14px 16px 16px;">
-      <div class="streak-signal" id="streakSignal">
-        <div class="streak-signal-left">
-          <div class="streak-signal-label">Current streak</div>
-          <div class="streak-signal-value" id="streakSignalValue">0 days</div>
-          <div class="streak-signal-sub" id="streakSignalSub">Full weekly timeline is a Premium feature</div>
-        </div>
-        <button type="button" class="streak-signal-unlock" onclick="SoberTracker.openPremium()">Unlock timeline</button>
-      </div>
-      <div class="body-timeline-full" id="bodyTimelineFull">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-          <div style="font-size:13px;font-weight:700;color:#1c1c1e;" id="bodyTimelineTitle">🫀 Your body today</div>
-        </div>
-        <div style="font-size:13px;color:rgba(60,60,67,0.65);line-height:1.6;margin-bottom:14px;" id="bodyTimelineText">
-          Start your streak to unlock what your body can do — one day at a time.
-        </div>
-        <div class="body-timeline-wrap" style="width:100%;overflow:visible;">
-          <div style="display:flex;align-items:center;gap:0;margin-bottom:4px;width:100%;" id="bodyTimelineDots"></div>
-          <div style="display:flex;align-items:center;gap:0;width:100%;" id="bodyTimelineLabels"></div>
-        </div>
-        <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(60,60,67,0.08);font-size:10px;color:rgba(60,60,67,0.35);line-height:1.5;font-style:italic;">
-          Recovery timelines are approximate and vary by individual.
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- MILESTONES CARD -->
   <div class="card" style="animation:fadeInUp 0.4s ease 0.1s both;margin-top:12px;">
     <div class="segmented-wrap">
       <div class="segmented">
         <button class="seg-btn active" onclick="SoberTracker.switchTab(0)">Streak</button>
         <button class="seg-btn" onclick="SoberTracker.switchTab(1)">Milestone</button>
-        <button class="seg-btn" onclick="SoberTracker.switchTab(2)">Progress</button>
+        <button class="seg-btn" onclick="SoberTracker.switchTab(2)">Science</button>
       </div>
     </div>
 
@@ -110,7 +94,7 @@
         <div class="milestone-row" id="cs-day5"><div class="milestone-left"><div class="milestone-icon">💚</div><div class="milestone-text"><div class="milestone-name">Day 5</div><div class="milestone-sub" id="cs-day5-sub"></div></div></div><div class="milestone-status">—</div></div>
         <div class="milestone-row" id="cs-day6"><div class="milestone-left"><div class="milestone-icon">⚡</div><div class="milestone-text"><div class="milestone-name">Day 6</div><div class="milestone-sub" id="cs-day6-sub"></div></div></div><div class="milestone-status">—</div></div>
         <div class="milestone-row" id="cs-day7"><div class="milestone-left"><div class="milestone-icon">🌟</div><div class="milestone-text"><div class="milestone-name">Day 7</div><div class="milestone-sub" id="cs-day7-sub"></div></div></div><div class="milestone-status">—</div></div>
-        <div class="milestone-row" id="bestStreakItem"><div class="milestone-left"><div class="milestone-icon">🏆</div><div class="milestone-text"><div class="milestone-name">Personal Best</div></div></div><div class="milestone-status" id="longestStreakDisplay">0</div></div>
+        <div class="milestone-row" id="bestStreakItem"><div class="milestone-left"><div class="milestone-icon">🏆</div><div class="milestone-text"><div class="milestone-name">Best Streak</div></div></div><div class="milestone-status" id="longestStreakDisplay">0</div></div>
       </div>
     </div>
     <!-- Milestone Tab -->
@@ -130,7 +114,7 @@
       </div>
     </div>
 
-    <!-- Progress / Science Tab -->
+    <!-- Science Tab -->
     <div class="tab-content" id="progressTabContent">
       <div id="progressTabInner">
         <div id="scienceTimeline" style="padding-top:4px;padding-bottom:4px;"></div>
@@ -139,45 +123,8 @@
 
   </div>
 
-  <!-- METER CARD -->
-  <div class="card" id="riskMeterCard" data-premium-feature="meter" style="animation:fadeInUp 0.4s ease 0.2s both;margin-top:12px;">
-    <div style="padding:12px 16px 20px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <div style="font-size:13px;font-weight:700;color:#1c1c1e;">Drinking Risk Meter</div>
-        <div style="font-size:10px;color:rgba(60,60,67,0.35);">AUDIT-C · WHO validated</div>
-      </div>
-      <div id="meterOffline" style="display:none;text-align:center;padding:20px 0;font-size:13px;color:rgba(60,60,67,0.4);">⚠️ Risk meter unavailable offline.<br>Connect to load it.</div>
-    <svg id="meterSvg" role="img" aria-label="Drinking Risk Meter — AUDIT-C score gauge" width="100%" viewBox="-60 0 400 178" style="max-width:400px;display:block;margin:0 auto;overflow:visible;"></svg>
-      <div id="meterZoneLine" style="text-align:center;margin-bottom:6px;display:none;"></div>
-      <div style="text-align:center;margin-top:12px;">
-        <button onclick="AuditOnboarding.show()" id="assessBtn" style="background:#007aff;border:none;border-radius:22px;padding:12px 28px;min-height:44px;font-size:13px;font-weight:600;color:white;cursor:pointer;font-family:inherit;">Take Test</button>
-      </div>
-      <div id="meterFeedback" style="display:none;margin-top:12px;padding:10px 12px;border-radius:10px;font-size:12px;line-height:1.6;"></div>
-    </div>
-  </div>
-
-  <!-- REDUCTION TARGET -->
-  <div class="card" id="reductionTargetCard" style="display:none;margin-top:12px;">
-    <div style="padding:16px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-        <div style="font-size:13px;font-weight:700;color:#1c1c1e;">🎯 Reduction Target</div>
-        <div class="reduction-zone" id="reductionZoneLabel"></div>
-      </div>
-      <div id="reductionTargetBody"></div>
-    </div>
-  </div>
-
-  <!-- LOW RISK TARGET ZONE CARD -->
-  <div class="card" id="lowRiskZoneCard" style="margin-top:12px;">
-    <div style="padding:14px 16px 16px;">
-      <div style="font-size:13px;font-weight:700;color:#1c1c1e;margin-bottom:4px;">🎯 Low Risk Target Zone</div>
-      <div style="font-size:12px;color:rgba(60,60,67,0.5);margin-bottom:12px;">Three patterns that keep you in the WHO Low Risk zone</div>
-      <button onclick="SoberTracker.showTargetZone()" style="width:100%;padding:11px;background:rgba(52,199,89,0.08);border:1.5px solid rgba(52,199,89,0.25);border-radius:12px;font-size:13px;font-weight:600;color:#248a3d;cursor:pointer;font-family:inherit;">See Low Risk Patterns →</button>
-    </div>
-  </div>
-
   <!-- KNOWLEDGE CARD -->
-  <div id="didYouKnowCard" data-premium-feature="knowledge" style="animation:fadeInUp 0.4s ease 0.42s both;margin-top:12px;border-radius:16px;overflow:hidden;position:relative;background:white;box-shadow:0 2px 12px rgba(0,0,0,0.07);">
+  <div id="didYouKnowCard" data-premium-feature="knowledge" style="animation:fadeInUp 0.4s ease 0.2s both;margin-top:12px;border-radius:16px;overflow:hidden;position:relative;background:white;box-shadow:0 2px 12px rgba(0,0,0,0.07);">
     <div id="dykTopBar" style="height:3px;background:linear-gradient(90deg,#34c759,#248a3d);"></div>
     <button onclick="SoberTracker.dykPrev()" style="position:absolute;left:0;top:3px;bottom:0;background:none;border:none;cursor:pointer;padding:0 10px;display:flex;align-items:center;z-index:2;min-width:36px;"><span style="font-size:28px;color:#34c759;line-height:1;">‹</span></button>
     <button onclick="SoberTracker.dykNext()" style="position:absolute;right:0;top:3px;bottom:0;background:none;border:none;cursor:pointer;padding:0 10px;display:flex;align-items:center;z-index:2;min-width:36px;"><span style="font-size:28px;color:#34c759;line-height:1;">›</span></button>
@@ -190,7 +137,56 @@
     </div>
   </div>
 
+  <!-- PERSONAL BESTS — top-3 streaks & journeys -->
+  <div class="card" id="bestPerformancesCard" data-premium-feature="journeyChart" style="animation:fadeInUp 0.4s ease 0.22s both;margin-top:12px;">
+    <button type="button" id="bestPerformancesPanelToggle" onclick="SoberTracker.toggleBestPerformances()" aria-expanded="false" aria-controls="bestPerformancesBody" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;min-height:44px;">
+      <div style="font-size:13px;font-weight:700;color:#1c1c1e;">🏅 Personal Bests</div>
+      <span id="bestPerformancesToggleBtn" style="font-size:12px;font-weight:500;color:rgba(60,60,67,0.4);">Show ▾</span>
+    </button>
+    <div id="bestPerformancesBody" style="display:none;padding:0 16px 16px;">
+      <div class="chart-toggle" role="tablist" aria-label="Personal bests mode">
+        <button type="button" class="chart-toggle-btn active" id="bestPerfToggleStreaks" role="tab" aria-selected="true" onclick="SoberTracker.switchBestPerformancesMode('streaks')">Streaks</button>
+        <button type="button" class="chart-toggle-btn" id="bestPerfToggleJourneys" role="tab" aria-selected="false" onclick="SoberTracker.switchBestPerformancesMode('journeys')">Journeys</button>
+      </div>
+      <div id="bestStreaksPane" class="best-perf-pane">
+        <div id="bestStreaksList" class="best-perf-list" role="list" aria-label="Top streaks"></div>
+      </div>
+      <div id="bestJourneysPane" class="best-perf-pane" hidden>
+        <div id="bestJourneysList" class="best-perf-list" role="list" aria-label="Top journeys"></div>
+      </div>
+    </div>
+  </div>
 
+  <!-- METER CARD -->
+  <div class="card" id="riskMeterCard" data-premium-feature="meter" style="animation:fadeInUp 0.4s ease 0.25s both;margin-top:12px;">
+    <button type="button" id="riskMeterToggle" class="risk-meter-toggle" onclick="SoberTracker.toggleRiskMeter()" aria-expanded="false" aria-controls="riskMeterBody">
+      <span class="risk-meter-toggle-text">
+        <span class="risk-meter-toggle-title">Drinking Risk Meter</span>
+        <span class="risk-meter-toggle-teaser" id="riskMeterTeaser">AUDIT-C · WHO validated</span>
+      </span>
+      <span id="riskMeterToggleBtn" class="risk-meter-toggle-chevron">Show ▾</span>
+    </button>
+    <div id="riskMeterBody" class="risk-meter-body" style="display:none;">
+      <div id="meterOffline" style="display:none;text-align:center;padding:20px 0;font-size:13px;color:rgba(60,60,67,0.4);">⚠️ Risk meter unavailable offline.<br>Connect to load it.</div>
+      <svg id="meterSvg" role="img" aria-label="Drinking Risk Meter — AUDIT-C score gauge" width="100%" viewBox="-60 0 400 178" style="max-width:400px;display:block;margin:0 auto;overflow:visible;"></svg>
+      <p class="meter-screening-disclaimer" id="meterScreeningDisclaimer">AUDIT-C is a screening tool, not a diagnosis. A high score means professional assessment is recommended.</p>
+      <div id="meterZoneLine" style="text-align:center;margin-bottom:6px;display:none;"></div>
+      <div style="text-align:center;margin-top:12px;">
+        <button onclick="AuditOnboarding.show()" id="assessBtn" style="background:#007aff;border:none;border-radius:22px;padding:12px 28px;min-height:44px;font-size:13px;font-weight:600;color:white;cursor:pointer;font-family:inherit;">Take Test</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- REDUCTION TARGET -->
+  <div class="card" id="reductionTargetCard" style="display:none;margin-top:12px;">
+    <div style="padding:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:700;color:#1c1c1e;">🎯 Reduction Goal</div>
+        <div class="reduction-zone" id="reductionZoneLabel"></div>
+      </div>
+      <div id="reductionTargetBody"></div>
+    </div>
+  </div>
 
   <!-- MONTHLY GRID -->
   <div class="card" id="monthGridCard" data-premium-feature="monthGrid" style="animation:fadeInUp 0.4s ease 0.3s both;margin-top:12px;">
@@ -271,79 +267,129 @@
     </div>
   </div>
 
-  <!-- HOW 10 DRINKS WORKS -->
-  <div class="card" id="tenDrinksGuideCard" style="animation:fadeInUp 0.4s ease 0.41s both;margin-top:12px;">
-    <button type="button" onclick="SoberTracker.openTenDrinksGuide()" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;min-height:44px;">
-      <div style="font-size:13px;font-weight:700;color:#1c1c1e;">How 10 Drinks helps you cut back or quit</div>
-      <span style="font-size:18px;font-weight:300;color:rgba(60,60,67,0.35);line-height:1;">›</span>
-    </button>
-  </div>
-
-  <!-- REMINDER (Capacitor notifications later) -->
-  <div class="card" id="reminderCard" style="animation:fadeInUp 0.4s ease 0.415s both;margin-top:12px;">
-    <button type="button" onclick="SoberTracker.toggleReminderPanel()" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;min-height:44px;" aria-expanded="false" aria-controls="reminderCardBody" id="reminderPanelToggle">
-      <div style="font-size:13px;font-weight:700;color:#1c1c1e;">🔔 Reminder</div>
-      <span id="reminderPanelToggleBtn" style="font-size:12px;font-weight:500;color:rgba(60,60,67,0.4);">Show ▾</span>
-    </button>
-    <div id="reminderCardBody" style="display:none;padding:0 16px 16px;" class="reminder-card">
-      <p class="reminder-tab-lead">Get a gentle nudge to log sober or drinking for the day.</p>
-      <div class="reminder-settings">
-        <div class="reminder-row">
-          <div class="reminder-row-text">
-            <div class="reminder-row-title">Daily check-in</div>
-            <div class="reminder-row-sub" id="reminderStatusText">Off</div>
-          </div>
-          <label class="reminder-switch" aria-label="Daily check-in reminder">
-            <input type="checkbox" id="reminderDailyEnabled" onchange="SoberTracker.setReminderDailyEnabled(this.checked)">
-            <span class="reminder-switch-slider" aria-hidden="true"></span>
-          </label>
-        </div>
-        <div class="reminder-row reminder-row--time" id="reminderTimeRow">
-          <div class="reminder-row-text">
-            <div class="reminder-row-title">Reminder time</div>
-          </div>
-          <input type="time" id="reminderDailyTime" class="reminder-time-input" value="20:00" onchange="SoberTracker.setReminderDailyTime(this.value)">
-        </div>
-      </div>
-      <p class="reminder-capacitor-note">Alerts will work in the upcoming mobile app. Your choices are saved on this device until then.</p>
-    </div>
-  </div>
-
-  <!-- PREMIUM -->
-  <div class="card" id="premiumEntryCard" style="animation:fadeInUp 0.4s ease 0.42s both;margin-top:12px;">
-    <button type="button" class="premium-entry" onclick="SoberTracker.togglePremiumPanel()" id="premiumPanelToggle" aria-expanded="false" aria-controls="premiumPanelBody">
-      <div class="premium-entry-title">✦ Premium</div>
-      <div class="premium-entry-end">
-        <span class="premium-entry-status" id="premiumEntryStatus">Upgrade</span>
-        <span class="premium-entry-chevron" id="premiumPanelToggleBtn" aria-hidden="true">Show ▾</span>
-      </div>
-    </button>
-    <div id="premiumPanelBody" class="premium-panel-inner" style="display:none;">
-      <p class="premium-panel-days" id="premiumPanelDaysLeft"></p>
-      <p class="premium-panel-active-note" id="premiumPanelActiveNote" hidden></p>
-      <button type="button" class="btn-premium-panel" id="premiumPanelSubscribeBtn" onclick="SoberTracker.openPremiumCheckout()">Subscribe</button>
-      <button type="button" class="btn-premium-restore-inline" id="premiumPanelRestoreBtn" onclick="SoberTracker.restorePremium()">Restore purchase</button>
-    </div>
-  </div>
-
-  <!-- IMPORT / EXPORT (collapsible) -->
-  <div class="card" id="backupPanelCard" style="animation:fadeInUp 0.4s ease 0.45s both;margin-top:12px;">
-    <button type="button" onclick="SoberTracker.toggleBackupPanel()" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;min-height:44px;" aria-expanded="false" aria-controls="backupPanelBody" id="backupPanelToggle">
-      <div style="font-size:13px;font-weight:700;color:#1c1c1e;">💾 Import / Export</div>
-      <span id="backupPanelToggleBtn" style="font-size:12px;font-weight:500;color:rgba(60,60,67,0.4);">Show ▾</span>
-    </button>
-    <div id="backupPanelBody" style="display:none;padding:0 16px 16px;">
-      <div class="backup-actions">
-        <button type="button" class="btn-backup" onclick="SoberTracker.exportBackup()">Export Progress</button>
-        <button type="button" class="btn-backup" onclick="SoberTracker.importBackup()">Import Progress</button>
-        <p class="backup-status" id="lastBackupLabel">Last exported: Never</p>
-        <button type="button" class="btn-reset-data" onclick="SoberTracker.requestDeleteData()">↺ Delete All Data</button>
-      </div>
-      <input type="file" id="importFileInput" accept=".json,application/json" hidden>
-    </div>
-  </div>
-
 </div><!-- /scroll-view -->
+
+<!-- SETTINGS (laotzu101-style: full-screen sheet, slides from top) -->
+<div class="overlay settings-overlay" id="appSettingsOverlay" aria-hidden="true" role="presentation">
+  <div class="settings-sheet" role="dialog" aria-modal="true" aria-label="Settings" onclick="event.stopPropagation()">
+    <div class="settings-sheet-top" aria-hidden="true"></div>
+    <div class="settings-sheet-scroll">
+
+      <div class="settings-block settings-reminder-wrap" id="reminderCard">
+        <div class="settings-group settings-group-reminder" id="reminderCardBody">
+          <div class="settings-remind-head">
+            <span class="settings-remind-label">Reminder</span>
+            <label class="remind-switch" aria-label="Daily check-in reminder">
+              <input type="checkbox" id="reminderDailyEnabled" onchange="SoberTracker.setReminderDailyEnabled(this.checked)">
+              <span class="remind-switch-ui" aria-hidden="true"></span>
+            </label>
+          </div>
+          <div class="remind-time-row settings-remind-time-inline" id="reminderTimeRow">
+            <input type="time" id="reminderDailyTime" class="reminder-time-input settings-time-native" value="20:00" onchange="SoberTracker.setReminderDailyTime(this.value)">
+          </div>
+          <p class="settings-remind-status" id="reminderStatusText" hidden></p>
+          <p class="settings-group-note settings-group-note--footer reminder-capacitor-note">Alerts will work in the upcoming mobile app. Your choices are saved on this device until then.</p>
+        </div>
+      </div>
+
+      <div class="settings-block" id="settingsLearnSection">
+        <div class="settings-group">
+          <button type="button" class="settings-row" onclick="SoberTracker.openTenDrinksGuideFromSettings()">
+            <img class="settings-row-icon settings-row-app-logo" src="assets/icons/icon-192.png" width="30" height="30" alt="" aria-hidden="true">
+            <span class="settings-row-text">
+              <span class="settings-row-title">How 10 Drinks helps you cut back or quit</span>
+            </span>
+            <span class="settings-row-chevron" aria-hidden="true">›</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="settings-block premium-panel-card" id="premiumPanelCard">
+        <div class="settings-group settings-group-premium settings-group-premium-collapse">
+          <button type="button" class="collapse-header settings-premium-collapse-header" id="premiumPanelToggle" onclick="SoberTracker.togglePremiumPanel()" aria-expanded="false" aria-controls="premiumPanelBody">
+            <span class="collapse-header-row">
+              <span class="collapse-header-text">
+                <span class="settings-premium-title" id="premiumPanelTitle">✦ Premium</span>
+                <span class="settings-premium-teaser" id="premiumPanelTeaser">Trial &amp; subscriptions</span>
+              </span>
+              <span class="collapse-chevron" id="premiumPanelChevron" aria-hidden="true">›</span>
+            </span>
+          </button>
+          <div class="collapse-body settings-premium-collapse-body premium-panel-inner" id="premiumPanelBody">
+            <p class="premium-panel-days" id="premiumPanelDaysLeft"></p>
+            <p class="premium-panel-active-note" id="premiumPanelActiveNote" hidden></p>
+            <span class="premium-entry-status settings-premium-badge" id="premiumEntryStatus" hidden>Upgrade</span>
+            <button type="button" class="btn-premium-panel settings-premium-cta" id="premiumPanelSubscribeBtn" onclick="SoberTracker.openPremiumCheckout()">View plans &amp; subscribe</button>
+            <button type="button" class="btn-premium-restore-inline" id="premiumPanelRestoreBtn" onclick="SoberTracker.restorePremium()">Restore purchase</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-block" id="settingsDataSection">
+        <div class="settings-group" id="backupPanelBody">
+          <button type="button" class="settings-row" onclick="SoberTracker.exportBackup()">
+            <span class="settings-row-icon settings-row-icon-green" aria-hidden="true">↑</span>
+            <span class="settings-row-text">
+              <span class="settings-row-title">Export progress</span>
+              <span class="settings-row-sub">Save a backup file on this device</span>
+            </span>
+            <span class="settings-row-chevron" aria-hidden="true">›</span>
+          </button>
+          <button type="button" class="settings-row" onclick="SoberTracker.importBackup()">
+            <span class="settings-row-icon settings-row-icon-blue" aria-hidden="true">↓</span>
+            <span class="settings-row-text">
+              <span class="settings-row-title">Import progress</span>
+              <span class="settings-row-sub">Restore from a backup file</span>
+            </span>
+            <span class="settings-row-chevron" aria-hidden="true">›</span>
+          </button>
+          <p class="settings-group-note settings-group-note--footer backup-status" id="lastBackupLabel">Last exported: Never</p>
+          <input type="file" id="importFileInput" accept=".json,application/json" hidden>
+        </div>
+      </div>
+
+      <div class="settings-block" id="settingsLegalSection">
+        <div class="settings-group">
+          <button type="button" class="settings-row" onclick="SoberTracker.openPrivacyPolicy()">
+            <span class="settings-row-icon settings-row-icon-muted" aria-hidden="true">◆</span>
+            <span class="settings-row-text">
+              <span class="settings-row-title">Privacy policy</span>
+            </span>
+            <span class="settings-row-chevron" aria-hidden="true">›</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="settings-block settings-block-danger" id="settingsDangerSection">
+        <div class="settings-group settings-group-danger">
+          <button type="button" class="settings-row settings-row-danger" onclick="SoberTracker.requestDeleteData()">
+            <span class="settings-row-icon settings-row-icon-danger" aria-hidden="true">↺</span>
+            <span class="settings-row-text">
+              <span class="settings-row-title">Reset all data</span>
+            </span>
+            <span class="settings-row-chevron" aria-hidden="true">›</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+    <button type="button" class="settings-done-btn" onclick="SoberTracker.closeSettings()">Done</button>
+  </div>
+</div>
+
+<!-- Privacy policy (from Settings) -->
+<div class="overlay privacy-policy-overlay" id="privacyPolicyOverlay" aria-hidden="true"
+  onclick="if(event.target===this)SoberTracker.closePrivacyPolicy()">
+  <div class="overlay-card privacy-policy-card" role="dialog" aria-modal="true" aria-labelledby="privacyPolicyTitle" onclick="event.stopPropagation()">
+    <h2 class="privacy-policy-title" id="privacyPolicyTitle">Privacy policy</h2>
+    <div class="privacy-policy-body">
+      <p>Journey data stays on this device in your browser storage. We do not run accounts or upload your log to our servers.</p>
+      <p>Drink-risk (AUDIT-C) answers are kept for this session only and are not saved when you close the app.</p>
+      <p>Export creates a file you control. Reset all data clears progress on this device only.</p>
+    </div>
+    <button type="button" class="settings-done-btn privacy-policy-done" onclick="SoberTracker.closePrivacyPolicy()">Done</button>
+  </div>
+</div>
 
 <!-- Dev test bar — bottom; enable with CONFIG.showTestUI -->
 <div id="testBtns" style="display:none;">
@@ -363,7 +409,7 @@
     </div>
     <div class="ten-drinks-guide">
       <p class="ten-drinks-guide-h3">Every day has two choices</p>
-      <p>☀️ <strong>✓ I Did Not Drink Today</strong> — your <strong>Sober Score</strong> increases by 1.</p>
+      <p>☀️ <strong>✓ I Did Not Drink Today</strong> — adds <strong>1 sober day</strong> to your <strong>Current Journey</strong>.</p>
       <p>🍺 <strong>🥃 I Drank Today</strong> — one of the <strong>10 drinking days</strong> is used.</p>
 
       <p>Each journey has <strong>10 drinking days</strong>. Log as many sober days as you can before 10 drinking days are used. Then this journey ends and a new one starts with 10 drinking days again.</p>
@@ -375,7 +421,7 @@
       </div>
 
       <p><strong>Streak tab</strong> — consecutive sober days in a row.<br>
-      <strong>Personal Best</strong> — longest ever streak.<br>
+      <strong>Best Streak</strong> — longest ever streak.<br>
       <strong>Milestone tab</strong> — sober days in <em>this</em> journey (10, 15, 20 …).</p>
 
       <p class="ten-drinks-guide-h3">Drinking Risk Meter</p>
@@ -399,111 +445,10 @@
     <div style="display:flex;flex-direction:column;gap:0;">
       <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid rgba(60,60,67,0.06);"><span style="font-size:18px;">🎯</span><div><div style="font-size:13px;font-weight:600;">Beat your last journey score</div><div style="font-size:12px;color:rgba(60,60,67,0.6);margin-top:2px;line-height:1.5;">Each journey — can you score more sober days than the last?</div></div></div>
       <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid rgba(60,60,67,0.06);"><span style="font-size:18px;">⚡</span><div><div style="font-size:13px;font-weight:600;">Set a new personal best streak</div><div style="font-size:12px;color:rgba(60,60,67,0.6);margin-top:2px;line-height:1.5;">How many consecutive sober days can you reach?</div></div></div>
-      <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid rgba(60,60,67,0.06);"><span style="font-size:18px;">🚫</span><div><div style="font-size:13px;font-weight:600;">Eliminate binge sessions</div><div style="font-size:12px;color:rgba(60,60,67,0.6);margin-top:2px;line-height:1.5;">Never go over 180ml whisky in one session — the WHO binge threshold.</div></div></div>
-      <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid rgba(60,60,67,0.06);"><span style="font-size:18px;">📉</span><div><div style="font-size:13px;font-weight:600;">Reduce pegs per session</div><div style="font-size:12px;color:rgba(60,60,67,0.6);margin-top:2px;line-height:1.5;">Drink less each time. Your liver notices immediately.</div></div></div>
-      <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid rgba(60,60,67,0.06);"><span style="font-size:18px;">🔗</span><div><div style="font-size:13px;font-weight:600;">Never drink two days in a row</div><div style="font-size:12px;color:rgba(60,60,67,0.6);margin-top:2px;line-height:1.5;">Always have a sober day after drinking. Your liver needs 48 hours.</div></div></div>
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid rgba(60,60,67,0.06);"><span style="font-size:18px;">🚫</span><div><div style="font-size:13px;font-weight:600;">Eliminate binge sessions</div><div style="font-size:12px;color:rgba(60,60,67,0.6);margin-top:2px;line-height:1.5;">Avoid heavy drinking occasions. The amount of alcohol in a given volume depends on the drink&apos;s strength (ABV). For 40% whisky, 180 ml is approximately 5.7 standard drinks of 10 g alcohol each.</div></div></div>
       <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;"><span style="font-size:18px;">📓</span><div><div style="font-size:13px;font-weight:600;">Log every day</div><div style="font-size:12px;color:rgba(60,60,67,0.6);margin-top:2px;line-height:1.5;">Awareness is the first step. Knowing your pattern honestly is winning.</div></div></div>
     </div>
     <button onclick="SoberTracker.closeWinningWays()" style="width:100%;margin-top:16px;padding:14px;background:#34c759;border:none;border-radius:14px;color:white;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;">Got it</button>
-  </div>
-</div>
-
-<!-- TARGET ZONE MODAL -->
-<div class="target-zone-modal" id="targetZoneModal">
-  <div style="background:white;border-radius:24px 24px 0 0;padding:24px 20px 44px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;">
-    <div style="width:36px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 20px;"></div>
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:12px;">
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:17px;font-weight:800;color:#1c1c1e;">🎯 Low Risk Target Zone</div>
-        <div style="font-size:11px;color:rgba(60,60,67,0.5);margin-top:4px;line-height:1.45;">1 drink = 10gm alcohol = 30ml whisky = 1 peg</div>
-        <div style="font-size:11px;color:rgba(60,60,67,0.45);margin-top:2px;line-height:1.45;">BINGE = 180ml+ in one session</div>
-      </div>
-      <button onclick="SoberTracker.closeTargetZone()" style="background:rgba(52,199,89,0.1);border:1.5px solid rgba(52,199,89,0.25);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:#248a3d;flex-shrink:0;">✕</button>
-    </div>
-
-    <div style="display:flex;flex-direction:column;gap:8px;">
-
-      <div style="padding:14px 16px;background:rgba(52,199,89,0.06);border-radius:12px;border:1.5px solid rgba(52,199,89,0.2);">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <div style="font-size:14px;font-weight:700;color:#1c1c1e;">🎉 Occasional Drinker</div>
-          <div style="font-size:10px;font-weight:700;color:#34c759;background:rgba(52,199,89,0.12);padding:2px 7px;border-radius:6px;">AUDIT-C 3</div>
-        </div>
-        <div style="display:flex;gap:16px;margin-bottom:6px;">
-          <div><div style="font-size:10px;color:rgba(60,60,67,0.4);margin-bottom:1px;">FREQUENCY</div><div style="font-size:12px;font-weight:600;color:#1c1c1e;">Once a month</div></div>
-          <div><div style="font-size:10px;color:rgba(60,60,67,0.4);margin-bottom:1px;">QUANTITY</div><div style="font-size:12px;font-weight:600;color:#1c1c1e;">5–6 pegs</div></div>
-          <div><div style="font-size:10px;color:rgba(60,60,67,0.4);margin-bottom:1px;">BINGE</div><div style="font-size:12px;font-weight:600;color:#34c759;">Never</div></div>
-        </div>
-        <div style="font-size:11px;color:rgba(60,60,67,0.4);">3–4 weeks recovery. Do not exceed 6 pegs.</div>
-      </div>
-
-      <div style="padding:14px 16px;background:rgba(52,199,89,0.06);border-radius:12px;border:1.5px solid rgba(52,199,89,0.2);">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <div style="font-size:14px;font-weight:700;color:#1c1c1e;">🍻 Weekend Drinker</div>
-          <div style="font-size:10px;font-weight:700;color:#34c759;background:rgba(52,199,89,0.12);padding:2px 7px;border-radius:6px;">AUDIT-C 3</div>
-        </div>
-        <div style="display:flex;gap:16px;margin-bottom:6px;">
-          <div><div style="font-size:10px;color:rgba(60,60,67,0.4);margin-bottom:1px;">FREQUENCY</div><div style="font-size:12px;font-weight:600;color:#1c1c1e;">2–4× a month</div></div>
-          <div><div style="font-size:10px;color:rgba(60,60,67,0.4);margin-bottom:1px;">QUANTITY</div><div style="font-size:12px;font-weight:600;color:#1c1c1e;">3–4 pegs</div></div>
-          <div><div style="font-size:10px;color:rgba(60,60,67,0.4);margin-bottom:1px;">BINGE</div><div style="font-size:12px;font-weight:600;color:#34c759;">Never</div></div>
-        </div>
-        <div style="font-size:11px;color:rgba(60,60,67,0.4);">Body fully recovers between occasions.</div>
-      </div>
-
-      <div style="padding:14px 16px;background:rgba(52,199,89,0.06);border-radius:12px;border:1.5px solid rgba(52,199,89,0.2);">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <div style="font-size:14px;font-weight:700;color:#1c1c1e;">🎯 Mindful Drinker</div>
-          <div style="font-size:10px;font-weight:700;color:#34c759;background:rgba(52,199,89,0.12);padding:2px 7px;border-radius:6px;">AUDIT-C 3</div>
-        </div>
-        <div style="display:flex;gap:16px;margin-bottom:6px;">
-          <div><div style="font-size:10px;color:rgba(60,60,67,0.4);margin-bottom:1px;">FREQUENCY</div><div style="font-size:12px;font-weight:600;color:#1c1c1e;">2–3× a week</div></div>
-          <div><div style="font-size:10px;color:rgba(60,60,67,0.4);margin-bottom:1px;">QUANTITY</div><div style="font-size:12px;font-weight:600;color:#1c1c1e;">1–2 pegs</div></div>
-          <div><div style="font-size:10px;color:rgba(60,60,67,0.4);margin-bottom:1px;">BINGE</div><div style="font-size:12px;font-weight:600;color:#34c759;">Never</div></div>
-        </div>
-        <div style="font-size:11px;color:rgba(60,60,67,0.4);">Upper edge of Low Risk. Strict quantity discipline required.</div>
-      </div>
-
-    </div>
-
-    <!-- Beer peg guide — same as AUDIT Q2 -->
-    <div style="border:1.5px solid rgba(52,199,89,0.25);border-radius:12px;overflow:hidden;margin-top:10px;">
-      <button onclick="AuditOnboarding.toggleBeer('tzBeer','tzBeerArr')"
-        style="width:100%;padding:11px 14px;background:rgba(52,199,89,0.06);border:none;
-        font-size:13px;font-weight:600;color:#248a3d;cursor:pointer;
-        font-family:inherit;text-align:left;display:flex;align-items:center;
-        justify-content:space-between;min-height:44px;">
-        <span>🍺 I drink beer — how many pegs is that?</span>
-        <span id="tzBeerArr" style="font-size:18px;color:rgba(36,138,61,0.45);transition:transform 0.2s;">▸</span>
-      </button>
-      <div id="tzBeer" style="display:none;border-top:1px solid rgba(52,199,89,0.15);padding:12px 14px;background:white;">
-        <div style="font-size:10px;color:rgba(60,60,67,0.35);margin-bottom:10px;">1 drink = 10gm alcohol = 30ml whisky = 1 peg</div>
-        <div style="display:grid;grid-template-columns:auto 1fr auto;gap:6px 12px;align-items:center;">
-          <div style="font-size:11px;font-weight:600;color:rgba(60,60,67,0.4);padding-bottom:4px;">BOTTLE</div>
-          <div style="font-size:11px;font-weight:600;color:rgba(60,60,67,0.4);padding-bottom:4px;">TYPE</div>
-          <div style="font-size:11px;font-weight:600;color:rgba(60,60,67,0.4);padding-bottom:4px;text-align:right;">PEGS</div>
-
-          <div style="font-size:13px;color:#1c1c1e;">650ml</div>
-          <div style="font-size:12px;color:rgba(60,60,67,0.5);">Strong (7.5% ABV)</div>
-          <div style="font-size:13px;font-weight:700;color:#cc6600;text-align:right;">≈ 4 pegs</div>
-
-          <div style="font-size:13px;color:#1c1c1e;">500ml</div>
-          <div style="font-size:12px;color:rgba(60,60,67,0.5);">Strong (7.5% ABV)</div>
-          <div style="font-size:13px;font-weight:700;color:#cc6600;text-align:right;">≈ 3 pegs</div>
-
-          <div style="font-size:13px;color:#1c1c1e;">650ml</div>
-          <div style="font-size:12px;color:rgba(60,60,67,0.5);">Regular (5% ABV)</div>
-          <div style="font-size:13px;font-weight:600;color:rgba(60,60,67,0.6);text-align:right;">≈ 2.5 pegs</div>
-
-          <div style="font-size:13px;color:#1c1c1e;">500ml</div>
-          <div style="font-size:12px;color:rgba(60,60,67,0.5);">Regular (5% ABV)</div>
-          <div style="font-size:13px;font-weight:600;color:rgba(60,60,67,0.6);text-align:right;">≈ 2 pegs</div>
-        </div>
-      </div>
-    </div>
-
-    <div style="margin-top:14px;font-size:11px;color:rgba(60,60,67,0.35);text-align:center;line-height:1.6;">
-      Low Risk is not Risk Free · Less is always better · WHO 2023
-    </div>
-
   </div>
 </div>
 
@@ -610,22 +555,20 @@
 
     <!-- Step 1: Q1 -->
     <div id="audit-step-1">
-      <div style="font-size:14px;font-weight:600;color:#1c1c1e;margin-bottom:2px;">How often do you have a drink containing alcohol?</div>
-      <div style="font-size:12px;color:rgba(60,60,67,0.65);margin-bottom:14px;">आप कितनी बार शराब पीते हैं?</div>
+      <div style="font-size:14px;font-weight:600;color:#1c1c1e;margin-bottom:14px;">How often do you have a drink containing alcohol?</div>
       <div style="display:flex;flex-direction:column;gap:8px;" id="q1Options">
-        <button onclick="AuditOnboarding.select(1,0)" class="audit-opt" data-val="0"><span class="audit-badge">0</span><span>Never</span><span class="audit-hint">कभी नहीं</span></button>
-        <button onclick="AuditOnboarding.select(1,1)" class="audit-opt" data-val="1"><span class="audit-badge">1</span><span>Monthly or less</span><span class="audit-hint">महीने में एक बार या कम</span></button>
-        <button onclick="AuditOnboarding.select(1,2)" class="audit-opt" data-val="2"><span class="audit-badge">2</span><span>2 to 4 times a month</span><span class="audit-hint">महीने में 2-4 बार</span></button>
-        <button onclick="AuditOnboarding.select(1,3)" class="audit-opt" data-val="3"><span class="audit-badge">3</span><span>2 to 3 times a week</span><span class="audit-hint">हफ़्ते में 2-3 बार</span></button>
-        <button onclick="AuditOnboarding.select(1,4)" class="audit-opt" data-val="4"><span class="audit-badge">4</span><span>4 or more times a week</span><span class="audit-hint">हफ़्ते में 4 या अधिक बार</span></button>
+        <button onclick="AuditOnboarding.select(1,0)" class="audit-opt" data-val="0"><span class="audit-badge">0</span><span>Never</span></button>
+        <button onclick="AuditOnboarding.select(1,1)" class="audit-opt" data-val="1"><span class="audit-badge">1</span><span>Monthly or less</span></button>
+        <button onclick="AuditOnboarding.select(1,2)" class="audit-opt" data-val="2"><span class="audit-badge">2</span><span>2 to 4 times a month</span></button>
+        <button onclick="AuditOnboarding.select(1,3)" class="audit-opt" data-val="3"><span class="audit-badge">3</span><span>2 to 3 times a week</span></button>
+        <button onclick="AuditOnboarding.select(1,4)" class="audit-opt" data-val="4"><span class="audit-badge">4</span><span>4 or more times a week</span></button>
       </div>
     </div>
 
     <!-- Step 2: Q2 -->
     <div id="audit-step-2" style="display:none;">
-      <div style="font-size:14px;font-weight:600;color:#1c1c1e;margin-bottom:2px;">How many pegs on a typical drinking day?</div>
-      <div style="font-size:12px;color:rgba(60,60,67,0.65);margin-bottom:4px;">एक सामान्य दिन आप कितने पेग पीते हैं?</div>
-      <div style="font-size:10px;color:rgba(60,60,67,0.35);margin-bottom:12px;">1 drink = 1 peg (30ml whisky) · 1 ड्रिंक = 1 पेग (30ml)</div>
+      <div style="font-size:14px;font-weight:600;color:#1c1c1e;margin-bottom:4px;">How many pegs on a typical drinking day?</div>
+      <div style="font-size:10px;color:rgba(60,60,67,0.35);margin-bottom:12px;line-height:1.45;">For this test: 1 standard drink ≈ 30 ml of 40% whisky (about 10 g alcohol).</div>
 
       <!-- Beer button — visible, tap to expand -->
       <div style="border:1.5px solid rgba(60,60,67,0.12);border-radius:12px;overflow:hidden;margin-bottom:12px;">
@@ -663,19 +606,18 @@
       </div>
 
       <div style="display:flex;flex-direction:column;gap:8px;" id="q2Options">
-        <button onclick="AuditOnboarding.select(2,0)" class="audit-opt" data-val="0"><span class="audit-badge">0</span><span>1 or 2 pegs <span style="color:rgba(60,60,67,0.4);font-size:11px;">(30 or 60ml)</span></span><span class="audit-hint">1 या 2 पेग</span></button>
-        <button onclick="AuditOnboarding.select(2,1)" class="audit-opt" data-val="1"><span class="audit-badge">1</span><span>3 or 4 pegs <span style="color:rgba(60,60,67,0.4);font-size:11px;">(90 or 120ml)</span></span><span class="audit-hint">3 या 4 पेग</span></button>
-        <button onclick="AuditOnboarding.select(2,2)" class="audit-opt" data-val="2"><span class="audit-badge">2</span><span>5 or 6 pegs <span style="color:rgba(60,60,67,0.4);font-size:11px;">(150 or 180ml)</span></span><span class="audit-hint">5 या 6 पेग</span></button>
-        <button onclick="AuditOnboarding.select(2,3)" class="audit-opt" data-val="3"><span class="audit-badge">3</span><span>7, 8 or 9 pegs <span style="color:rgba(60,60,67,0.4);font-size:11px;">(210 to 270ml)</span></span><span class="audit-hint">7, 8 या 9 पेग</span></button>
-        <button onclick="AuditOnboarding.select(2,4)" class="audit-opt" data-val="4"><span class="audit-badge">4</span><span>10 or more pegs <span style="color:rgba(60,60,67,0.4);font-size:11px;">(300ml+)</span></span><span class="audit-hint">10 या अधिक पेग</span></button>
+        <button onclick="AuditOnboarding.select(2,0)" class="audit-opt" data-val="0"><span class="audit-badge">0</span><span>1 or 2 pegs <span style="color:rgba(60,60,67,0.4);font-size:11px;">(30 or 60ml)</span></span></button>
+        <button onclick="AuditOnboarding.select(2,1)" class="audit-opt" data-val="1"><span class="audit-badge">1</span><span>3 or 4 pegs <span style="color:rgba(60,60,67,0.4);font-size:11px;">(90 or 120ml)</span></span></button>
+        <button onclick="AuditOnboarding.select(2,2)" class="audit-opt" data-val="2"><span class="audit-badge">2</span><span>5 or 6 pegs <span style="color:rgba(60,60,67,0.4);font-size:11px;">(~150–180 ml @ 40% whisky)</span></span></button>
+        <button onclick="AuditOnboarding.select(2,3)" class="audit-opt" data-val="3"><span class="audit-badge">3</span><span>7, 8 or 9 pegs <span style="color:rgba(60,60,67,0.4);font-size:11px;">(210 to 270ml)</span></span></button>
+        <button onclick="AuditOnboarding.select(2,4)" class="audit-opt" data-val="4"><span class="audit-badge">4</span><span>10 or more pegs <span style="color:rgba(60,60,67,0.4);font-size:11px;">(300ml+)</span></span></button>
       </div>
     </div>
 
     <!-- Step 3: Q3 -->
     <div id="audit-step-3" style="display:none;">
-      <div style="font-size:14px;font-weight:600;color:#1c1c1e;margin-bottom:2px;">How often do you have 6 or more drinks on one occasion?</div>
-      <div style="font-size:12px;color:rgba(60,60,67,0.65);margin-bottom:4px;">एक बार में 6 या अधिक ड्रिंक कितनी बार पीते हैं?</div>
-      <div style="font-size:10px;color:rgba(60,60,67,0.35);margin-bottom:12px;">6 drinks = 180ml whisky</div>
+      <div style="font-size:14px;font-weight:600;color:#1c1c1e;margin-bottom:4px;">How often do you have 6 or more drinks on one occasion?</div>
+      <div style="font-size:10px;color:rgba(60,60,67,0.35);margin-bottom:12px;line-height:1.45;">AUDIT-C Q3: 6 or more standard drinks (60 g alcohol) on one occasion.<br>For reference, 180 ml of 40% whisky contains about 57 g of alcohol — just under 6 of the 10-g standard drinks used by AUDIT.</div>
 
       <!-- Beer button Q3 -->
       <div style="border:1.5px solid rgba(255,59,48,0.15);border-radius:12px;overflow:hidden;margin-bottom:12px;">
@@ -688,7 +630,7 @@
           <span id="q3arr" style="font-size:18px;color:rgba(180,40,30,0.3);transition:transform 0.2s;">▸</span>
         </button>
         <div id="q3beer" style="display:none;border-top:1px solid rgba(255,59,48,0.1);padding:12px 14px;background:white;">
-          <div style="font-size:11px;color:rgba(180,40,30,0.7);font-weight:600;margin-bottom:8px;">⚠️ 6 drinks = WHO binge threshold. In beer:</div>
+          <div style="font-size:11px;color:rgba(180,40,30,0.7);font-weight:600;margin-bottom:8px;line-height:1.45;">⚠️ 6 or more standard drinks (60 g alcohol; 10 g per drink) on one occasion — beer examples:</div>
           <div style="display:grid;grid-template-columns:auto 1fr auto;gap:6px 12px;align-items:center;">
             <div style="font-size:11px;font-weight:600;color:rgba(60,60,67,0.4);padding-bottom:4px;">BOTTLE</div>
             <div style="font-size:11px;font-weight:600;color:rgba(60,60,67,0.4);padding-bottom:4px;">TYPE</div>
@@ -714,11 +656,11 @@
       </div>
 
       <div style="display:flex;flex-direction:column;gap:8px;" id="q3Options">
-        <button onclick="AuditOnboarding.select(3,0)" class="audit-opt" data-val="0"><span class="audit-badge">0</span><span>Never</span><span class="audit-hint">कभी नहीं</span></button>
-        <button onclick="AuditOnboarding.select(3,1)" class="audit-opt" data-val="1"><span class="audit-badge">1</span><span>Less than monthly <span style="color:rgba(60,60,67,0.4);font-size:11px;">(once every few months)</span></span><span class="audit-hint">साल में कुछ बार</span></button>
-        <button onclick="AuditOnboarding.select(3,2)" class="audit-opt" data-val="2"><span class="audit-badge">2</span><span>Monthly</span><span class="audit-hint">महीने में एक बार</span></button>
-        <button onclick="AuditOnboarding.select(3,3)" class="audit-opt" data-val="3"><span class="audit-badge">3</span><span>Weekly</span><span class="audit-hint">हर हफ़्ते</span></button>
-        <button onclick="AuditOnboarding.select(3,4)" class="audit-opt" data-val="4"><span class="audit-badge">4</span><span>Daily or almost daily</span><span class="audit-hint">रोज़ या लगभग रोज़</span></button>
+        <button onclick="AuditOnboarding.select(3,0)" class="audit-opt" data-val="0"><span class="audit-badge">0</span><span>Never</span></button>
+        <button onclick="AuditOnboarding.select(3,1)" class="audit-opt" data-val="1"><span class="audit-badge">1</span><span>Less than monthly <span style="color:rgba(60,60,67,0.4);font-size:11px;">(once every few months)</span></span></button>
+        <button onclick="AuditOnboarding.select(3,2)" class="audit-opt" data-val="2"><span class="audit-badge">2</span><span>Monthly</span></button>
+        <button onclick="AuditOnboarding.select(3,3)" class="audit-opt" data-val="3"><span class="audit-badge">3</span><span>Weekly</span></button>
+        <button onclick="AuditOnboarding.select(3,4)" class="audit-opt" data-val="4"><span class="audit-badge">4</span><span>Daily or almost daily</span></button>
       </div>
     </div>
     <button id="auditNavBtn" onclick="AuditOnboarding.next()" style="width:100%;height:50px;background:#34c759;border:none;border-radius:14px;font-size:16px;font-weight:700;color:white;opacity:0.4;cursor:default;transition:opacity 0.2s;margin-top:20px;">Next →</button>
@@ -746,7 +688,7 @@
         onclick="SoberTracker.selectPremiumPlan('monthly')">
         <div class="premium-plan-label">Monthly</div>
         <div class="premium-plan-price">
-          <span class="premium-plan-sale">₹149</span>
+          <span class="premium-plan-sale" id="planMonthlyPrice">—</span>
         </div>
         <div class="premium-plan-message">per month</div>
       </button>
@@ -754,11 +696,11 @@
         onclick="SoberTracker.selectPremiumPlan('yearly')">
         <div class="premium-plan-label">Annual</div>
         <div class="premium-plan-price">
-          <span class="premium-plan-list">₹1,788</span>
-          <span class="premium-plan-sale">₹999</span>
-          <span class="premium-plan-off">44% off</span>
+          <span class="premium-plan-list" id="planYearlyListPrice">—</span>
+          <span class="premium-plan-sale" id="planYearlySalePrice">—</span>
+          <span class="premium-plan-off" id="planYearlyOff">—</span>
         </div>
-        <div class="premium-plan-message">₹83/mo · best value</div>
+        <div class="premium-plan-message" id="planYearlyPerMonthMsg">—</div>
       </button>
     </div>
     <button class="btn-premium-buy" type="button" id="premiumCtaBtn" onclick="SoberTracker.subscribePremium()">Subscribe</button>
@@ -798,6 +740,21 @@
   </div>
 </div>
 
+<!-- CALENDAR DAY LOG (missed days) -->
+<div class="modal" id="calendarDayModal">
+  <div class="modal-content" style="text-align:center;">
+    <div style="font-size:36px;margin-bottom:12px;">📅</div>
+    <div class="modal-title" id="calendarDayModalTitle">Log this day</div>
+    <div id="calendarDayModalSub" style="font-size:13px;color:var(--label2);padding:0 16px 16px;line-height:1.5;">Log this day for your current journey.</div>
+    <div class="modal-divider"></div>
+    <div class="modal-actions">
+      <button type="button" class="modal-action" onclick="SoberTracker.logCalendarDay('success')" style="color:var(--green);font-weight:600;">✓ Did Not Drink</button>
+      <button type="button" class="modal-action confirm" onclick="SoberTracker.logCalendarDay('fail')" style="color:var(--red);">🥃 I Drank</button>
+      <button type="button" class="modal-action" onclick="SoberTracker.closeCalendarDayModal()" style="color:var(--label2);">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- YESTERDAY MODAL -->
 <div class="modal" id="yesterdayModal">
   <div class="modal-content" style="text-align:center;">
@@ -828,13 +785,10 @@
 <script src="src/utils/helpers.js"></script>
 <script src="src/constants/milestones.js"></script>
 <script src="src/journey/streak.js"></script>
+<script src="src/journey/best-performances.js"></script>
 <script src="src/data/local-storage.js"></script>
-<script src="src/data/firestore.js"></script>
-<script src="src/firebase.js"></script>
 <script src="src/ui/journey-milestones.js"></script>
 <script src="src/ui/dashboard.js"></script>
-<script src="src/ui/body-timeline.js"></script>
-<script src="src/ui/timeline.js"></script>
 <script src="src/ui/history-views.js"></script>
 <script src="src/ui/renderAll.js"></script>
 <script src="src/journey/midnight.js"></script>
@@ -842,6 +796,7 @@
 <script src="src/journey/journey.js"></script>
 <script src="src/ui/reminders.js"></script>
 <script src="src/ui/panels.js"></script>
+<script src="src/premium/pricing.js"></script>
 <script src="src/premium/premium.js"></script>
 <script src="src/data/backup.js"></script>
 <script src="src/journey/catchup.js"></script>

@@ -12,8 +12,7 @@ const Tracker = {
   pendingAction:   null,
   _celebQueue:     [],
   _celebrating:    false,
-  _currentStreaks: [], // memory-only — not persisted. Used for future analytics.
-
+  _pendingCalendarDayKey: null,
   init() {
     try {
     ensureTrialStarted();
@@ -54,7 +53,7 @@ const Tracker = {
     UI.renderAll(this.data);
     MidnightTimer.start();
     } catch (err) {
-      console.error('[SoberJourney] init failed:', err);
+      console.error('[10Drinks] init failed:', err);
     } finally {
       setTimeout(dismissAppSplash, 300);
     }
@@ -109,18 +108,16 @@ const Tracker = {
 
   // --- USER ACTIONS ---
 
-  // --- LOG YESTERDAY ---
-  logYesterday(status) {
-    el('yesterdayModal').classList.remove('active');
+  // --- LOG YESTERDAY / CALENDAR BACKFILL ---
+  _logDayForKey(key, status) {
     const d = this.data;
-    const appToday = getAppToday(d);
-    const yest = new Date(appToday);
-    yest.setDate(yest.getDate() - 1);
-    const key  = dateKey(yest);
-
-    // Clear today's session flags before recalc so yesterday's entry drives streak
-    d.todayStatus = 'none';
-    d.todaySuccessLogged = false;
+    if (!d || !key) return;
+    const yestKey = calendarYesterdayKey(d);
+    const todayKey = dateKey(getAppToday(d));
+    if (key === yestKey || key === todayKey) {
+      d.todayStatus = 'none';
+      d.todaySuccessLogged = false;
+    }
 
     if (status === 'success') {
       const added = this._recordSoberDay(d, key);
@@ -149,8 +146,51 @@ const Tracker = {
     DataManager.saveNow(d);
     refreshStreakUI(d);
     UI.renderAll(d);
-    // Resume celebrations that were held while yesterday modal was open
     if (this._celebQueue.length && !this._celebrating) this._showNext();
+  },
+
+  logYesterday(status) {
+    el('yesterdayModal').classList.remove('active');
+    const key = calendarYesterdayKey(this.data);
+    this._logDayForKey(key, status);
+  },
+
+  promptCalendarDay(dayKey) {
+    const d = this.data || DataManager.load();
+    if (!canLogCalendarDay(d, dayKey, getRealToday())) return;
+    this._pendingCalendarDayKey = dayKey;
+    const title = el('calendarDayModalTitle');
+    const sub = el('calendarDayModalSub');
+    if (title) title.textContent = formatCalendarDayLabel(dayKey);
+    if (sub) sub.textContent = 'Log this day for your current journey.';
+    const ym = el('yesterdayModal');
+    if (ym) ym.classList.remove('active');
+    const modal = el('calendarDayModal');
+    if (modal) {
+      modal.classList.add('active');
+      document.body.classList.add('modal-open');
+    }
+  },
+
+  closeCalendarDayModal() {
+    this._pendingCalendarDayKey = null;
+    const modal = el('calendarDayModal');
+    if (modal) modal.classList.remove('active');
+    if (!el('yesterdayModal')?.classList.contains('active')) {
+      document.body.classList.remove('modal-open');
+    }
+  },
+
+  logCalendarDay(status) {
+    const key = this._pendingCalendarDayKey;
+    const modal = el('calendarDayModal');
+    if (modal) modal.classList.remove('active');
+    this._pendingCalendarDayKey = null;
+    if (!el('yesterdayModal')?.classList.contains('active')) {
+      document.body.classList.remove('modal-open');
+    }
+    if (!key) return;
+    this._logDayForKey(key, status);
   },
 
   // Advance lastDayCheck by one calendar day (noon local — avoids DST edge cases)
@@ -318,8 +358,6 @@ const Tracker = {
     if (!this._recordDrinkDay(d, key)) return;
     d.todayStatus = 'failed';
     recalculateStreakFromLog(d);
-    d.bodyTimelineWeekBlock = 0;
-    d.bodyTimelineWeekHoldCal = 0;
     d.personalBestCelebrated = false;
     d.celebratedStreakMilestones = {};
     d.celebratedScienceMilestones = {};
@@ -355,6 +393,7 @@ const Tracker = {
     if (d.completedJourneys.length > histCap) {
       d.completedJourneys = d.completedJourneys.slice(-histCap);
     }
+    archiveCurrentJourneyStreaks(d);
     const prevBest = d.highestScore.success | 0;
     this._updateBest();
     d.nextJourneyTarget = d.highestScore.success | 0;
@@ -393,8 +432,6 @@ const Tracker = {
     if ((d.currentStreak | 0) > (d.longestStreak | 0)) d.longestStreak = d.currentStreak | 0;
     d.currentStreak = 0;
     d.calendarDay = 1;
-    d.bodyTimelineWeekBlock = 0;
-    d.bodyTimelineWeekHoldCal = 0;
     clearDrinkDayFrozenStreak(d);
     d.todayStatus = 'none';
     d.todaySuccessLogged = false;
@@ -412,7 +449,7 @@ const Tracker = {
     d.journeyStartKey = dateKey(appToday);
     d.lastDayCheck = new Date(appToday.getFullYear(), appToday.getMonth(), appToday.getDate(), 12, 0, 0).toISOString();
     d.streakPeakAtRunStart = d.longestStreak | 0;
-    this._currentStreaks = [];
+    d.currentJourneyStreaks = [];
     DataManager.save(d);
     refreshStreakUI(d);
     this.resetJourneyTabView();
@@ -470,7 +507,7 @@ const Tracker = {
   _recordDrinkDay(d, key) {
     this._ensureScore(d);
     const ok = recordDrinkDay(d, key);
-    if (ok && d.currentStreak > 0) this._currentStreaks.push(d.currentStreak);
+    if (ok) pushEndedStreakOnDrink(d);
     return ok;
   },
 
@@ -576,7 +613,8 @@ const Tracker = {
   }
 };
 
-// Keep SoberTracker as alias for backward compat with onclick handlers
+// Legacy onclick alias (HTML). Prefer TenDrinksTracker for new code / Capacitor shell.
+const TenDrinksTracker = Tracker;
 const SoberTracker = Tracker;
 
 // ═══════════════════════════════════════════════════════════════

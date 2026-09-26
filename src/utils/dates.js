@@ -15,6 +15,12 @@ function calendarYesterdayKey(data) {
   return dateKey(yest);
 }
 
+function formatCalendarDayLabel(dayKey) {
+  if (!dayKey || !/^\d{4}-\d{2}-\d{2}$/.test(dayKey)) return dayKey || '';
+  const dt = noonFromDateKey(dayKey);
+  return dt.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+}
+
 
 // Test "Next Day" advances simulatedToday; logging/streak use this instead of real clock
 function getAppToday(data) {
@@ -135,7 +141,6 @@ function recordDrinkDay(d, key) {
   d.scoredDays[key] = true;
   d.drinkDayFrozenStreak = streakBeforeDrink;
   d.drinkDayFrozenKey = key;
-  d.drinkDayFrozenProgress = getHalfProgressAtTime(new Date());
   d.currentScore.failures++;
   d.totalFailures++;
   d.celebratedStreakMilestones = {};

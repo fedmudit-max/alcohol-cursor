@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = 'sober-journey-v92';
+const CACHE_NAME = '10drinks-v149';
 
 function scopeUrl(path) {
   return new URL(path, self.registration.scope).href;
@@ -13,17 +13,34 @@ function precacheUrls() {
     scopeUrl('manifest.json'),
     scopeUrl('css/base.css'),
     scopeUrl('d3.min.js'),
-    scopeUrl('src/main.js'),
     scopeUrl('src/config/app.config.js'),
-    scopeUrl('src/journey/journey.js'),
-    scopeUrl('src/ui/renderAll.js'),
-    scopeUrl('src/ui/history-views.js'),
-    scopeUrl('src/ui/panels.js'),
-    scopeUrl('src/data/local-storage.js'),
+    scopeUrl('src/utils/dates.js'),
+    scopeUrl('src/utils/helpers.js'),
+    scopeUrl('src/constants/milestones.js'),
     scopeUrl('src/constants/dyk.js'),
-    scopeUrl('icon-180.png'),
-    scopeUrl('icon-192.png'),
-    scopeUrl('icon-512.png'),
+    scopeUrl('src/data/local-storage.js'),
+    scopeUrl('src/data/backup.js'),
+    scopeUrl('src/journey/streak.js'),
+    scopeUrl('src/journey/best-performances.js'),
+    scopeUrl('src/journey/midnight.js'),
+    scopeUrl('src/journey/daily-msg.js'),
+    scopeUrl('src/journey/journey.js'),
+    scopeUrl('src/journey/catchup.js'),
+    scopeUrl('src/ui/journey-milestones.js'),
+    scopeUrl('src/ui/dashboard.js'),
+    scopeUrl('src/ui/history-views.js'),
+    scopeUrl('src/ui/renderAll.js'),
+    scopeUrl('src/ui/reminders.js'),
+    scopeUrl('src/ui/panels.js'),
+    scopeUrl('src/premium/pricing.js'),
+    scopeUrl('src/premium/premium.js'),
+    scopeUrl('src/onboarding/onboarding.js'),
+    scopeUrl('src/assessment/meter.js'),
+    scopeUrl('src/assessment/questions.js'),
+    scopeUrl('src/main.js'),
+    scopeUrl('assets/icons/icon-180.png'),
+    scopeUrl('assets/icons/icon-192.png'),
+    scopeUrl('assets/icons/icon-512.png'),
   ];
 }
 

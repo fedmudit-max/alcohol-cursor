@@ -16,11 +16,7 @@ const MidnightTimer = {
       Tracker._catchUp();
     } else {
       recalculateStreakFromLog(data);
-      if (Tracker.data) {
-        Tracker.data = data;
-        // Flip the half-dot when the clock crosses noon (poll is every MIDNIGHT_CHECK_MS)
-        refreshBodyTimelineIfHalfChanged(Tracker.data);
-      }
+      if (Tracker.data) Tracker.data = data;
     }
   }
 };

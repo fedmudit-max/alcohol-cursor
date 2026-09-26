@@ -2,19 +2,19 @@
 'use strict';
 const STREAK_MILESTONES = [
   { id:'day1', days:1, el:'cs-day1', name:'Day 1 — First Step',
-    c:{ emoji:'🌞', title:'First Step!', msg:"The hardest step is the first. You took it.\n\n🫧 Blood alcohol clearing. Liver beginning to filter. Heart rate normalising." }},
+    c:{ emoji:'🌞', title:'Day 1', msg:'Alcohol is being cleared from your system. The body begins adjusting as alcohol exposure decreases. Heart rate and blood pressure may begin moving toward a person\'s usual levels.' }},
   { id:'day2', days:2, el:'cs-day2', name:'Day 2 — Still Going',
-    c:{ emoji:'🚶', title:'Still Going!', msg:"Day 2. Most people stop here. You didn't.\n\n💧 Fully hydrated. Blood alcohol at zero. Brain fog beginning to lift." }},
-  { id:'day3', days:3, el:'cs-day3', name:'Day 3 — Bloodstream Clear',
-    c:{ emoji:'🔥', title:'Breaking Through!', msg:"3 days strong! The physical withdrawal is easing.\n\n🧬 Alcohol fully cleared from bloodstream. Liver enzymes returning to normal." }},
-  { id:'day4', days:4, el:'cs-day4', name:'Day 4 — Sleep Returns',
-    c:{ emoji:'🌙', title:'Sleep Returns!', msg:"Day 4. Your body is starting to repair overnight.\n\n🌙 REM sleep returning. You will notice deeper, more restful sleep tonight." }},
+    c:{ emoji:'🚶', title:'Day 2', msg:'Your body is adjusting. Fluid balance and other effects of recent alcohol exposure may begin to settle as the body continues to process alcohol.' }},
+  { id:'day3', days:3, el:'cs-day3', name:'Day 3 — Body Adjusting',
+    c:{ emoji:'🔥', title:'Day 3 — Body Adjusting', msg:'Three days strong. The body continues adjusting to lower alcohol exposure. Withdrawal symptoms can vary widely; if symptoms are severe or concerning, seek medical help.' }},
+  { id:'day4', days:4, el:'cs-day4', name:'Day 4 — Sleep Adjusting',
+    c:{ emoji:'🌙', title:'Day 4 — Sleep Adjusting', msg:'Sleep may begin to change. Some people notice improvements in sleep as the body adjusts, while others may experience disrupted sleep for longer.' }},
   { id:'day5', days:5, el:'cs-day5', name:'Day 5 — Heart Easing',
-    c:{ emoji:'💚', title:'Heart Easing!', msg:"5 days. You are halfway through your first week.\n\n❤️ Blood pressure measurably lower. Heart working less hard." }},
-  { id:'day6', days:6, el:'cs-day6', name:'Day 6 — Energy Rising',
-    c:{ emoji:'⚡', title:'Energy Rising!', msg:"6 days. One more and you have a full week.\n\n⚡ Natural energy returning. Less fatigue, more focus." }},
-  { id:'day7', days:7, el:'cs-day7', name:'Day 7 — One Full Week',
-    c:{ emoji:'🌟', title:'One Full Week!', msg:"7 days. One complete week without alcohol.\n\n🧠 Brain chemistry actively resetting. Dopamine receptors recovering. Anxiety measurably lower.\n\nBy WHO frequency standards — you are now out of the Hazardous zone for the week." }},
+    c:{ emoji:'💚', title:'Day 5', msg:'Reducing alcohol can support healthier blood pressure and cardiovascular health over time. The timing and amount of change vary from person to person.' }},
+  { id:'day6', days:6, el:'cs-day6', name:'Day 6 — Energy Returning',
+    c:{ emoji:'⚡', title:'Day 6 — Energy Returning', msg:'Energy may start to feel different. Some people notice improvements in energy or focus as the body adjusts, while recovery varies from person to person.' }},
+  { id:'day7', days:7, el:'cs-day7', name:'Day 7 — Brain Adapting',
+    c:{ emoji:'🌟', title:'Day 7 — Brain Adapting', msg:'One full week. Brain reward pathways can begin adapting as alcohol exposure decreases. Sleep and mood may begin to improve as the body adjusts.' }},
 ];
 
 // Progress tab shares Day 1/3/7 with Streak — Streak popup wins; skip Progress celebration.
@@ -33,11 +33,11 @@ const JOURNEY_TROPHIES = [
   { days:30,  el:'jm-30',  label:'30 Days — Momentum',           c:{ emoji:'💪', title:'Momentum!',           msg:"30 sober days. Three sober days for every drinking day. Your brain is remembering what normal feels like. This is recovery." }},
   { days:40,  el:'jm-40',  label:'40 Days — Building Habit',     c:{ emoji:'🎯', title:'Building Habit!',     msg:"40 sober days. Four sober days for every drinking day. This is no longer a struggle. This is becoming who you are." }},
   { days:50,  el:'jm-50',  label:'50 Days — Half Century',       c:{ emoji:'🌱', title:'Half Century!',       msg:"50 sober days. Five for every one. You have built a pattern that your body now expects. Keep it." }},
-  { days:60,  el:'jm-60',  label:'60 Days — Turning Point',      c:{ emoji:'✨', title:'Turning Point!',      msg:"60 sober days. Six sober days for every drinking day. You are approaching every clinical safe limit. The summit is visible." }},
-  { days:80,  el:'jm-80',  label:'80 Days — Low Risk',           c:{ emoji:'🏔️', title:'Low Risk!',          msg:"80 sober days. You are drinking less often than most people globally.\n\nAt this frequency — you are low risk IF each drinking day stays within:\n🥃 Whisky — 1 peg (60ml) or 🍺 Beer — 1 bottle (330ml)\n\nYou control the days. Now control the pour." }},
-  { days:100, el:'jm-100', label:'100 Days — Weekend Drinker',   c:{ emoji:'💎', title:'Weekend Drinker!', msg:"100 sober days. Weekend drinker by frequency — body fully recovers between occasions.\n\n2–4 drinking days a month, 3–4 pegs each, never binge. You control the days. Now control the pour." }},
-  { days:150, el:'jm-150', label:'150 Days — Sustained Control', c:{ emoji:'🏆', title:'Sustained Control!', msg:"150 sober days in one journey. You are not just occasional — you are in control.\n\nYour body has had months to heal. This pattern is yours now." }},
-  { days:200, el:'jm-200', label:'200 Days — Occasional Drinker', c:{ emoji:'👑', title:'Occasional Drinker!', msg:"200 sober days. Occasional drinker by every clinical definition.\n\nThey said quit. You said control. Less is always better — WHO: no level of alcohol is completely safe." }},
+  { days:60,  el:'jm-60',  label:'60 Days — Turning Point',      c:{ emoji:'✨', title:'Turning Point!',      msg:"60 sober days. Your sober-to-drinking ratio continues to improve. Keep building on the progress you've made." }},
+  { days:80,  el:'jm-80',  label:'80 Days — Building Control',   c:{ emoji:'🏔️', title:'Building Control!',  msg:"80 sober days. You've built a substantial amount of alcohol-free time. The pattern you're creating matters." }},
+  { days:100, el:'jm-100', label:'100 Days — Taking Control',    c:{ emoji:'💎', title:'Taking Control!',    msg:"100 sober days. This is a real achievement. Retake the AUDIT-C test — the score you see today may not be the score you started with." }},
+  { days:150, el:'jm-150', label:'150 Days — Staying Strong',    c:{ emoji:'🏆', title:'Staying Strong!',    msg:"150 sober days. You've built something most people never do. Keep the pattern." }},
+  { days:200, el:'jm-200', label:'200 Days — 200 Sober Days',     c:{ emoji:'👑', title:'200 Sober Days!',    msg:"200 sober days. Not a number most people reach. This is yours." }},
 ];
 
 const JOURNEY_MILESTONE_SECTIONS = [

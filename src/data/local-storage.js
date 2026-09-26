@@ -71,12 +71,10 @@ const DataManager = {
       scoredDays:                 {},   // { 'YYYY-MM-DD': true } — dates counted in currentScore (current journey)
       journeyStartKey:            null, // date key when current journey began — streak only counts scoredDays
       completedJourneys:          [],   // [{ attempt, score:{success,failures}, date }]
-      bodyTimelineInstallAt:      null, // legacy first-open timestamp (timeline uses calendar noon)
-      bodyTimelineWeekBlock:      0,    // streak milestone (7,14,21) — which week strip is held
-      bodyTimelineWeekHoldCal:    0,    // calendar day through which that strip stays visible
+      currentJourneyStreaks:      [],   // ended streak lengths in current journey (on each drink)
+      pastJourneyStreaks:         [],   // [{ attempt, streaks:[days...], date }]
       drinkDayFrozenStreak:       0,    // achieved streak held on the drinking calendar day
       drinkDayFrozenKey:          '',   // date key for drinkDayFrozenStreak
-      drinkDayFrozenProgress:     0,    // 0 or 0.5 — timeline half-progress when drink was logged
       reminders:                  { dailyEnabled: false, dailyTime: '20:00' },
     };
   },
@@ -88,7 +86,7 @@ const DataManager = {
       const parsed = JSON.parse(raw);
       return this._migrate(parsed);
     } catch (e) {
-      console.warn('SoberJourney: localStorage data corrupted — starting fresh.');
+      console.warn('10Drinks: localStorage data corrupted — starting fresh.');
       return this.defaults();
     }
   },
@@ -111,6 +109,13 @@ const DataManager = {
       this.saveNow(this._pendingData);
       this._pendingData = null;
     }
+  },
+
+  // Drop a scheduled save without writing (e.g. before wipe)
+  cancelPendingSave() {
+    clearTimeout(this._saveTimer);
+    this._saveTimer = null;
+    this._pendingData = null;
   },
 
   // Immediate write — use after catch-up so reload/timer can't read stale data
@@ -156,12 +161,10 @@ const DataManager = {
     if (!data.dailyLog)         data.dailyLog         = {};
     if (!data.scoredDays)       data.scoredDays       = {};
     if (!data.completedJourneys) data.completedJourneys = [];
-    if (!data.bodyTimelineInstallAt) data.bodyTimelineInstallAt = new Date().toISOString();
-    data.bodyTimelineWeekBlock   = Math.max(0, parseInt(data.bodyTimelineWeekBlock,   10) || 0);
-    data.bodyTimelineWeekHoldCal = Math.max(0, parseInt(data.bodyTimelineWeekHoldCal, 10) || 0);
+    if (!Array.isArray(data.currentJourneyStreaks)) data.currentJourneyStreaks = [];
+    if (!Array.isArray(data.pastJourneyStreaks)) data.pastJourneyStreaks = [];
     data.drinkDayFrozenStreak      = Math.max(0, parseInt(data.drinkDayFrozenStreak,      10) || 0);
     if (typeof data.drinkDayFrozenKey !== 'string') data.drinkDayFrozenKey = '';
-    data.drinkDayFrozenProgress = Number(data.drinkDayFrozenProgress) >= 0.5 ? 0.5 : 0;
     if (!data.reminders || typeof data.reminders !== 'object') {
       data.reminders = { ...def.reminders };
     } else {

@@ -1,7 +1,7 @@
 /* ===== src/journey/catchup.js ===== */
 'use strict';
 
-// Missed-day catch-up: auto-sober older gaps, ask about yesterday, test helpers
+// Missed-day catch-up: ask about yesterday (no auto-logging missed days), test helpers
 
 function shouldAskYesterday(data) {
   if (!data || data.journeyPendingReset) return false;
@@ -68,15 +68,14 @@ function promptYesterdayIfNeeded(data, delayMs = 400) {
 // Dev-only catch-up trace (visible when CONFIG.showTestUI is true)
 function catchUpLog(label, detail) {
   if (!CONFIG.showTestUI) return;
-  console.log('[SoberJourney catch-up]', label, detail || '');
+  console.log('[10Drinks catch-up]', label, detail || '');
 }
 
 // --- CATCHUP ---
 // User returns after n calendar days (daysSince(lastOpen → today) === n):
-//   • Days through (today − 2) and older unlogged days → auto-sober (score++)
+//   • Missed days stay unlogged (no auto-sober)
 //   • Day (today − 1) = yesterday → popup ask (never auto-log)
 //   • Today → left open for the user to log
-// Example: last open Mon, return Thu (n=3) → auto-sober Mon+Tue, ask about Wed, Thu is today.
 Tracker._catchUp = function() {
   if (!this.data) this.data = DataManager.load();
   const appToday = getAppToday(this.data);
@@ -111,15 +110,6 @@ Tracker._catchUp = function() {
     return;
   }
 
-  // n≥1: auto-sober everything before yesterday, then ask about yesterday
-  this._autoSoberMissedDaysBeforeYesterday(this.data, days);
-
-  if (this.data.journeyPendingReset) {
-    DataManager.saveNow(this.data);
-    UI.renderAll(this.data);
-    return;
-  }
-
   // Land on today — never auto-log yesterday; ask the user instead
   this.data.calendarDay++;
   this.data.todayStatus = 'none';
@@ -135,7 +125,6 @@ Tracker._catchUp = function() {
 
   DataManager._rebuildScoredDays(this.data);
 
-  const added = this.data.currentScore.success - scoreBefore;
   DataManager.saveNow(this.data);
   recalculateStreakFromLog(this.data);
   refreshStreakUI(this.data);
@@ -144,14 +133,10 @@ Tracker._catchUp = function() {
     build: CONFIG.buildTag,
     scoreAfter: this.data.currentScore.success,
     currentStreak: this.data.currentStreak,
-    autoSoberAdded: added,
     dailyLog: Object.keys(this.data.dailyLog || {}).sort(),
     askYesterday,
     yesterdayKey: calendarYesterdayKey(this.data),
   });
-  if (CONFIG.showTestUI && added > 0) {
-    showToast(`Catch-up: +${added} sober · ask yesterday · ${this.data.currentStreak | 0}d streak`);
-  }
 
   // Always prefer the yesterday prompt over milestone celebrations after a gap
   if (askYesterday) {
@@ -159,82 +144,9 @@ Tracker._catchUp = function() {
   }
 };
 
-// Auto-sober every unlogged day from last open up to (but never including) calendar yesterday.
-Tracker._autoSoberMissedDaysBeforeYesterday = function(d, days) {
-  if (!d.dailyLog) d.dailyLog = {};
-  if (!d.scoredDays) d.scoredDays = {};
-  this._ensureScore(d);
-  if (d.journeyPendingReset) return;
-
-  const appToday = getAppToday(d);
-  const yesterday = new Date(appToday);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yestKey = dateKey(yesterday);
-  const yestNoon = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 12, 0, 0);
-
-  const lastOpen = new Date(d.lastDayCheck);
-  let cursorStart = new Date(lastOpen.getFullYear(), lastOpen.getMonth(), lastOpen.getDate(), 12, 0, 0);
-  if (days > CATCHUP_MAX_DAYS) {
-    const capped = new Date(appToday);
-    capped.setDate(capped.getDate() - CATCHUP_MAX_DAYS);
-    const cappedNoon = new Date(capped.getFullYear(), capped.getMonth(), capped.getDate(), 12, 0, 0);
-    if (cappedNoon.getTime() > cursorStart.getTime()) cursorStart = cappedNoon;
-  }
-  // Include orphaned days before calendar yesterday (e.g. skipped yesterday prompt last session)
-  if (d.journeyStartKey) {
-    let probe = noonFromDateKey(d.journeyStartKey);
-    while (probe.getTime() < yestNoon.getTime()) {
-      if (!d.scoredDays[dateKey(probe)] && probe.getTime() < cursorStart.getTime()) {
-        cursorStart = new Date(probe.getTime());
-      }
-      probe.setDate(probe.getDate() + 1);
-    }
-  }
-  let cursor = cursorStart;
-
-  while (cursor.getTime() < yestNoon.getTime()) {
-    if (d.journeyPendingReset) break;
-
-    const key = dateKey(cursor);
-    // Hard stop — yesterday is for the popup only
-    if (key >= yestKey) break;
-    if (d.journeyStartKey && key < d.journeyStartKey) {
-      cursor.setDate(cursor.getDate() + 1);
-      continue;
-    }
-    this._processMissedCatchUpDay(d, key);
-
-    if (d.currentScore.failures >= JOURNEY_MAX_FAILURES) { this._endJourney(); return; }
-
-    d.calendarDay++;
-    cursor.setDate(cursor.getDate() + 1);
-    d.todayStatus = 'none';
-    d.todaySuccessLogged = false;
-  }
-  recalculateStreakFromLog(d);
-};
-
-// Auto-sober a missed day before yesterday. Never call this for calendar yesterday.
-Tracker._processMissedCatchUpDay = function(d, key) {
-  const yestKey = calendarYesterdayKey(d);
-  if (key >= yestKey) return; // yesterday → popup only; today+ never here
-  if (d.scoredDays[key]) return;
-  if (d.dailyLog[key] === 'drinking') {
-    if (journeyDrinkLogKeys(d).length > (d.currentScore.failures | 0)) {
-      this._recordDrinkDay(d, key);
-    }
-    return;
-  }
-  if (this._recordSoberDay(d, key)) {
-    this._checkTrophies();
-    this._checkJourneyTargets();
-  }
-};
-
 window.SJ_testCatchUp = function(gapDays) {
   gapDays = gapDays || 3;
   const d = Tracker.data || DataManager.load();
-  const scoreBefore = d.currentScore ? d.currentScore.success : 0;
 
   const prevAppToday = getAppToday(d);
   const newToday = new Date(prevAppToday);
@@ -248,19 +160,6 @@ window.SJ_testCatchUp = function(gapDays) {
   d.gapSimCount = (d.gapSimCount || 0) + 1;
   newToday.setHours(12, 0, 0, 0);
   d.simulatedToday = newToday.toISOString();
-
-  // Connect timeline: if previous gap's yesterday was never answered, auto-sober it
-  if (d.gapSimCount > 1) {
-    const prevYest = new Date(prevAppToday);
-    prevYest.setDate(prevYest.getDate() - 1);
-    const pk = dateKey(prevYest);
-    if (d.dailyLog[pk] !== 'drinking' && !d.scoredDays[pk]) {
-      if (Tracker._recordSoberDay(d, pk)) {
-        Tracker._checkTrophies();
-        Tracker._checkJourneyTargets();
-      }
-    }
-  }
 
   const yest = new Date(newToday);
   yest.setDate(yest.getDate() - 1);
@@ -305,23 +204,6 @@ window.SJ_testCatchUp = function(gapDays) {
   d.todayStatus = 'none';
   d.todaySuccessLogged = false;
 
-  // Add auto-sober for missed days before yesterday (only days not already logged)
-  let autoAdded = 0;
-  let cursor = new Date(rewindTo.getFullYear(), rewindTo.getMonth(), rewindTo.getDate(), 12, 0, 0);
-  while (cursor.getTime() < yestNoon.getTime()) {
-    const key = dateKey(cursor);
-    if (d.journeyStartKey && key < d.journeyStartKey) {
-      cursor.setDate(cursor.getDate() + 1);
-      continue;
-    }
-    if (d.dailyLog[key] !== 'drinking' && Tracker._recordSoberDay(d, key)) {
-      autoAdded++;
-      Tracker._checkTrophies();
-      Tracker._checkJourneyTargets();
-    }
-    cursor.setDate(cursor.getDate() + 1);
-  }
-
   d.calendarDay = (parseInt(d.calendarDay, 10) || 1) + gapDays;
   d.lastDayCheck = newToday.toISOString();
 
@@ -335,12 +217,11 @@ window.SJ_testCatchUp = function(gapDays) {
   catchUpLog('testGap', {
     gapSimCount: d.gapSimCount,
     appToday: dateKey(newToday),
-    autoAdded,
     scoreAfter: d.currentScore.success,
   });
-  showToast(`3-day gap #${d.gapSimCount}: +${autoAdded} sober · ${dateKey(newToday)} · yesterday +1 more`);
+  showToast(`3-day gap #${d.gapSimCount}: ${dateKey(newToday)} · log yesterday`);
 
-  // Show yesterday prompt first (before deferred celebrations from auto-sober)
+  // Show yesterday prompt first (before deferred celebrations)
   setTimeout(() => showYesterdayModal(), 100);
 };
 

@@ -20,7 +20,7 @@ function boot() {
   try {
     Tracker.init();
   } catch (err) {
-    console.error('[SoberJourney] boot failed:', err);
+    console.error('[10Drinks] boot failed:', err);
     dismissAppSplash();
   }
   setTimeout(dismissAppSplash, 3000);
@@ -65,7 +65,7 @@ window.addEventListener('popstate', function() {
   // Close modals in priority order
   const modals = [
     'auditModal', 'celebrationModal', 'confirmModal',
-    'acknowledgeModal', 'yesterdayModal', 'onboardingOverlay'
+    'acknowledgeModal', 'yesterdayModal', 'calendarDayModal', 'onboardingOverlay'
   ];
   for (const id of modals) {
     const m = el(id);
@@ -159,10 +159,9 @@ function renderReductionTarget(data) {
   card.style.display = 'block';
   const zl = document.getElementById('reductionZoneLabel');
   if (zl) zl.textContent = zoneName;
-  const [q1,q2,q3] = answers;
   const body = document.getElementById('reductionTargetBody');
   if (!body) return;
-  if (zoneName==='Dependent') {
+  if (zoneName === 'Seek Support') {
     body.innerHTML=`<div style="padding:12px 14px;background:rgba(123,0,0,0.06);border-radius:10px;border-left:3px solid #7b0000;">
       <div style="font-size:13px;font-weight:700;color:#7b0000;margin-bottom:8px;">See a doctor before making any changes.</div>
       <div style="font-size:13px;color:rgba(60,60,67,0.7);line-height:1.65;margin-bottom:12px;">At this level, stopping or reducing suddenly can cause withdrawal seizures. Only a doctor can guide you safely from here.</div>
@@ -171,76 +170,30 @@ function renderReductionTarget(data) {
     </div>`;
     return;
   }
-  const qtyLabel=['1-2 pegs','3-4 pegs','5-6 pegs','7-9 pegs','10+ pegs'];
-  const freqLabel=['Never','Once a month or less','2-4 times a month','2-3 times a week','4+ times a week'];
-  const freqTargetLabel=['Never','Once a month','Once a week','Twice a week','Every other day'];
-  const bingeDone=q3===0, qtyDone=q2<=1, freqDone=q1<=1;
-  const q2Target=q2>1?q2-1:null, q1Target=q1>1?q1-1:null;
-  const lowRiskBanner = `<div style="margin-top:12px;padding:12px;background:rgba(52,199,89,0.06);border-radius:10px;text-align:center;"><div style="font-size:22px;margin-bottom:6px;">🎯</div><div style="font-size:14px;font-weight:700;color:#248a3d;">You have reached the Low Risk Zone.</div></div>`;
+  const q3 = answers[2];
+  const heavyOccasionLead = q3 > 0
+    ? `<p style="margin:0 0 12px;">If you drink heavily every day or have experienced withdrawal symptoms, speak with a healthcare professional before stopping suddenly or making a major reduction.</p>`
+    : '';
+  const lowRiskBanner = `<div style="margin-top:12px;padding:12px;background:rgba(52,199,89,0.06);border-radius:10px;text-align:center;"><div style="font-size:22px;margin-bottom:6px;">🎯</div><div style="font-size:14px;font-weight:700;color:#248a3d;">Lower-risk screening range</div><div style="font-size:12px;color:rgba(60,60,67,0.55);margin-top:4px;">Low Risk is not Risk Free</div></div>`;
   const showLowRiskBanner = score <= 3;
-  const row=(state,label,cur,tgt,sub)=>{
-    if(state==='done') return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(60,60,67,0.06);"><div style="width:24px;height:24px;border-radius:50%;background:#34c759;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="color:white;font-size:13px;font-weight:700;">✓</span></div><div><div style="font-size:13px;font-weight:600;color:#248a3d;">${label}</div><div style="font-size:11px;color:rgba(60,60,67,0.45);margin-top:1px;">${cur}</div></div></div>`;
-    if(state==='pending') return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(60,60,67,0.06);opacity:0.4;"><div style="width:24px;height:24px;border-radius:50%;border:2px solid rgba(60,60,67,0.2);flex-shrink:0;"></div><div><div style="font-size:13px;font-weight:500;color:rgba(60,60,67,0.5);">${label}</div><div style="font-size:11px;color:rgba(60,60,67,0.35);margin-top:1px;">${sub||'Complete step above first'}</div></div></div>`;
-    return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(60,60,67,0.06);"><div style="width:24px;height:24px;border-radius:50%;border:2px solid #ff9500;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><div style="width:8px;height:8px;border-radius:50%;background:#ff9500;"></div></div><div style="flex:1;"><div style="font-size:13px;font-weight:600;">${label}</div><div style="display:flex;align-items:center;gap:6px;margin-top:3px;"><span style="font-size:13px;font-weight:700;color:#ff9500;">${cur}</span><span style="font-size:12px;color:rgba(60,60,67,0.3);">→</span><span style="font-size:13px;font-weight:700;color:#34c759;">${tgt}</span></div></div></div>`;
-  };
-  const bingeRow = !bingeDone
-    ? row('active', 'Stop binge sessions', 'Occurring (180ml+)', 'Never exceed 180ml', '')
-    : row('done', 'Stop binge sessions', 'None this journey — staying under 180ml', '', '');
+  const reductionGuidance = `<div style="padding:10px 14px;background:rgba(52,199,89,0.05);border-radius:10px;border-left:3px solid rgba(52,199,89,0.3);"><div style="font-size:12px;color:rgba(60,60,67,0.65);line-height:1.65;">
+    ${heavyOccasionLead}
+    <p style="margin:0 0 6px;font-weight:600;color:rgba(60,60,67,0.75);">To reduce your alcohol use:</p>
+    <ul style="margin:0 0 12px;padding-left:18px;">
+      <li>Drink on fewer days</li>
+      <li>Have more alcohol-free days</li>
+      <li>Choose smaller amounts when drinking</li>
+      <li>Avoid heavy-drinking occasions</li>
+    </ul>
+    <p style="margin:0;">Your AUDIT-C score may decrease as your drinking frequency and quantity decrease.</p>
+  </div></div>`;
 
-  const qtyRow = qtyDone
-    ? row('done', 'Quantity per session', qtyLabel[q2], '', '')
-    : row('active', 'Quantity per session', qtyLabel[q2], qtyLabel[q2Target??1], '');
-
-  const freqRow = freqDone
-    ? row('done', 'Frequency', freqLabel[q1], '', '')
-    : (!qtyDone)
-      ? row('pending', 'Frequency', freqLabel[q1], freqTargetLabel[q1Target??Math.max(q1-1,1)], 'Reduce quantity first')
-      : row('active', 'Frequency', freqLabel[q1], freqTargetLabel[q1Target??Math.max(q1-1,1)], '');
-
-  let msg = '';
-  const bingeAlert = '⚠️ Never go over 180ml whisky in one session. Above this threshold liver stress and accident risk spike sharply.';
-  const qtyAlerts = ['','3-4 pegs per session — already doing well. Now work on frequency.','From 5-6 pegs down to 3-4. That is the WHO single-occasion Low Risk limit.','From 7-9 pegs to 5-6. One less round makes a measurable difference.','10+ pegs is acute liver stress. Target 7-9 as the first step down.'];
-  if (!bingeDone && !qtyDone) {
-    msg = '⚠️ Two steps — both active now. Stop binge sessions (never exceed 180ml whisky in one sitting) and reduce your quantity per session. Work on both together.';
-  } else if (!bingeDone) {
-    msg = bingeAlert;
-  } else if (!qtyDone && q2Target !== null) {
-    msg = qtyAlerts[q2] || '';
-  } else if (qtyDone && !freqDone && q1Target !== null) {
-    const freqMsgs = ['','Once a month — deliberate, enjoyable.','From 2-4x month to once a month.','From 2-3x week to 2-4x month — breaks the weekly habit loop.','From 4+x week to 2-3x week — cut two occasions this week.'];
-    msg = freqMsgs[q1] || '';
-  }
-  const msgBlock = (text) => text ? `<div style="margin-top:10px;padding:10px 14px;background:rgba(52,199,89,0.05);border-radius:10px;border-left:3px solid rgba(52,199,89,0.3);"><div style="font-size:12px;color:rgba(60,60,67,0.65);line-height:1.65;">${text}</div></div>` : '';
-
-  if (qtyDone && freqDone && bingeDone) {
-    body.innerHTML = `${row('done','Stop binge sessions','Under 180ml every session','','')}${row('done','Quantity per session',qtyLabel[q2],'','')}${row('done','Frequency',freqLabel[q1],'','')}${lowRiskBanner}`;
-    return;
-  }
-
-  if (showLowRiskBanner) {
-    const lowRiskAlerts = [];
-    if (q3 > 0) lowRiskAlerts.push(bingeAlert);
-    if (q2 === 2) lowRiskAlerts.push(qtyAlerts[2]);
-    body.innerHTML = `${bingeRow}${qtyRow}${freqRow}${lowRiskAlerts.map(msgBlock).join('')}${lowRiskBanner}`;
-    return;
-  }
-
-  body.innerHTML=`${bingeRow}${qtyRow}${freqRow}${msgBlock(msg)}`;
+  body.innerHTML = `${reductionGuidance}${showLowRiskBanner ? lowRiskBanner : ''}`;
 }
 
 // ── WINNING WAYS ──────────────────────────────────────────────
 SoberTracker.showWinningWays   = function() { const m=document.getElementById('winningWaysModal'); if(m) m.classList.add('open'); };
 SoberTracker.closeWinningWays  = function() { const m=document.getElementById('winningWaysModal'); if(m) m.classList.remove('open'); };
-SoberTracker.showTargetZone    = function() { const m=document.getElementById('targetZoneModal'); if(m) m.classList.add('open'); };
-SoberTracker.closeTargetZone   = function() {
-  const m=document.getElementById('targetZoneModal');
-  if(m) m.classList.remove('open');
-  const p=document.getElementById('tzBeer');
-  const a=document.getElementById('tzBeerArr');
-  if(p) p.style.display='none';
-  if(a) a.textContent='▸';
-};
-
 // ── PATCH renderAll ───────────────────────────────────────────
 const _origRenderAll = UI.renderAll.bind(UI);
 UI.renderAll = function(data) {
@@ -249,6 +202,7 @@ UI.renderAll = function(data) {
   renderReductionTarget(data);
   renderDidYouKnow(data);
   renderBackupStatus();
+  if (typeof renderPremiumPlanPrices === 'function') renderPremiumPlanPrices();
   renderPremiumEntry();
 };
 

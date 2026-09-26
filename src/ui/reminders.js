@@ -35,11 +35,19 @@ function renderRemindersTab(data) {
     timeEl.value = data.reminders.dailyTime;
     timeEl.disabled = !on;
   }
-  if (timeRow) timeRow.classList.toggle('reminder-row--disabled', !on);
+  if (timeRow) {
+    timeRow.classList.toggle('reminder-row--disabled', !on);
+    timeRow.style.opacity = on ? '' : '0.45';
+    timeRow.style.pointerEvents = on ? '' : 'none';
+  }
   if (statusEl) {
-    statusEl.textContent = on
-      ? `On · ${formatReminderTime12(data.reminders.dailyTime)}`
-      : 'Off';
+    if (on) {
+      statusEl.hidden = false;
+      statusEl.textContent = `On · ${formatReminderTime12(data.reminders.dailyTime)}`;
+    } else {
+      statusEl.hidden = true;
+      statusEl.textContent = '';
+    }
   }
 }
 

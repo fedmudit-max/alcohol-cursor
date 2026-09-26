@@ -1,10 +1,30 @@
 /* ===== src/premium/premium.js ===== */
 'use strict';
 // PREMIUM — entitlement layer (trial + feature gates).
-// Billing: CONFIG.premiumBilling === 'local-stub' (non-production). Do not ship as paid IAP;
-// wire Capacitor native billing here and set premiumBilling to 'store' when ready.
+// Production web: trial only; local-stub unlock requires CONFIG.showTestUI (dev).
 // ═══════════════════════════════════════════════════════════════
 let selectedPremiumPlan = 'yearly';
+
+function isLocalStubBilling() {
+  return (CONFIG.premiumBilling || 'local-stub') === 'local-stub';
+}
+
+function isStoreBillingConfigured() {
+  return CONFIG.premiumBilling === 'store';
+}
+
+/** True only in dev when test UI is on — never for public production web. */
+function canApplyLocalPremiumUnlock() {
+  return isLocalStubBilling() && CONFIG.showTestUI === true;
+}
+
+function premiumRecordGrantsAccess(rec) {
+  if (!rec || !rec.active) return false;
+  if (rec.source === 'local-stub' && isLocalStubBilling() && !canApplyLocalPremiumUnlock()) {
+    return false;
+  }
+  return true;
+}
 
 function premiumDaysLeftLabel() {
   const left = trialDaysLeft();
@@ -16,8 +36,21 @@ function premiumDaysLeftLabel() {
 function syncPremiumSubscribeCta() {
   const buyBtn = el('premiumCtaBtn');
   if (!buyBtn || buyBtn.hidden) return;
+  if (!canApplyLocalPremiumUnlock() && !isStoreBillingConfigured()) {
+    buyBtn.textContent = 'Coming in the app';
+    buyBtn.disabled = true;
+    return;
+  }
+  buyBtn.disabled = false;
   const plan = PREMIUM_PLANS[selectedPremiumPlan] || PREMIUM_PLANS.yearly;
-  buyBtn.textContent = plan.id === 'yearly' ? 'Subscribe — Annual ₹999' : 'Subscribe — Monthly ₹149';
+  const q = typeof getPremiumPlanQuotes === 'function' ? getPremiumPlanQuotes() : null;
+  if (q) {
+    buyBtn.textContent = plan.id === 'yearly'
+      ? `Subscribe — Annual ${q.yearly}`
+      : `Subscribe — Monthly ${q.monthly}`;
+  } else {
+    buyBtn.textContent = plan.id === 'yearly' ? 'Subscribe — Annual' : 'Subscribe — Monthly';
+  }
 }
 
 function getPremiumRecord() {
@@ -34,7 +67,7 @@ function getPremiumRecord() {
 
 function isPremiumActive() {
   const rec = getPremiumRecord();
-  if (!rec || !rec.active) return false;
+  if (!premiumRecordGrantsAccess(rec)) return false;
   if (rec.expiresAt) {
     const exp = new Date(rec.expiresAt).getTime();
     if (!Number.isNaN(exp) && Date.now() > exp) return false;
@@ -42,10 +75,36 @@ function isPremiumActive() {
   return true;
 }
 
+function migrateTrialPolicyIfNeeded() {
+  try {
+    let stored = parseInt(localStorage.getItem(TRIAL_POLICY_KEY), 10);
+    if (Number.isNaN(stored)) {
+      if (localStorage.getItem(TRIAL_KEY)) stored = LEGACY_TRIAL_DAYS;
+      else {
+        localStorage.setItem(TRIAL_POLICY_KEY, String(TRIAL_DAYS));
+        return;
+      }
+    }
+    if (TRIAL_DAYS > stored) {
+      const start = getTrialStartedAt();
+      const stillInOldWindow = start
+        && Date.now() <= start.getTime() + (stored * MS_PER_DAY);
+      if (stillInOldWindow) {
+        setTrialStartedAtISO(new Date().toISOString());
+      }
+      localStorage.setItem(TRIAL_POLICY_KEY, String(TRIAL_DAYS));
+    } else if (stored !== TRIAL_DAYS) {
+      localStorage.setItem(TRIAL_POLICY_KEY, String(TRIAL_DAYS));
+    }
+  } catch (e) {}
+}
+
 function ensureTrialStarted() {
   try {
+    migrateTrialPolicyIfNeeded();
     if (!localStorage.getItem(TRIAL_KEY)) {
       localStorage.setItem(TRIAL_KEY, new Date().toISOString());
+      localStorage.setItem(TRIAL_POLICY_KEY, String(TRIAL_DAYS));
     }
   } catch (e) {}
 }
@@ -199,7 +258,7 @@ function renderPremiumLocks(data) {
     let ov = progressTab.querySelector(':scope > .premium-lock-overlay');
     if (!unlocked && !ov) {
       progressTab.appendChild(makePremiumLockOverlay(
-        'Progress is Premium',
+        'Science is Premium',
         'See how your body recovers over time after your free trial.'
       ));
     } else if (unlocked && ov) ov.remove();
@@ -207,12 +266,13 @@ function renderPremiumLocks(data) {
 
   setFeatureLocked(el('monthGridCard'), !unlocked, 'Monthly calendar', 'Browse your full month history with Premium.');
   setFeatureLocked(el('journeyChartCard'), !unlocked, 'History', 'Compare past journeys after your trial with Premium.');
+  setFeatureLocked(el('bestPerformancesCard'), !unlocked, 'Personal Bests', 'Top streaks and journeys unlock with Premium.');
   setFeatureLocked(el('lifetimeStatsCard'), !unlocked, 'Lifetime stats', 'Career totals unlock with Premium.');
   setFeatureLocked(el('didYouKnowCard'), !unlocked, 'Knowledge cards', 'Extra insights are part of Premium.');
   setFeatureLocked(el('riskMeterCard'), !unlocked, 'Risk meter', 'AUDIT-C meter and re-tests are Premium after trial.');
 
   // Reduce target / low risk can stay tied to meter access
-  setFeatureLocked(el('reductionTargetCard'), !unlocked, 'Reduction target', 'Targets unlock with Premium.');
+  setFeatureLocked(el('reductionTargetCard'), !unlocked, 'Reduction goal', 'Reduction goal unlocks with Premium.');
 }
 
 function renderPremiumPanelContent() {
@@ -249,39 +309,59 @@ function renderPremiumPanelContent() {
 
 function renderPremiumEntry() {
   const status = el('premiumEntryStatus');
-  if (!status) return;
+  const teaser = el('premiumPanelTeaser') || el('settingsPremiumTeaser');
+  const card = el('premiumPanelCard');
+  const titleEl = el('premiumPanelTitle');
+  if (!status && !teaser && !card) return;
+
+  let badge = 'Upgrade';
+  let sub = 'Trial & subscriptions';
+  let showBadge = true;
+  let isPremium = false;
+  let trial = false;
+
   if (isForcePremiumLocked()) {
-    status.hidden = false;
-    status.textContent = 'Locked';
-    status.classList.remove('is-premium');
-    renderPremiumPanelContent();
-    return;
-  }
-  if (isPremiumActive()) {
-    status.hidden = false;
-    status.textContent = 'Active';
-    status.classList.add('is-premium');
+    badge = 'Locked';
+    sub = 'Preview mode';
+    isPremium = false;
+  } else if (isPremiumActive()) {
+    badge = 'Active';
+    sub = 'Full access on this device';
+    isPremium = true;
   } else if (isTrialActive()) {
-    status.textContent = '';
-    status.hidden = true;
-    status.classList.remove('is-premium');
+    badge = '';
+    sub = premiumDaysLeftLabel();
+    showBadge = false;
+    trial = true;
   } else {
-    status.hidden = false;
-    status.textContent = 'Upgrade';
-    status.classList.remove('is-premium');
+    badge = 'Upgrade';
+    sub = 'Trial ended — subscribe in app';
   }
+
+  if (titleEl) titleEl.textContent = '✦ Premium';
+  if (card) {
+    card.classList.toggle('premium-active-state', isPremium);
+    card.classList.toggle('premium-trial-state', trial);
+  }
+  if (status) {
+    status.hidden = !showBadge;
+    status.textContent = badge;
+    status.classList.toggle('is-premium', isPremium);
+  }
+  if (teaser) teaser.textContent = sub;
   renderPremiumPanelContent();
 }
 
 Tracker.togglePremiumPanel = function() {
   const body = el('premiumPanelBody');
-  const btn = el('premiumPanelToggleBtn');
   const toggle = el('premiumPanelToggle');
+  const chev = el('premiumPanelChevron');
   if (!body) return;
-  const open = body.style.display !== 'none';
-  body.style.display = open ? 'none' : 'block';
-  if (btn) btn.textContent = open ? 'Show \u25be' : 'Hide \u25b4';
+  const open = body.classList.contains('is-open');
+  body.classList.toggle('is-open', !open);
+  body.style.display = '';
   if (toggle) toggle.setAttribute('aria-expanded', open ? 'false' : 'true');
+  if (chev) chev.classList.toggle('open', !open);
   if (!open) renderPremiumPanelContent();
 };
 
@@ -338,15 +418,25 @@ function renderPremiumCheckoutSheet() {
     if (restoreBtn) restoreBtn.hidden = true;
   } else {
     titleEl.textContent = 'Choose a plan';
-    if (subEl) subEl.hidden = true;
+    const checkoutBlocked = !canApplyLocalPremiumUnlock() && !isStoreBillingConfigured();
+    if (subEl) {
+      if (checkoutBlocked) {
+        subEl.hidden = false;
+        subEl.textContent = isTrialActive()
+          ? 'Subscriptions are coming in the mobile app. Your free trial still includes full Premium access.'
+          : 'Subscriptions are coming in the mobile app. You can keep using basic Journey logging on the web.';
+      } else {
+        subEl.hidden = true;
+        subEl.textContent = '';
+      }
+    }
     if (priceBlock) priceBlock.hidden = false;
     if (laterBtn) laterBtn.textContent = isTrialActive() ? 'Not now' : 'Continue with basic logging';
-    if (buyBtn) {
-      buyBtn.hidden = false;
-      buyBtn.disabled = false;
-    }
+    if (buyBtn) buyBtn.hidden = false;
     if (restoreBtn) restoreBtn.hidden = false;
+    if (typeof renderPremiumPlanPrices === 'function') renderPremiumPlanPrices();
     Tracker.selectPremiumPlan(selectedPremiumPlan || 'yearly');
+    syncPremiumSubscribeCta();
   }
 }
 
@@ -372,6 +462,7 @@ Tracker.openPremiumCheckout = function() {
     showToast('Premium is already active on this device.');
     return;
   }
+  if (typeof this.closeSettings === 'function') this.closeSettings();
   selectedPremiumPlan = selectedPremiumPlan || 'yearly';
   renderPremiumCheckoutSheet();
   openPremiumOverlay();
@@ -400,25 +491,28 @@ Tracker.subscribePremium = function() {
     showToast('Premium is already active on this device.');
     return;
   }
+  if (!canApplyLocalPremiumUnlock() && !isStoreBillingConfigured()) {
+    showToast('Premium subscriptions will be available in the mobile app.');
+    return;
+  }
+  if (isStoreBillingConfigured()) {
+    showToast('Store billing is not wired yet. Use dev test UI for local-stub trials.');
+    return;
+  }
   const plan = PREMIUM_PLANS[selectedPremiumPlan] || PREMIUM_PLANS.yearly;
   const expires = new Date();
   expires.setDate(expires.getDate() + (plan.days | 0));
-  const billingMode = (CONFIG.premiumBilling || 'local-stub');
   savePremiumRecord({
     active: true,
     plan: plan.id,
     startedAt: new Date().toISOString(),
     expiresAt: expires.toISOString(),
-    source: billingMode,
+    source: 'local-stub',
   });
   renderPremiumEntry();
   if (this.data) UI.renderAll(this.data);
   this.closePremium();
-  if (billingMode === 'local-stub') {
-    showToast('Premium unlocked on this device (dev stub — not a store purchase).');
-  } else {
-    showToast(plan.id === 'yearly' ? 'Yearly Premium unlocked' : 'Monthly Premium unlocked');
-  }
+  showToast('Premium unlocked (dev stub — test UI only).');
 };
 
 Tracker.restorePremium = function() {

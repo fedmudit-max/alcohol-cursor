@@ -1,4 +1,4 @@
-# Sober Journey
+# 10Drinks
 
 Static PWA for GitHub Pages: `https://fedmudit-max.github.io/alcohol-cursor/`
 
@@ -7,11 +7,10 @@ Static PWA for GitHub Pages: `https://fedmudit-max.github.io/alcohol-cursor/`
 ```text
 src/
 ├── main.js                 — boot
-├── firebase.js             — Firebase placeholder
 ├── config/app.config.js
 ├── data/local-storage.js   — DataManager
-├── data/firestore.js       — placeholder
-├── journey/journey.js      — Tracker / SoberTracker
+├── firebase.js, data/firestore.js — sync placeholders (not in index.html until wired)
+├── journey/journey.js      — Tracker (TenDrinksTracker / legacy SoberTracker alias)
 ├── ui/renderAll.js
 ├── assessment/audit.js
 ├── premium/premium.js
@@ -30,11 +29,13 @@ Push these files to GitHub (branch **main**, Pages source **/ root**):
 - `d3.min.js`
 - `.nojekyll` (must be committed — do not gitignore it)
 
-**Release folder (optional):** `./scripts/build-release.sh` writes a clean `dist/` tree without `.git`, `.DS_Store`, `__MACOSX`, backup HTML, or dev-only folders. Use `dist/` as the Capacitor `www` root when you wrap the app.
+**Release folder (generated, not in git):** Run `./scripts/build-release.sh` when you need a clean tree for Capacitor `www`. It copies from the repo root (including one `d3.min.js`) into `dist/`, which is gitignored — do not commit or ship `dist/` in zips; regenerate on the machine that builds native or deploys.
 
-**Before native (Capacitor):** Keep journey/streak/storage logic frozen; fix web issues first. Premium uses `CONFIG.premiumBilling: 'local-stub'` until Play/App Store billing is wired.
+**Before native (Capacitor):** Keep journey/streak/storage logic frozen; fix web issues first. Production web uses trial only — `local-stub` unlock runs only when `showTestUI: true` (dev). Set `premiumBilling: 'store'` when native IAP is wired.
 
 **Storage sanity:** `node scripts/storage-sanity.mjs`
+
+**Catch-up / journey sequences (before Capacitor):** `node tests/catchup-check.js` — locks down multi-day gaps, `unwindTodayIfYesterdayPending`, yesterday drink, and 10th-drink journey reset.
 
 ## Install on phone
 
@@ -55,11 +56,17 @@ After pushing updates to GitHub, wait ~1 minute, then repeat step 2 if the icon 
 
 ## If you rename the GitHub repo
 
-Update full URLs in `manifest.json` (`start_url`, `scope`, `id`, icon `src` paths) to match `/your-new-repo-name/`.
+`manifest.json` uses relative `start_url`, `scope`, and icon paths so the same file works on GitHub Pages, a custom domain, and Capacitor. If you fork to a new repo, you may still want to update `id` (currently the canonical Pages URL) so installed PWAs are treated as a distinct app identity.
 
 ## Local preview
 
 Use Live Server or `npx serve .` — open the folder URL. Service worker needs `http://`, not `file://`.
+
+## Naming (Capacitor / store metadata)
+
+- **App:** `10Drinks` (`APP_DISPLAY_NAME` + `manifest.json`)
+- **Feature:** Journey — UI labels **Current Journey**, **Best Score**, **Streak**, **Science**
+- **Unchanged (data compat):** `localStorage` key `soberJourney_v1`, backup format `sober-journey-backup`, HTML `SoberTracker` onclick alias
 
 ## Config (`src/config/app.config.js`)
 
@@ -96,7 +103,7 @@ Streak and Journey
 Streak is continuous sober days
 Journey is sober days until user consumes 10 drinking days.
 
-Progress is a tab, which just shows progress on streak basis.
+**Science** is a tab (body recovery timeline on streak basis). **Streak** and **Milestone** are separate tabs.
 
 If a user forgets to log on 2nd, 3rd, 4th and if today is 5th.
 For 5th , he is expected to log today, for 4th he will be asked about the yesterday via popup

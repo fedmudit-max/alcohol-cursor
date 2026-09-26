@@ -66,20 +66,21 @@ function isBeatingBestScore(data) {
   return isScoreBetterThan(data.currentScore, getBestCompletedJourneyScore(data));
 }
 const AUDIT_MAX_SCORE        = 12;   // max possible AUDIT-C score
-const AUDIT_DEPENDENT_SCORE  = 9;    // score >= this → Dependent zone
+const AUDIT_SEEK_SUPPORT_SCORE = 9;  // score >= this → Seek Support (high-risk screening range)
 const AUDIT_HARMFUL_SCORE    = 6;    // score >= this → Harmful zone
 const AUDIT_HAZARDOUS_SCORE  = 4;    // score >= this → Hazardous zone
 const AUDIT_LOW_RISK_SCORE   = 1;    // score >= this → Low Risk zone
-const CATCHUP_MAX_DAYS       = 30;   // max missed days processed per catch-up
 const MAX_COMPLETED_JOURNEYS = 20;   // free journey history cap
 const MAX_COMPLETED_JOURNEYS_PREMIUM = 100; // premium journey history cap
 const PREMIUM_KEY = 'sj_premium';
 const TRIAL_KEY = 'sj_trialStartedAt';
-const TRIAL_DAYS = 14;
+const TRIAL_POLICY_KEY = 'sj_trialPolicyDays'; // last shipped TRIAL_DAYS (for length bumps)
+const TRIAL_DAYS = 30;
+const LEGACY_TRIAL_DAYS = 14;
 const FREE_JOURNEY_MILESTONE_DAYS = 50;
 const PREMIUM_PLANS = {
-  monthly: { id: 'monthly', label: 'Monthly', priceLabel: '₹149', cta: 'Start Monthly — ₹149', days: 31 },
-  yearly:  { id: 'yearly',  label: 'Yearly',  priceLabel: '₹999', cta: 'Start Yearly — ₹999',  days: 366 },
+  monthly: { id: 'monthly', label: 'Monthly', days: 31 },
+  yearly:  { id: 'yearly',  label: 'Yearly',  days: 366 },
 };
 const MS_PER_DAY             = 86400000; // milliseconds in one day
 const CONFETTI_DURATION_MS   = 4000; // how long confetti stays on screen
@@ -91,7 +92,10 @@ const D3_RETRY_MAX           = 20;   // stop retrying after this many attempts
 // AUDIT-C results stay in memory only for the current page load.
 // Reload or reopening the app clears the test; journey data stays in localStorage.
 
-// Premium: local-stub unlocks on device only — replace with Capacitor Play/App Store billing later.
+// User-facing app name (manifest/title/metadata — keep in sync with manifest.json).
+const APP_DISPLAY_NAME = '10Drinks';
+
+// Billing mode: 'local-stub' (dev/test via showTestUI) or 'store' (native IAP when wired).
 const PREMIUM_BILLING_MODE = 'local-stub';
 
 const CONFIG = {

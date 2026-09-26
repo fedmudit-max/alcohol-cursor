@@ -97,15 +97,7 @@ function formatImportConfirmMessage(backup) {
 }
 
 Tracker.toggleBackupPanel = function() {
-  const body = el('backupPanelBody');
-  const btn = el('backupPanelToggleBtn');
-  const toggle = el('backupPanelToggle');
-  if (!body) return;
-  const open = body.style.display !== 'none';
-  body.style.display = open ? 'none' : 'block';
-  if (btn) btn.textContent = open ? 'Show ▾' : 'Hide ▴';
-  if (toggle) toggle.setAttribute('aria-expanded', open ? 'false' : 'true');
-  if (!open) renderBackupStatus();
+  this.openSettings();
 };
 
 Tracker.exportBackup = function() {
@@ -121,7 +113,7 @@ Tracker.exportBackup = function() {
   };
 
   if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-    navigator.share({ files: [file], title: 'Sober Journey export' })
+    navigator.share({ files: [file], title: '10Drinks export' })
       .then(() => {
         finish();
         showToast('Export ready — save to Files or iCloud.');
@@ -159,7 +151,7 @@ Tracker._onImportFileSelected = function(e) {
     if (!result.ok) {
       showToast(result.error === 'invalid-json'
         ? 'That file is not valid JSON.'
-        : 'That is not a valid Sober Journey export.');
+        : 'That is not a valid 10Drinks export.');
       return;
     }
     pendingImportBackup = result;
@@ -170,6 +162,8 @@ Tracker._onImportFileSelected = function(e) {
 };
 
 Tracker.requestDeleteData = function() {
+  if (typeof this.closeSettings === 'function') this.closeSettings();
+  if (typeof this.closePrivacyPolicy === 'function') this.closePrivacyPolicy();
   this.showConfirmModal('reset');
 };
 
@@ -194,15 +188,20 @@ Tracker._restoreImportBackup = function(backup) {
   refreshStreakUI(this.data);
   UI.renderAll(this.data);
   renderBackupStatus();
-  renderWelcomeHint(this.data);
+  if (typeof renderWelcomeHint === 'function') renderWelcomeHint(this.data);
   showToast('Progress restored.');
 };
 
 Tracker._deleteAllData = function() {
-  DataManager.flush();
+  if (typeof DataManager.cancelPendingSave === 'function') DataManager.cancelPendingSave();
   try { localStorage.removeItem(DataManager.KEY); } catch (e) {}
   try { localStorage.removeItem('sj_onboarded'); } catch (e) {}
   try { localStorage.removeItem('sj_welcome_dismissed'); } catch (e) {}
+  if (typeof clearPremiumRecord === 'function') clearPremiumRecord();
+  if (typeof setTrialStartedAtISO === 'function') setTrialStartedAtISO(null);
+  try { if (typeof TRIAL_POLICY_KEY !== 'undefined') localStorage.removeItem(TRIAL_POLICY_KEY); } catch (e) {}
+  if (typeof ensureTrialStarted === 'function') ensureTrialStarted();
+  if (typeof setForcePremiumLocked === 'function') setForcePremiumLocked(false);
   clearLastBackupAt();
   this.data = DataManager.defaults();
   this._celebQueue = [];
@@ -213,7 +212,8 @@ Tracker._deleteAllData = function() {
   refreshStreakUI(this.data);
   UI.renderAll(this.data);
   renderBackupStatus();
-  renderWelcomeHint(this.data);
+  if (typeof renderWelcomeHint === 'function') renderWelcomeHint(this.data);
+  if (typeof renderPremiumEntry === 'function') renderPremiumEntry();
   if (typeof MeterController !== 'undefined' && MeterController.init) {
     try { MeterController.init(); } catch (e) {}
   }

@@ -63,15 +63,109 @@ Tracker.toggleLifetimeStats = function() {
   if (btn) btn.textContent = open ? 'Show \u25be' : 'Hide \u25b4';
 };
 
-Tracker.toggleReminderPanel = function() {
-  const body = el('reminderCardBody');
-  const btn  = el('reminderPanelToggleBtn');
-  const toggle = el('reminderPanelToggle');
+Tracker.toggleBestPerformances = function() {
+  const body = el('bestPerformancesBody');
+  const btn  = el('bestPerformancesToggleBtn');
+  const header = el('bestPerformancesPanelToggle');
   if (!body) return;
   const open = body.style.display !== 'none';
   body.style.display = open ? 'none' : 'block';
   if (btn) btn.textContent = open ? 'Show \u25be' : 'Hide \u25b4';
-  if (toggle) toggle.setAttribute('aria-expanded', open ? 'false' : 'true');
+  if (header) header.setAttribute('aria-expanded', open ? 'false' : 'true');
+  if (!open) renderBestPerformances(this.data || DataManager.load());
+};
+
+Tracker.switchBestPerformancesMode = function(mode) {
+  if (mode !== 'streaks' && mode !== 'journeys') return;
+  _bestPerformancesMode = mode;
+  renderBestPerformances(this.data || DataManager.load());
+};
+
+Tracker.toggleReminderPanel = function() {
+  // Reminder lives in Settings sheet (always visible when settings is open).
+  this.openSettings();
+};
+
+Tracker._setRiskMeterOpen = function(open) {
+  const body = el('riskMeterBody');
+  const btn = el('riskMeterToggleBtn');
+  const header = el('riskMeterToggle');
+  if (!body) return;
+  body.style.display = open ? 'block' : 'none';
+  if (btn) btn.textContent = open ? 'Hide \u25b4' : 'Show \u25be';
+  if (header) header.setAttribute('aria-expanded', open ? 'true' : 'false');
+};
+
+Tracker.toggleRiskMeter = function() {
+  const body = el('riskMeterBody');
+  if (!body) return;
+  const open = body.style.display !== 'none';
+  this._setRiskMeterOpen(!open);
+  if (!open) {
+    if (typeof MeterController !== 'undefined') {
+      if (!MeterController.initialized) MeterController.init();
+      const data = this.data || DataManager.load();
+      if (data && data.auditQ1 != null && data.auditQ2 != null && data.auditQ3 != null) {
+        MeterController.updateFromJourney(data);
+      }
+    }
+  }
+};
+
+Tracker.expandRiskMeter = function() {
+  this._setRiskMeterOpen(true);
+};
+
+Tracker.toggleSettings = function() {
+  const overlay = el('appSettingsOverlay');
+  if (overlay && overlay.classList.contains('active')) this.closeSettings();
+  else this.openSettings();
+};
+
+Tracker.openSettings = function() {
+  const overlay = el('appSettingsOverlay');
+  if (!overlay) return;
+  overlay.classList.add('active');
+  overlay.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('modal-open');
+  document.body.classList.add('settings-open');
+  if (typeof renderBackupStatus === 'function') renderBackupStatus();
+  if (typeof renderPremiumEntry === 'function') renderPremiumEntry();
+  const data = this.data || (typeof DataManager !== 'undefined' ? DataManager.load() : null);
+  if (data && typeof renderRemindersTab === 'function') renderRemindersTab(data);
+};
+
+Tracker.closeSettings = function() {
+  const overlay = el('appSettingsOverlay');
+  if (!overlay) return;
+  overlay.classList.remove('active');
+  overlay.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('modal-open');
+  document.body.classList.remove('settings-open');
+};
+
+Tracker.openTenDrinksGuideFromSettings = function() {
+  this.closeSettings();
+  this.openTenDrinksGuide();
+};
+
+Tracker.openPrivacyPolicy = function() {
+  const overlay = el('privacyPolicyOverlay');
+  if (!overlay) return;
+  overlay.classList.add('active');
+  overlay.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('modal-open');
+};
+
+Tracker.closePrivacyPolicy = function() {
+  const overlay = el('privacyPolicyOverlay');
+  if (!overlay) return;
+  overlay.classList.remove('active');
+  overlay.setAttribute('aria-hidden', 'true');
+  if (!el('appSettingsOverlay')?.classList.contains('active')
+    && !el('tenDrinksGuideModal')?.classList.contains('open')) {
+    document.body.classList.remove('modal-open');
+  }
 };
 
 Tracker.openTenDrinksGuide = function() {

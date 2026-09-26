@@ -9,15 +9,18 @@ UI.renderAll = function(data) {
   recalculateStreakFromLog(data);
   this.renderPrimary(data);
   this.renderStreakMilestones(data);
-  renderBodyTimeline(data);
   renderScienceTimeline(getScienceTimelineStreak(data));
   this.renderButtons(data);
   this.renderJourneyTrophies(data);
   renderMonthGrid(data);
   renderJourneyChart(data);
+  renderBestPerformances(data);
   renderLifetimeStats(data);
   renderPremiumLocks(data);
   renderRemindersTab(data);
+  if (typeof MeterController !== 'undefined' && MeterController.syncHeaderTeaser) {
+    MeterController.syncHeaderTeaser(data);
+  }
   // Note: MeterController.updateFromJourney is NOT called here.
   // AUDIT-C score only changes when user takes the test — not on daily logging.
   // updateFromJourney is called directly from AuditOnboarding._save() instead.

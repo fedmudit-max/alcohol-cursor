@@ -81,7 +81,6 @@ const AuditOnboarding = {
       this.step++;
       this._showStep(this.step);
       if (this.step === 3) {
-        this._filterQ3();
         this._setBtn(false, 'See My Score');
       } else {
         this._setBtn(false, 'Next →');
@@ -89,27 +88,6 @@ const AuditOnboarding = {
     } else {
       this._save();
     }
-  },
-
-  _filterQ3() {
-    const q2  = this.answers[1] ?? 0;
-
-    // Q2-based minimum only: if already drinking binge-level quantities per session,
-    // low Q3 answers are logically impossible — but high ones are always valid.
-    // Q2=3 (7-9 pegs)  → min Q3 = 1 (at least less than monthly)
-    // Q2=4 (10+ pegs)  → min Q3 = 2 (at least monthly)
-    let min = 0;
-    if (q2 >= 4) min = 2;
-    else if (q2 >= 3) min = 1;
-
-    el('q3Options').querySelectorAll('.audit-opt').forEach(b => {
-      const val = parseInt(b.dataset.val);
-      const blocked = val < min;
-      b.disabled      = blocked;
-      b.style.opacity = blocked ? '0.25' : '1';
-      b.style.cursor  = blocked ? 'not-allowed' : 'pointer';
-      if (blocked) b.classList.remove('selected');
-    });
   },
 
   _showStep(s) {
@@ -143,9 +121,6 @@ const AuditOnboarding = {
     Tracker.data   = d;
     DataManager.save(d);
     el('auditModal').classList.remove('open');
-    const zn = getAuditZoneName(d);
-    const zi = zn ? DYK_FACTS.findIndex(f => f.type === 'zone' && f.zoneName === zn) : -1;
-    d.dykIndex = zi >= 0 ? zi : 0;
     MeterController.updateFromJourney(d);
     renderReductionTarget(d);
     scrollToPostTestView();

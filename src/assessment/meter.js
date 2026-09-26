@@ -16,7 +16,7 @@ function lerpColor(hex1, hex2, t) {
 // ─────────────────────────────────────────────
 // METER CONTROLLER
 // Draws the D3.js AUDIT-C arc meter and animates the needle.
-// Zones: Sober, Low Risk, Hazardous, Harmful, Dependent
+// Zones: Sober, Low Risk, Hazardous, Harmful, Seek Support (9–12)
 // Score from test → needle position → feedback message
 // ─────────────────────────────────────────────
 const MeterController = {
@@ -29,10 +29,10 @@ const MeterController = {
 
   ZONES: [
     { label:'Sober',     sub:'Best possible',       who:'No alcohol use',                         color:'#1a7a34', scoreMin:0,  scoreMax:1,  arcUnits:0.5  },
-    { label:'Low Risk',  sub:'Your target',          who:'AUDIT-C: Low Risk drinking',             color:'#34c759', scoreMin:1,  scoreMax:4,  arcUnits:2.75 },
+    { label:'Low Risk',  sub:'Your target',          who:'AUDIT-C score 1–3 · lower-risk band',    color:'#34c759', scoreMin:1,  scoreMax:4,  arcUnits:2.75 },
     { label:'Hazardous', sub:'Risk Rising',          who:'AUDIT-C: Hazardous — men ≥4, women ≥3', color:'#ff9500', scoreMin:4,  scoreMax:6,  arcUnits:2    },
-    { label:'Harmful',   sub:'Body at risk',         who:'AUDIT-C: Harmful drinking',              color:'#ff3b30', scoreMin:6,  scoreMax:9,  arcUnits:2.75 },
-    { label:'Dependent', sub:'Medical supervision',  who:'AUDIT-C: Possible dependence',           color:'#7b0000', scoreMin:9,  scoreMax:12, arcUnits:4    },
+    { label:'Harmful',   sub:'',                     who:'AUDIT-C: Harmful drinking',              color:'#ff3b30', scoreMin:6,  scoreMax:9,  arcUnits:2.75 },
+    { label:'Seek Support', sub:'Medical supervision',  who:'AUDIT-C: Professional assessment recommended', color:'#7b0000', scoreMin:9,  scoreMax:12, arcUnits:4    },
   ],
 
   GRADIENTS: [
@@ -48,6 +48,21 @@ const MeterController = {
       if (score >= this.ZONES[i].scoreMin) return i;
     }
     return 0;
+  },
+
+  syncHeaderTeaser(data) {
+    const teaser = el('riskMeterTeaser');
+    if (!teaser || !data) return;
+    if (data.auditQ1 == null || data.auditQ2 == null || data.auditQ3 == null) {
+      teaser.textContent = 'AUDIT-C · WHO validated';
+      teaser.style.color = '';
+      return;
+    }
+    const score = data.auditQ1 + data.auditQ2 + data.auditQ3;
+    const zi = this.getZoneIdx(score);
+    const zone = this.ZONES[zi];
+    teaser.textContent = `${zone.label} · Score ${score} / 12`;
+    teaser.style.color = zone.color;
   },
 
   scoreToAngle(score) {
@@ -147,15 +162,17 @@ const MeterController = {
         if (st.op) t2.attr('opacity', st.op);
       });
       // Sub-label (e.g. "Your target", "Medical supervision")
-      [{ fill:'none', stroke:'white', sw:'3' }, { fill:z.color, stroke:'none', sw:'0', op:'0.6' }].forEach(st => {
-        const t3 = g.append('text')
-          .attr('x', lx).attr('y', ly3)
-          .attr('text-anchor', anchor).attr('dominant-baseline','middle')
-          .attr('font-size','6.5px').attr('font-style','italic').attr('font-family','-apple-system,sans-serif')
-          .attr('fill', st.fill).attr('stroke', st.stroke).attr('stroke-width', st.sw)
-          .attr('stroke-linejoin','round').text(`(${z.sub})`);
-        if (st.op) t3.attr('opacity', st.op);
-      });
+      if (z.sub) {
+        [{ fill:'none', stroke:'white', sw:'3' }, { fill:z.color, stroke:'none', sw:'0', op:'0.6' }].forEach(st => {
+          const t3 = g.append('text')
+            .attr('x', lx).attr('y', ly3)
+            .attr('text-anchor', anchor).attr('dominant-baseline','middle')
+            .attr('font-size','6.5px').attr('font-style','italic').attr('font-family','-apple-system,sans-serif')
+            .attr('fill', st.fill).attr('stroke', st.stroke).attr('stroke-width', st.sw)
+            .attr('stroke-linejoin','round').text(`(${z.sub})`);
+          if (st.op) t3.attr('opacity', st.op);
+        });
+      }
     });
 
     g.append('line').attr('id','mNeedle').attr('x1',0).attr('y1',0).attr('x2',0).attr('y2',-(INNER-8))
@@ -231,58 +248,10 @@ const MeterController = {
       <span style="font-size:13px;font-weight:700;color:${zoneColor};">${zoneName}</span>
       <span style="font-size:11px;color:rgba(60,60,67,0.35);margin:0 6px;">·</span>
       <span style="font-size:11px;color:rgba(60,60,67,0.45);">Score ${score} / 12</span>
-      ${!isLowRisk ? `<div style="font-size:11px;color:#34c759;margin-top:3px;font-weight:600;">🎯 Target: Low Risk zone</div>` : ''}
-      ${isLowRisk ? `<div style="font-size:11px;color:#34c759;margin-top:3px;">✓ You are in the Low Risk zone</div>` : ''}
+      ${isLowRisk ? `<div style="font-size:11px;color:#34c759;margin-top:3px;">✓ Lower-risk screening range — Low Risk is not Risk Free</div>` : ''}
     `;
 
-    // button always says Take Test
-
-    // Feedback — show zone-specific message below the arc
-    const feedbackEl = el('meterFeedback');
-    if (!feedbackEl) return;
-
-    // Helper defined here (local scope) — called 4 times below
-    function showFeedback(bg, border, color, html) {
-      feedbackEl.style.display    = 'block';
-      feedbackEl.style.background = bg;
-      feedbackEl.style.borderLeft = `3px solid ${border}`;
-      feedbackEl.style.color      = color;
-      feedbackEl.innerHTML        = html;
-    }
-
-    // Which Q score is highest — tells user which behaviour to change
-    const lever = getLever(q1, q2, q3);
-
-    if (score >= AUDIT_DEPENDENT_SCORE) {
-      showFeedback(
-        'rgba(123,0,0,0.07)', '#7b0000', '#7b0000',
-        `<strong>Dependent zone.</strong> Stopping or reducing suddenly can cause seizures — please see a doctor before making any changes. Medical supervision is required here.<br><br>
-With medical support and daily tracking, you can move from <strong>Dependent → Low Risk</strong>.<br>
-<span style="font-size:11px;opacity:0.75;display:block;margin-top:4px;">अचानक बंद करना या कम करना खतरनाक है — पहले डॉक्टर से मिलें।</span>`
-      );
-    } else if (score >= AUDIT_HARMFUL_SCORE) {
-      const gap = score - 5;
-      showFeedback(
-        'rgba(255,59,48,0.07)', '#ff3b30', '#cc2200',
-        `<strong>Harmful zone.</strong> Alcohol is actively damaging your body. ${lever} You are <strong>${gap} point${gap > 1 ? 's' : ''}</strong> from Hazardous — you can still enjoy alcohol in a lower zone. Doctor's support recommended.<br>Daily tracking gets you from <strong>Harmful → Low Risk</strong> — one journey at a time.<br>
-<span style="font-size:11px;opacity:0.75;display:block;margin-top:4px;">शराब शरीर को नुकसान दे रही है। ${gap} अंक कम करें — Hazardous ज़ोन में आ जाएंगे। डॉक्टर की मदद लें।</span>`
-      );
-    } else if (score >= AUDIT_HAZARDOUS_SCORE) {
-      const gap = score - 3;
-      showFeedback(
-        'rgba(255,149,0,0.07)', '#ff9500', '#cc6600',
-        `<strong>Hazardous zone.</strong> Alcohol is affecting your body. ${lever} You are <strong>${gap} point${gap > 1 ? 's' : ''}</strong> from Low Risk — you can still enjoy alcohol there.<br>Track your days and score sober vs drinking — <strong>Hazardous → Low Risk</strong> is within reach.<br>
-<span style="font-size:11px;opacity:0.75;display:block;margin-top:4px;">शराब का असर पड़ रहा है। ${gap} अंक कम करें — Low Risk में आ जाएंगे।</span>`
-      );
-    } else if (score >= AUDIT_LOW_RISK_SCORE) {
-      showFeedback(
-        'rgba(52,199,89,0.07)', '#34c759', '#248a3d',
-        `<strong>Low Risk zone.</strong> Good — but Low Risk is not Risk Free. Any alcohol carries some risk. Less is always better.<br>You can go further — <strong>Low Risk → Sober</strong>. Every sober day counts.<br>
-<span style="font-size:11px;opacity:0.75;display:block;margin-top:4px;">Low Risk का मतलब Risk Free नहीं है। जितना कम, उतना बेहतर।</span>`
-      );
-    } else {
-      feedbackEl.style.display = 'none';
-    }
+    this.syncHeaderTeaser(data);
 
     renderDidYouKnow(data);
   }

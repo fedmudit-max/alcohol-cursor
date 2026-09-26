@@ -21,9 +21,74 @@ function renderLifetimeStats(data) {
   el('ltDrink').textContent    = career.drinks;
 }
 
+// Personal bests panel
+let _bestPerformancesMode = 'streaks';
+
+function renderBestPerformanceList(containerId, board, valueSuffix) {
+  const root = el(containerId);
+  if (!root || typeof buildBestPerformancesViewModel !== 'function') return;
+  const slots = board.slots || [];
+  let html = '';
+  for (let i = 0; i < slots.length; i++) {
+    const slot = slots[i];
+    const rankClass = 'best-perf-row--rank-' + slot.rank;
+    const activeClass = slot.isActive ? ' best-perf-row--active' : '';
+    const emptyClass = slot.empty ? ' best-perf-row--empty' : '';
+    html += '<div class="best-perf-row ' + rankClass + activeClass + emptyClass + '" role="listitem" aria-label="' + slot.ariaLabel + '">';
+    html += '<span class="best-perf-medal" aria-hidden="true">' + slot.medal + '</span>';
+    if (slot.empty) {
+      html += '<span class="best-perf-empty">—</span>';
+    } else {
+      html += '<div class="best-perf-bar-track" style="width:' + slot.barPercent + '%" aria-hidden="true">';
+      html += '<div class="best-perf-bar-fill"></div>';
+      html += '</div>';
+      html += '<span class="best-perf-value">' + slot.value + ' ' + valueSuffix + '</span>';
+    }
+    html += '</div>';
+  }
+  root.innerHTML = html;
+}
+
+function renderBestPerformances(data) {
+  const card = el('bestPerformancesCard');
+  if (!card || typeof buildBestPerformancesViewModel !== 'function') return;
+  card.style.display = 'block';
+  data = data || Tracker.data || DataManager.load();
+
+  const mode = _bestPerformancesMode === 'journeys' ? 'journeys' : 'streaks';
+  const streaksBtn = el('bestPerfToggleStreaks');
+  const journeysBtn = el('bestPerfToggleJourneys');
+  if (streaksBtn) {
+    streaksBtn.classList.toggle('active', mode === 'streaks');
+    streaksBtn.setAttribute('aria-selected', mode === 'streaks' ? 'true' : 'false');
+  }
+  if (journeysBtn) {
+    journeysBtn.classList.toggle('active', mode === 'journeys');
+    journeysBtn.setAttribute('aria-selected', mode === 'journeys' ? 'true' : 'false');
+  }
+  const streaksPane = el('bestStreaksPane');
+  const journeysPane = el('bestJourneysPane');
+  if (streaksPane) streaksPane.hidden = mode !== 'streaks';
+  if (journeysPane) journeysPane.hidden = mode !== 'journeys';
+
+  const model = buildBestPerformancesViewModel(data);
+  renderBestPerformanceList('bestStreaksList', model.streaks, 'days');
+  renderBestPerformanceList('bestJourneysList', model.journeys, 'days');
+}
+
 // Calendar navigation state
 let _calYear  = null;
 let _calMonth = null;
+
+function canLogCalendarDay(data, dayKey, realToday) {
+  if (!data || !dayKey || data.journeyPendingReset) return false;
+  const todayKey = dateKey(realToday);
+  if (dayKey > todayKey) return false;
+  const startKey = data.journeyStartKey;
+  if (startKey && dayKey < startKey) return false;
+  if (data.scoredDays && data.scoredDays[dayKey]) return false;
+  return true;
+}
 
 function renderMonthGrid(data, targetYear, targetMonth) {
   const log   = data.dailyLog || {};
@@ -119,7 +184,15 @@ function renderMonthGrid(data, targetYear, targetMonth) {
       border = '2px solid #34c759';
     }
 
-    html += `<div class="${cls}" style="background:${bg};border:${border};color:${color};">${d}</div>`;
+    const tappable = !isFuture && !beforeStart && canLogCalendarDay(data, k, today);
+    if (tappable) cls += ' cal-cell--tappable';
+    const style = `background:${bg};border:${border};color:${color};`;
+    if (tappable) {
+      const label = `Log ${formatCalendarDayLabel(k)}`;
+      html += `<button type="button" class="${cls}" style="${style}" onclick="SoberTracker.promptCalendarDay('${k}')" aria-label="${label}">${d}</button>`;
+    } else {
+      html += `<div class="${cls}" style="${style}">${d}</div>`;
+    }
   }
   el('monthGrid').innerHTML = html;
 

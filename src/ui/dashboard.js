@@ -32,7 +32,8 @@ const UI = {
         bestExplainEl.style.display = 'none';
       }
     }
-    document.title = CONFIG.isProduction ? 'Sober Journey' : ('Sober Journey · ' + (CONFIG.buildTag || 'dev'));
+    const appName = typeof APP_DISPLAY_NAME !== 'undefined' ? APP_DISPLAY_NAME : '10Drinks';
+    document.title = CONFIG.isProduction ? appName : (appName + ' · ' + (CONFIG.buildTag || 'dev'));
     el('currentCard').classList.toggle('inactive', data.currentScore.failures >= JOURNEY_MAX_FAILURES);
     renderWelcomeHint(data);
   },
@@ -132,7 +133,7 @@ const UI = {
       'milestone-active', 'milestone-streak-broken',
       'milestone-journey-review', 'milestone-journey-ended', 'milestone-journey-ended-idle',
     );
-    nameEl.textContent = 'Personal Best';
+    nameEl.textContent = 'Best Streak';
     statEl.textContent = best > 0 ? String(best) : '';
 
     if (streakBroken) {
@@ -207,170 +208,90 @@ function daysSince(isoString, refDate) {
   return Math.round((refDay - lastDay) / MS_PER_DAY);
 }
 
-// ─────────────────────────────────────────────────────────────
-// WHY THIS ZONE — detailed body impact for each AUDIT-C zone
-// ─────────────────────────────────────────────────────────────
-const ZONE_DETAILS = {
-  'Sober': {
-    color: '#1a7a34',
-    bg:    'rgba(26,122,52,0.06)',
-    items: [
-      { organ:'🫀', system:'Heart',       impact:'Blood pressure at natural baseline. No alcohol-related cardiac stress.',                                                           cite:'' },
-      { organ:'🧠', system:'Brain',       impact:'Natural dopamine and serotonin balance. No alcohol-induced cognitive suppression.',                                               cite:'' },
-      { organ:'🫁', system:'Liver',       impact:'Liver enzymes within normal range. Zero alcohol processing load.',                                                                cite:'' },
-      { organ:'🛡️', system:'Cancer risk', impact:'Lowest possible alcohol-attributable cancer risk across all organ systems.',                                                     cite:'IARC Monographs Vol. 100E, WHO' },
-    ]
-  },
-  'Low Risk': {
-    color: '#248a3d',
-    bg:    'rgba(52,199,89,0.06)',
-    items: [
-      { organ:'🫀', system:'Heart',      impact:'Minimal additional cardiovascular risk at this frequency. Blood pressure marginally elevated on drinking days.',                   cite:'Ronksley et al., BMJ 2011' },
-      { organ:'🧠', system:'Brain',      impact:'No measurable long-term cognitive impairment. Mild short-term suppression on drinking occasions.',                                cite:'Topiwala et al., BMJ 2017' },
-      { organ:'🫁', system:'Liver',      impact:'Liver processing alcohol efficiently at this level. No clinically significant enzyme elevation.',                                  cite:'' },
-      { organ:'⚠️', system:'Important', impact:'No level of alcohol is completely safe. Low Risk means lower risk — not zero risk.',                                              cite:'WHO Global Status Report on Alcohol, 2023' },
-    ]
-  },
-  'Hazardous': {
-    color: '#cc6600',
-    bg:    'rgba(255,149,0,0.06)',
-    items: [
-      { organ:'🫀', system:'Heart',    impact:'Clinically significant blood pressure elevation. Risk of atrial fibrillation increases at this level.',                             cite:'Biddinger et al., JAMA 2022' },
-      { organ:'🧠', system:'Brain',    impact:'Measurable reduction in brain grey matter volume. Memory and executive function impaired.',                                         cite:'Topiwala et al., BMJ 2017' },
-      { organ:'🫁', system:'Liver',    impact:'Elevated liver enzymes (ALT, GGT) in most hazardous drinkers. Early fatty liver (steatosis) begins at this level.',               cite:'Naveau et al., Hepatology 1994' },
-      { organ:'🛡️', system:'Cancer',  impact:'Risk of colorectal, breast, mouth and oesophageal cancers measurably elevated above Low Risk.',                                    cite:'IARC Monographs Vol. 100E, WHO' },
-    ]
-  },
-  'Harmful': {
-    color: '#cc2200',
-    bg:    'rgba(255,59,48,0.06)',
-    items: [
-      { organ:'🫀', system:'Heart',    impact:'Alcoholic cardiomyopathy risk. Sustained blood pressure elevation leading to left ventricular hypertrophy.',                       cite:'Guzzo-Merello et al., World J Cardiol 2014' },
-      { organ:'🧠', system:'Brain',    impact:'Progressive brain volume loss. Clinically significant memory impairment. Major depression and anxiety disorders confirmed.',        cite:'Oscar-Berman & Marinković, Alcohol Res Health 2007' },
-      { organ:'🫁', system:'Liver',    impact:'Alcoholic hepatitis risk. Liver fibrosis confirmed in biopsy studies at this consumption level.',                                   cite:'Lackner et al., J Hepatol 2017' },
-      { organ:'🛡️', system:'Cancer',  impact:'Significantly elevated risk of liver, colorectal, breast and oropharyngeal cancers. Risk increases linearly with consumption.',    cite:'IARC Monographs Vol. 100E, WHO' },
-    ]
-  },
-  'Dependent': {
-    color: '#7b0000',
-    bg:    'rgba(123,0,0,0.06)',
-    items: [
-      { organ:'🫀', system:'Heart',       impact:'Dilated cardiomyopathy. Significantly elevated risk of stroke and sudden cardiac death.',                                        cite:'Piano, Alcohol Res 2017' },
-      { organ:'🧠', system:'Brain',       impact:'Wernicke-Korsakoff syndrome risk (thiamine deficiency). Permanent memory loss possible. Structural brain atrophy on MRI.',     cite:'Thomson et al., Alcohol Alcohol 2012' },
-      { organ:'🫁', system:'Liver',       impact:'Alcoholic cirrhosis risk. Liver failure and portal hypertension in long-term dependent drinkers.',                              cite:'Rehm et al., Lancet 2017' },
-      { organ:'⚡', system:'Withdrawal',  impact:'Abrupt cessation causes GABA/glutamate imbalance — seizures and delirium tremens are life-threatening without medical support.',cite:'Bayard et al., Am Fam Physician 2004' },
-    ]
-  },
-};
-
-function getAuditZoneName(data) {
-  if (!data || data.auditQ1 === null || data.auditQ1 === undefined) return null;
-  if (data.auditQ2 === null || data.auditQ3 === null) return null;
-  const score = typeof data.auditScore === 'number'
-    ? data.auditScore
-    : (data.auditQ1 + data.auditQ2 + data.auditQ3);
-  return MeterController.ZONES[MeterController.getZoneIdx(score)].label;
-}
-
-function renderZoneDetailHtml(zoneDetail, items) {
-  const list = items || zoneDetail.items;
-  return list.map(item =>
-    `<div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px solid rgba(60,60,67,0.06);">
-      <div style="font-size:16px;flex-shrink:0;width:22px;text-align:center;">${item.organ}</div>
-      <div>
-        <div style="font-size:11px;font-weight:700;color:${zoneDetail.color};margin-bottom:1px;">${item.system}</div>
-        <div style="font-size:12px;color:rgba(60,60,67,0.65);line-height:1.5;">${item.impact}</div>
-        ${item.cite ? `<div style="font-size:10px;color:rgba(60,60,67,0.35);margin-top:2px;">📄 ${item.cite}</div>` : ''}
-      </div>
-    </div>`
-  ).join('');
-}
-
-
 // ═══════════════════════════════════════════════════════════════
 
 const SCIENCE_NODES = [
   {
     day: 1, organ: '🫀', label: 'Day 1',
     title: 'Heart & Blood',
-    change: 'Blood alcohol clears within 24 hours. Heart rate and blood pressure begin returning to baseline.',
+    change: 'Alcohol is gradually cleared from the body. How long this takes depends on factors including how much was consumed and individual metabolism. The brain begins adapting as alcohol exposure decreases. Heart rate and blood pressure begin returning to baseline.',
     cite: '',
-    c: { emoji: '🫀', title: 'Day 1 — Heart & Blood', msg: 'Blood alcohol is clearing. Heart rate and blood pressure are beginning to return to baseline.\n\nYour body noticed immediately.' }
+    c: { emoji: '🫀', title: 'Day 1 — Heart & Blood', msg: 'Blood alcohol is clearing. The brain begins adapting as alcohol exposure decreases.\n\nHeart rate and blood pressure are beginning to return to baseline.' }
   },
   {
     day: 3, organ: '🫁', label: 'Day 3',
     title: 'Liver & Bloodstream',
-    change: 'Bloodstream fully alcohol-free. Liver enzymes (ALT, GGT) begin normalising. GABA receptors start rebalancing.',
+    change: 'Alcohol may be largely cleared from the bloodstream by this stage, depending on how much and when you last drank. The body continues adjusting as alcohol exposure decreases.',
     cite: '',
-    c: { emoji: '🫁', title: 'Day 3 — Bloodstream Clear', msg: 'Your bloodstream is fully alcohol-free.\n\nLiver enzymes are normalising. GABA receptors are starting to rebalance.' }
+    c: { emoji: '🫁', title: 'Day 3 — Body Adjusting', msg: 'Your bloodstream is fully alcohol-free.\n\nLiver enzymes are normalising. GABA receptors are starting to rebalance.' }
   },
   {
     day: 7, organ: '🧠', label: 'Day 7',
     title: 'Brain Chemistry',
-    change: 'Dopamine and serotonin systems measurably recovering. Anxiety significantly lower. Sleep architecture improving.',
+    change: 'Brain reward pathways can begin adapting as alcohol exposure decreases. Sleep and mood may begin to improve as the body adjusts.',
     cite: '',
-    c: { emoji: '🧠', title: 'Day 7 — Brain Chemistry', msg: 'One week. Dopamine and serotonin systems are measurably recovering.\n\nAnxiety is lower. Sleep architecture is improving.' }
+    c: { emoji: '🧠', title: 'Day 7 — Brain Adapting', msg: 'One week. Brain reward pathways can begin adapting as alcohol exposure decreases.\n\nSleep and mood may begin to improve as the body adjusts.' }
   },
   {
     day: 14, organ: '🌿', label: 'Day 14',
     title: 'Liver & Blood Pressure',
-    change: 'Early fatty liver reversal confirmed. Systolic blood pressure drops 5-10 mmHg on average. REM sleep restored.',
+    change: 'Changes in the gut microbiome may begin as alcohol exposure decreases. Reducing alcohol can support healthier blood pressure. The amount and timing of change vary from person to person. Sleep patterns may continue to adjust as alcohol exposure decreases.',
     cite: '',
-    c: { emoji: '🌿', title: 'Day 14 — Two Weeks', msg: 'Early fatty liver reversal is confirmed. Blood pressure is dropping 5–10 mmHg on average.\n\nREM sleep is returning.' }
+    c: { emoji: '🌿', title: 'Day 14 — Two Weeks', msg: 'Changes in the gut microbiome may begin as alcohol exposure decreases.\n\nReducing alcohol can support healthier blood pressure. The amount and timing of change vary from person to person.\n\nSleep patterns may continue to adjust as alcohol exposure decreases.' }
   },
   {
     day: 21, organ: '🛡️', label: 'Day 21',
     title: 'Immune System',
-    change: 'NK cell activity and T-lymphocyte function measurably stronger. Inflammation markers (CRP) reduced. Gut microbiome recovering.',
+    change: 'Immune function may begin to improve as alcohol exposure decreases. Cardiovascular health can begin to improve as alcohol exposure decreases.',
     cite: '',
-    c: { emoji: '🛡️', title: 'Day 21 — Immune System', msg: 'Three weeks. NK cell activity and T-lymphocyte function are measurably stronger.\n\nInflammation markers are down. Your gut microbiome is recovering.' }
+    c: { emoji: '🛡️', title: 'Day 21 — Immune System', msg: 'Three weeks. Immune function may begin to improve as alcohol exposure decreases.\n\nCardiovascular health can begin to improve as alcohol exposure decreases.' }
   },
   {
     day: 28, organ: '💎', label: 'Day 28',
     title: 'Full Month',
-    change: 'Liver enzymes within normal range for most hazardous drinkers. Brain grey matter volume stabilising. Cardiovascular risk measurably reduced.',
+    change: 'Some people notice improvements in sleep, mood, energy, or overall wellbeing by this point. Cardiovascular health can improve with sustained reduction or abstinence; the extent and timing vary by person.',
     cite: '',
-    c: { emoji: '💎', title: 'Day 28 — Full Month', msg: 'Four weeks without alcohol.\n\nLiver enzymes are in normal range for most hazardous drinkers. Brain grey matter is stabilising. Cardiovascular risk is measurably reduced.' }
+    c: { emoji: '💎', title: 'Day 28 — Full Month', msg: 'Four weeks without alcohol.\n\nSome people notice improvements in sleep, mood, energy, or overall wellbeing by this point.\n\nCardiovascular health can improve with sustained reduction or abstinence; the extent and timing vary by person.' }
   },
   {
     day: 30, organ: '🫀', label: 'Day 30',
     title: 'Blood Pressure & Cancer Risk',
-    change: 'Blood pressure reduction equivalent to one antihypertensive medication dose (Roerecke et al., Lancet 2017). Cancer risk reduction begins to be measurable.',
-    cite: 'Roerecke et al., Lancet 2017',
+    change: 'With continued reduction or abstinence, blood pressure may improve over time. Some cardiovascular and cancer risk factors may begin to improve over time.',
+    cite: '',
     hiddenUntil: 28,
-    c: { emoji: '🫀', title: 'Day 30 — Blood Pressure', msg: '30 days. Blood pressure reduction equivalent to one antihypertensive medication dose.\n\nCancer risk reduction is beginning to be measurable.' }
+    c: { emoji: '🫀', title: 'Day 30 — Blood Pressure', msg: '30 days. With continued reduction or abstinence, blood pressure may improve over time.\n\nSome cardiovascular and cancer risk factors may begin to improve over time.' }
   },
   {
     day: 60, organ: '🧠', label: 'Day 60',
     title: 'Liver & Cognition',
-    change: 'Liver fat largely cleared in moderate drinkers. Cognitive function — memory, processing speed — measurably improved (Rao et al., 2000).',
-    cite: 'Rao et al., 2000',
+    change: 'For some people, reducing or stopping alcohol can allow fatty changes in the liver to improve. Some people experience improvements in memory, concentration, or thinking as the brain adjusts over time.',
+    cite: '',
     hiddenUntil: 30,
-    c: { emoji: '🧠', title: 'Day 60 — Liver & Cognition', msg: '60 days. Liver fat is largely cleared in moderate drinkers.\n\nMemory and processing speed are measurably improved.' }
+    c: { emoji: '🧠', title: 'Day 60 — Liver & Cognition', msg: '60 days. For some people, reducing or stopping alcohol can allow fatty changes in the liver to improve.\n\nSome people experience improvements in memory, concentration, or thinking as the brain adjusts over time.' }
   },
   {
     day: 90, organ: '🧬', label: 'Day 90',
     title: 'Brain, Heart & Gut',
-    change: 'Neuroplasticity significantly recovered. Risk of alcohol-related cardiac events reduced by 30%. Gut microbiome substantially restored (Leclercq et al., 2014).',
-    cite: 'Leclercq et al., 2014',
+    change: 'The brain continues adapting to lower alcohol exposure. Recovery can continue over months and varies between people. Reducing alcohol can lower some cardiovascular risks over time. The gut microbiome can change as alcohol exposure decreases, although the timing and extent vary between people.',
+    cite: '',
     hiddenUntil: 60,
-    c: { emoji: '🧬', title: 'Day 90 — Brain, Heart & Gut', msg: '90 days. Neuroplasticity has significantly recovered.\n\nCardiac event risk is down 30%. Your gut microbiome is substantially restored.' }
+    c: { emoji: '🧬', title: 'Day 90 — Brain, Heart & Gut', msg: '90 days. The brain continues adapting to lower alcohol exposure. Recovery can continue over months and varies between people.\n\nReducing alcohol can lower some cardiovascular risks over time.\n\nThe gut microbiome can change as alcohol exposure decreases, although the timing and extent vary between people.' }
   },
   {
     day: 180, organ: '🫁', label: 'Day 180',
     title: 'Liver Recovery & Immunity',
-    change: 'Liver fibrosis begins reversing in early-stage cases. Immune system largely restored.',
+    change: 'Liver fibrosis begins reversing in early-stage cases. Longer periods of reduced alcohol exposure can support immune function and overall health.',
     cite: '',
     hiddenUntil: 60,
-    c: { emoji: '🫁', title: 'Day 180 — Liver Recovery', msg: '180 days. Liver fibrosis is beginning to reverse in early-stage cases.\n\nYour immune system is largely restored.' }
+    c: { emoji: '🫁', title: 'Day 180 — Liver Recovery', msg: '180 days. Liver fibrosis is beginning to reverse in early-stage cases.\n\nLonger periods of reduced alcohol exposure can support immune function and overall health.' }
   },
   {
     day: 365, organ: '💚', label: 'Day 365',
     title: 'Cardiovascular Reset',
-    change: 'Cardiovascular risk profile equivalent to a non-drinker (Ronksley et al., BMJ 2011).',
+    change: 'Cardiovascular health can improve with sustained reduction or abstinence; the extent and timing vary by person (Ronksley et al., BMJ 2011).',
     cite: 'Ronksley et al., BMJ 2011',
     hiddenUntil: 180,
-    c: { emoji: '💚', title: 'Day 365 — One Full Year', msg: 'One year sober.\n\nCardiovascular risk profile equivalent to a non-drinker.\n\nThis is not luck. This is who you are.' }
+    c: { emoji: '💚', title: 'Day 365 — One Full Year', msg: 'One year sober.\n\nCardiovascular health can improve with sustained reduction or abstinence; the extent and timing vary by person.\n\nThis is not luck. This is who you are.' }
   },
 ];
 
@@ -492,7 +413,7 @@ function renderScienceTimeline(currentStreak) {
 // of blank screen. Critical for health app reliability.
 // ─────────────────────────────────────────────────────────────
 window.onerror = function(msg, src, line, col, err) {
-  console.error('SoberJourney error:', msg, 'at', src, line, col);
+  console.error('[10Drinks] error:', msg, 'at', src, line, col);
   // Only show UI error for non-trivial errors
   if (msg && !msg.includes('Script error')) {
     const existing = document.getElementById('globalErrorBanner');
@@ -509,7 +430,7 @@ window.onerror = function(msg, src, line, col, err) {
 };
 
 window.addEventListener('unhandledrejection', function(e) {
-  console.error('SoberJourney unhandled promise:', e.reason);
+  console.error('[10Drinks] unhandled promise:', e.reason);
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -517,10 +438,10 @@ window.addEventListener('unhandledrejection', function(e) {
 // ═══════════════════════════════════════════════════════════════
 function scrollToPostTestView() {
   function run() {
+    if (typeof Tracker.expandRiskMeter === 'function') Tracker.expandRiskMeter();
     const scoreEl = el('currentCard');
-    const meterCard = el('assessBtn') && el('assessBtn').closest('.card');
+    const meterCard = el('riskMeterCard') || (el('assessBtn') && el('assessBtn').closest('.card'));
     const reduction = el('reductionTargetCard');
-    const lowRisk = el('lowRiskZoneCard');
     if (!meterCard) return;
 
     const vh = window.innerHeight;
@@ -532,15 +453,11 @@ function scrollToPostTestView() {
     let bottomStart = topEnd;
     if (reduction && reduction.style.display !== 'none') {
       bottomStart = reduction.getBoundingClientRect().top + scrollY;
-    } else if (lowRisk) {
-      bottomStart = lowRisk.getBoundingClientRect().top + scrollY;
     }
 
-    const bottomEnd = lowRisk
-      ? lowRisk.getBoundingClientRect().bottom + scrollY
-      : (reduction && reduction.style.display !== 'none'
-          ? reduction.getBoundingClientRect().bottom + scrollY
-          : bottomStart + 140);
+    const bottomEnd = reduction && reduction.style.display !== 'none'
+      ? reduction.getBoundingClientRect().bottom + scrollY
+      : bottomStart + 140;
 
     // Place boundary between meter (top block) and targets (bottom block) at screen centre
     const splitY = (topEnd + bottomStart) / 2;
@@ -589,7 +506,7 @@ function applyTestUIChrome() {
 
 function applyDevChrome() {
   if (CONFIG.isProduction) {
-    document.title = 'Sober Journey';
+    document.title = typeof APP_DISPLAY_NAME !== 'undefined' ? APP_DISPLAY_NAME : '10Drinks';
     applyTestUIChrome();
     return;
   }

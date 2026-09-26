@@ -70,10 +70,9 @@ function clearDrinkDayFrozenStreak(d) {
   if (!d) return;
   d.drinkDayFrozenStreak = 0;
   d.drinkDayFrozenKey = '';
-  d.drinkDayFrozenProgress = 0;
 }
 
-// Rebuild consecutive sober-day streak from dailyLog (single source of truth for streak + body timeline)
+// Rebuild consecutive sober-day streak from dailyLog (single source of truth for streak)
 function recalculateStreakFromLog(d) {
   if (!d) return 0;
   if (!d.dailyLog) d.dailyLog = {};
@@ -175,12 +174,10 @@ function syncStreakTabChrome(data) {
 
 function refreshStreakUI(data) {
   recalculateStreakFromLog(data);
-  syncBodyTimelineWeekHold(data);
   if (typeof UI !== 'undefined' && UI.renderStreakMilestones) {
     UI.renderStreakMilestones(data);
   }
   syncStreakTabChrome(data);
-  renderBodyTimeline(data);
   renderScienceTimeline(getScienceTimelineStreak(data));
 }
 
