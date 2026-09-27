@@ -19,13 +19,14 @@ function boot() {
   // Start the app — always dismiss splash even if init throws
   try {
     Tracker.init();
+    bindMonthGridCalendarClicks();
   } catch (err) {
     console.error('[10Drinks] boot failed:', err);
     dismissAppSplash();
   }
   setTimeout(dismissAppSplash, 3000);
 
-  renderDidYouKnow(Tracker.data);
+  if (Tracker.data) renderDidYouKnow(Tracker.data);
 
   // Start the D3 meter — blank until user takes the test this page load
   MeterController.init();
@@ -131,64 +132,133 @@ if (screen.orientation && screen.orientation.lock) {
 
 window.addEventListener('beforeunload', () => MidnightTimer.stop());
 
-// ── SHELF RENDERER ────────────────────────────────────────────
-function renderChances(data) {
-  const remaining = 10 - data.currentScore.failures;
-  const grid = document.getElementById('chancesGrid');
-  if (!grid) return;
-  grid.innerHTML = Array.from({length:10}, (_,i) => {
-    const full = i < remaining;
-    if (full) return `<div class="slot-chance"><div style="position:absolute;bottom:2px;left:0;right:0;display:flex;flex-direction:column;align-items:center;z-index:4;"><span style="font-size:26px;line-height:1;filter:drop-shadow(0 2px 4px rgba(80,40,0,0.35)) drop-shadow(0 1px 2px rgba(0,0,0,0.2));">🥃</span><div style="width:55%;height:4px;background:radial-gradient(ellipse,rgba(60,30,0,0.4) 0%,rgba(60,30,0,0.12) 60%,transparent 80%);border-radius:50%;margin-top:1px;"></div></div></div>`;
-    return `<div class="slot-chance empty"></div>`;
-  }).join('');
-  const info = document.getElementById('journeyAvailable');
-  if (info) info.textContent = remaining;
+// ── REDUCTION TARGET ──────────────────────────────────────────
+function _getReductionLever(q1, q2, q3) {
+  const a = q1 | 0;
+  const b = q2 | 0;
+  const c = q3 | 0;
+  if (c >= 2) return 'binge';
+  if (b >= 3) return 'quantity';
+  if (a >= 3) return 'frequency';
+  return 'maintain';
 }
 
-// ── REDUCTION TARGET ──────────────────────────────────────────
+const REDUCTION_LEVER_COPY = {
+  binge: {
+    headline: 'Focus first: avoid heavy drinking occasions',
+    detail: 'Your answers suggest heavy drinking occasions are the most impactful thing to address. Heavy drinking occasions can carry substantial risk, so reducing them is an important first step.',
+    secondary: [
+      'Have more alcohol-free days',
+      'Drink smaller amounts when you do drink',
+      'Drink on fewer days overall',
+    ],
+  },
+  quantity: {
+    headline: 'Focus first: reduce how much you drink per session',
+    detail: 'Your answers suggest the amount you drink per occasion is worth focusing on. Choosing smaller amounts is one of the most effective changes you can make.',
+    secondary: [
+      'Have more alcohol-free days',
+      'Avoid heavy drinking occasions',
+      'Drink on fewer days overall',
+    ],
+  },
+  frequency: {
+    headline: 'Focus first: drink on fewer days',
+    detail: 'Your answers suggest drinking frequency is the most impactful thing to address. More alcohol-free days give your body time to recover.',
+    secondary: [
+      'Choose smaller amounts when you do drink',
+      'Avoid heavy drinking occasions',
+      'Build alcohol-free day streaks in this app',
+    ],
+  },
+  maintain: {
+    headline: 'Your screening score is in a lower-risk range',
+    detail: 'Less alcohol is always better. Maintaining or reducing further is worthwhile.',
+    secondary: [
+      'Keep building alcohol-free day streaks',
+      'Avoid heavy drinking occasions',
+      'Low Risk is not Risk Free',
+    ],
+  },
+};
+
 function renderReductionTarget(data) {
   const card = document.getElementById('reductionTargetCard');
-  if (!card) return;
-  const answers = data.auditAnswers || (data.auditQ1 !== null ? [data.auditQ1, data.auditQ2, data.auditQ3] : null);
-  const score   = data.auditScore   ?? (answers ? answers.reduce((a,b)=>a+b,0) : null);
-  const date    = data.auditDate;
-  if (!date || !answers || score === null) { card.style.display='none'; return; }
-  const zoneIdx = MeterController.getZoneIdx(score);
-  const zoneName = MeterController.ZONES[zoneIdx]?.label;
-  if (!zoneName || zoneName==='Sober') { card.style.display='none'; return; }
-  card.style.display = 'block';
-  const zl = document.getElementById('reductionZoneLabel');
-  if (zl) zl.textContent = zoneName;
-  const body = document.getElementById('reductionTargetBody');
-  if (!body) return;
-  if (zoneName === 'Seek Support') {
-    body.innerHTML=`<div style="padding:12px 14px;background:rgba(123,0,0,0.06);border-radius:10px;border-left:3px solid #7b0000;">
-      <div style="font-size:13px;font-weight:700;color:#7b0000;margin-bottom:8px;">See a doctor before making any changes.</div>
-      <div style="font-size:13px;color:rgba(60,60,67,0.7);line-height:1.65;margin-bottom:12px;">At this level, stopping or reducing suddenly can cause withdrawal seizures. Only a doctor can guide you safely from here.</div>
-      <div style="font-size:12px;font-weight:600;color:#7b0000;margin-bottom:4px;">📞 NIMHANS: 080-46110007</div>
-      <div style="font-size:12px;font-weight:600;color:#7b0000;">📞 iCall: 9152987821</div>
-    </div>`;
+  if (!card || !data) return;
+
+  const date = data.auditDate;
+  const answers = data.auditAnswers
+    || (data.auditQ1 != null && data.auditQ2 != null && data.auditQ3 != null
+      ? [data.auditQ1, data.auditQ2, data.auditQ3]
+      : null);
+  if (!date || !answers || answers.length < 3) {
+    card.style.display = 'none';
     return;
   }
-  const q3 = answers[2];
-  const heavyOccasionLead = q3 > 0
-    ? `<p style="margin:0 0 12px;">If you drink heavily every day or have experienced withdrawal symptoms, speak with a healthcare professional before stopping suddenly or making a major reduction.</p>`
-    : '';
-  const lowRiskBanner = `<div style="margin-top:12px;padding:12px;background:rgba(52,199,89,0.06);border-radius:10px;text-align:center;"><div style="font-size:22px;margin-bottom:6px;">🎯</div><div style="font-size:14px;font-weight:700;color:#248a3d;">Lower-risk screening range</div><div style="font-size:12px;color:rgba(60,60,67,0.55);margin-top:4px;">Low Risk is not Risk Free</div></div>`;
-  const showLowRiskBanner = score <= 3;
-  const reductionGuidance = `<div style="padding:10px 14px;background:rgba(52,199,89,0.05);border-radius:10px;border-left:3px solid rgba(52,199,89,0.3);"><div style="font-size:12px;color:rgba(60,60,67,0.65);line-height:1.65;">
-    ${heavyOccasionLead}
-    <p style="margin:0 0 6px;font-weight:600;color:rgba(60,60,67,0.75);">To reduce your alcohol use:</p>
-    <ul style="margin:0 0 12px;padding-left:18px;">
-      <li>Drink on fewer days</li>
-      <li>Have more alcohol-free days</li>
-      <li>Choose smaller amounts when drinking</li>
-      <li>Avoid heavy-drinking occasions</li>
-    </ul>
-    <p style="margin:0;">Your AUDIT-C score may decrease as your drinking frequency and quantity decrease.</p>
-  </div></div>`;
 
-  body.innerHTML = `${reductionGuidance}${showLowRiskBanner ? lowRiskBanner : ''}`;
+  const q1 = answers[0] | 0;
+  const q2 = answers[1] | 0;
+  const q3 = answers[2] | 0;
+  const score = data.auditScore != null ? (data.auditScore | 0) : q1 + q2 + q3;
+
+  const zoneIdx = MeterController.getZoneIdx(score);
+  const zoneName = MeterController.ZONES[zoneIdx]?.label;
+  if (!zoneName || zoneIdx === 0) {
+    card.style.display = 'none';
+    return;
+  }
+
+  card.style.display = 'block';
+  const body = document.getElementById('reductionTargetBody');
+  if (!body) return;
+
+  const footer = `<p style="margin:12px 0 0;font-size:10px;color:rgba(60,60,67,0.35);text-align:center;line-height:1.45;">Based on your screening answers · Not a personal medical recommendation</p>`;
+
+  if (score >= AUDIT_SEEK_SUPPORT_SCORE) {
+    const p = 'margin:0 0 12px;font-size:13px;color:rgba(60,60,67,0.75);line-height:1.65;';
+    const pLast = 'margin:0;font-size:13px;color:rgba(60,60,67,0.75);line-height:1.65;';
+    body.innerHTML = `
+      <div style="padding:12px 14px;background:rgba(123,0,0,0.06);border-radius:10px;border-left:3px solid #7b0000;">
+        <div style="font-size:13px;font-weight:700;color:#7b0000;margin-bottom:10px;">Seek professional support</div>
+        <p style="${p}">Your screening result is in a higher-risk range. Consider speaking with a healthcare professional about your drinking.</p>
+        <p style="${p}">If you drink heavily every day or have experienced withdrawal symptoms before, don't stop or make a major reduction suddenly without medical guidance. Alcohol withdrawal can be dangerous and, in some cases, life-threatening.</p>
+        <p style="${pLast}">A healthcare professional can help you decide on a safe reduction or stopping plan.</p>
+      </div>${footer}`;
+    return;
+  }
+
+  const lever = _getReductionLever(q1, q2, q3);
+  const copy = REDUCTION_LEVER_COPY[lever];
+  const secondaryList = copy.secondary
+    .map((item) => `<li style="margin-bottom:4px;">${item}</li>`)
+    .join('');
+
+  const showSafetyNote = q3 > 0 || q1 >= 4;
+  const safetyNote = showSafetyNote
+    ? `<div style="margin-top:10px;padding:10px 12px;background:rgba(255,149,0,0.06);border-radius:10px;border-left:3px solid rgba(255,149,0,0.45);">
+        <p style="margin:0;font-size:11px;color:rgba(60,60,67,0.7);line-height:1.6;">If you drink very heavily or have had withdrawal symptoms before, speak with a healthcare professional before making major changes.</p>
+      </div>`
+    : '';
+
+  const showLowRiskBanner = score <= 3;
+  const lowRiskBanner = showLowRiskBanner
+    ? `<div style="margin-top:12px;padding:12px;background:rgba(52,199,89,0.06);border-radius:10px;text-align:center;">
+        <div style="font-size:22px;margin-bottom:6px;">🎯</div>
+        <div style="font-size:14px;font-weight:700;color:#248a3d;">Lower-risk screening range</div>
+        <div style="font-size:12px;color:rgba(60,60,67,0.55);margin-top:4px;">Low Risk is not Risk Free · Less is always better</div>
+      </div>`
+    : '';
+
+  body.innerHTML = `
+    <div style="padding:10px 14px;background:rgba(52,199,89,0.05);border-radius:10px;border-left:3px solid rgba(52,199,89,0.3);">
+      <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:rgba(28,28,30,0.9);line-height:1.45;">${copy.headline}</p>
+      <p style="margin:0 0 10px;font-size:12px;color:rgba(60,60,67,0.7);line-height:1.65;">${copy.detail}</p>
+      <p style="margin:0 0 6px;font-size:11px;font-weight:600;color:rgba(60,60,67,0.55);">You may also find it helpful to:</p>
+      <ul style="margin:0;padding-left:18px;font-size:12px;color:rgba(60,60,67,0.7);line-height:1.55;">${secondaryList}</ul>
+    </div>
+    ${safetyNote}
+    ${lowRiskBanner}
+    ${footer}`;
 }
 
 // ── WINNING WAYS ──────────────────────────────────────────────
@@ -198,12 +268,15 @@ SoberTracker.closeWinningWays  = function() { const m=document.getElementById('w
 const _origRenderAll = UI.renderAll.bind(UI);
 UI.renderAll = function(data) {
   _origRenderAll(data);
-  renderChances(data);
-  renderReductionTarget(data);
-  renderDidYouKnow(data);
-  renderBackupStatus();
-  if (typeof renderPremiumPlanPrices === 'function') renderPremiumPlanPrices();
-  renderPremiumEntry();
+  try {
+    renderReductionTarget(data);
+    renderDidYouKnow(data);
+    renderBackupStatus();
+    if (typeof renderPremiumPlanPrices === 'function') renderPremiumPlanPrices();
+    renderPremiumEntry();
+  } catch (err) {
+    console.error('[10Drinks] renderAll post-hook failed:', err);
+  }
 };
 
 // ── DYK FACTS ─────────────────────────────────────────────────

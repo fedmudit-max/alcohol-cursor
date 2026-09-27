@@ -198,9 +198,10 @@ const DataManager = {
       data.nextJourneyTarget = data.highestScore.success;
     }
 
+    if (typeof healAllOrphanScoredDays === 'function') healAllOrphanScoredDays(data);
     // Rebuild scoredDays from score + dailyLog — fixes stale flags that block catch-up scoring
     this._rebuildScoredDays(data);
-    if (reconcileDrinkLogToScore(data)) this._rebuildScoredDays(data);
+    reconcileLogsToJourneyScore(data);
 
     // Coerce and clamp AUDIT-C scores — prevent corrupted values affecting meter
     if (data.auditQ1 !== null && data.auditQ1 !== undefined)
@@ -216,58 +217,8 @@ const DataManager = {
     return data;
   },
 
-  // Mark which dailyLog dates are already reflected in currentScore (prevents double-count)
   _rebuildScoredDays(data) {
-    const log = data.dailyLog || {};
-    const startKey = data.journeyStartKey || null;
-    const needSober = Math.max(0, parseInt(data.currentScore.success, 10) || 0);
-    const needDrink = Math.max(0, parseInt(data.currentScore.failures, 10) || 0);
-    const scored = {};
-
-    // Drinking days — newest first within this journey
-    const keysDesc = Object.keys(log)
-      .filter(k => !startKey || k >= startKey)
-      .sort()
-      .reverse();
-    let drinkMarked = 0;
-    for (const k of keysDesc) {
-      if (log[k] === 'drinking' && drinkMarked < needDrink) {
-        scored[k] = true;
-        drinkMarked++;
-      }
-    }
-
-    // Sober days — consecutive chain ending at today (or yesterday), so streak matches score
-    let soberMarked = 0;
-    if (needSober > 0) {
-      let cursor = getAppToday(data);
-      if (log[dateKey(cursor)] !== 'sober') {
-        cursor.setDate(cursor.getDate() - 1);
-      }
-      while (soberMarked < needSober) {
-        const key = dateKey(cursor);
-        if (startKey && key < startKey) break;
-        if (log[key] === 'sober') {
-          scored[key] = true;
-          soberMarked++;
-          cursor.setDate(cursor.getDate() - 1);
-        } else {
-          break;
-        }
-      }
-    }
-
-    // Fallback: non-consecutive score (reclaimed dates) — newest N sober in journey
-    if (soberMarked < needSober) {
-      for (const k of keysDesc) {
-        if (log[k] === 'sober' && soberMarked < needSober) {
-          scored[k] = true;
-          soberMarked++;
-        }
-      }
-    }
-
-    data.scoredDays = scored;
+    recalculateJourneyScoreFromLog(data);
   },
 
   _updateBestFromData(data) {

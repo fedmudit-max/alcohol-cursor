@@ -104,6 +104,13 @@ const CONFIG = {
   showOnboarding: true,
   buildTag:       'production',
   premiumBilling: PREMIUM_BILLING_MODE,
+  /**
+   * false = hide all Premium/trial/paywall UI and treat features as unlocked (internal test builds).
+   * true = show entitlement UX; pair with showPremiumSubscribe when billing is live.
+   */
+  showPremiumInApp: false,
+  /** Only applies when showPremiumInApp is true. */
+  showPremiumSubscribe: false,
 };
 
 // ═══════════════════════════════════════════════════════════════

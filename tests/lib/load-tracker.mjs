@@ -48,7 +48,9 @@ export function createTrackerContext() {
     localStorage,
     document: {
       getElementById: (id) => el(id),
+      querySelector: () => null,
       querySelectorAll: () => [],
+      body: { classList: { add: () => {}, remove: () => {}, toggle: () => {} } },
     },
     window: {},
     setTimeout: (fn) => { fn(); return 0; },
@@ -84,6 +86,7 @@ export function createTrackerContext() {
     'src/utils/dates.js',
     'src/constants/milestones.js',
     'src/journey/streak.js',
+    'src/journey/journey-score.js',
     'src/journey/best-performances.js',
     'src/data/local-storage.js',
     'src/journey/journey.js',
@@ -107,6 +110,10 @@ export function createTrackerContext() {
     this.shouldAskYesterday = shouldAskYesterday;
     this.unwindTodayIfYesterdayPending = unwindTodayIfYesterdayPending;
     this.JOURNEY_MAX_FAILURES = JOURNEY_MAX_FAILURES;
+    this.applyDayLogStatus = applyDayLogStatus;
+    this.recalculateJourneyScoreFromLog = recalculateJourneyScoreFromLog;
+    this.recalculateStreakFromLog = recalculateStreakFromLog;
+    this.reconcileLogsToJourneyScore = reconcileLogsToJourneyScore;
   `, ctx);
   return ctx;
 }

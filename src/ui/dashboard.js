@@ -50,12 +50,13 @@ const UI = {
     } else if (data.todaySuccessLogged) {
       sb.disabled = true; sb.classList.add('logged'); sb.textContent = '✓ Sober Today';
       fb.disabled = true; fb.textContent = '🥃 Logged';
-    } else if (pendingYesterday) {
-      sb.disabled = true; sb.classList.remove('logged'); sb.textContent = '✓ I Did Not Drink Today';
-      fb.disabled = true; fb.textContent = '🥃 I Drank Today';
     } else {
-      sb.disabled = false; sb.classList.remove('logged'); sb.textContent = '✓ I Did Not Drink Today';
-      fb.disabled = false; fb.textContent = '🥃 I Drank Today';
+      const needYesterday = pendingYesterday;
+      sb.disabled = false;
+      fb.disabled = false;
+      sb.classList.remove('logged');
+      sb.textContent = needYesterday ? '✓ Log yesterday first' : '✓ I Did Not Drink Today';
+      fb.textContent = needYesterday ? '🥃 Log yesterday first' : '🥃 I Drank Today';
     }
   },
 
@@ -175,6 +176,24 @@ const UI = {
   hideModal() { el('confirmModal').classList.remove('active'); document.body.classList.remove('modal-open'); }
 };
 
+// Drinking-days shelf (10 slots) — must run on every UI.renderAll (not only from main.js)
+function renderChances(data) {
+  if (!data) return;
+  ensureScoreNumbers(data);
+  const failures = Math.min(JOURNEY_MAX_FAILURES, data.currentScore.failures | 0);
+  const remaining = JOURNEY_MAX_FAILURES - failures;
+  const grid = el('chancesGrid');
+  if (!grid) return;
+  grid.innerHTML = Array.from({ length: JOURNEY_MAX_FAILURES }, (_, i) => {
+    const full = i < remaining;
+    if (full) {
+      return `<div class="slot-chance"><div style="position:absolute;bottom:2px;left:0;right:0;display:flex;flex-direction:column;align-items:center;z-index:4;"><span style="font-size:26px;line-height:1;filter:drop-shadow(0 2px 4px rgba(80,40,0,0.35)) drop-shadow(0 1px 2px rgba(0,0,0,0.2));">🥃</span><div style="width:55%;height:4px;background:radial-gradient(ellipse,rgba(60,30,0,0.4) 0%,rgba(60,30,0,0.12) 60%,transparent 80%);border-radius:50%;margin-top:1px;"></div></div></div>`;
+    }
+    return `<div class="slot-chance empty"></div>`;
+  }).join('');
+  const info = el('journeyAvailable');
+  if (info) info.textContent = String(remaining);
+}
 
 function computeAuditScore(q1, q2, q3) {
   return (q1 || 0) + (q2 || 0) + (q3 || 0);
@@ -220,10 +239,10 @@ const SCIENCE_NODES = [
   },
   {
     day: 3, organ: '🫁', label: 'Day 3',
-    title: 'Liver & Bloodstream',
-    change: 'Alcohol may be largely cleared from the bloodstream by this stage, depending on how much and when you last drank. The body continues adjusting as alcohol exposure decreases.',
+    title: 'Body Adjusting',
+    change: 'Alcohol may be largely cleared from the bloodstream by this stage, depending on how much and when you last drank. The body continues adjusting as alcohol exposure decreases. Withdrawal symptoms can vary widely; if symptoms are severe or concerning, seek medical help.',
     cite: '',
-    c: { emoji: '🫁', title: 'Day 3 — Body Adjusting', msg: 'Your bloodstream is fully alcohol-free.\n\nLiver enzymes are normalising. GABA receptors are starting to rebalance.' }
+    c: { emoji: '🫁', title: 'Day 3 — Body Adjusting', msg: 'Three days strong. The body continues adjusting to lower alcohol exposure. Withdrawal symptoms can vary widely; if symptoms are severe or concerning, seek medical help.' }
   },
   {
     day: 7, organ: '🧠', label: 'Day 7',
@@ -280,10 +299,10 @@ const SCIENCE_NODES = [
   {
     day: 180, organ: '🫁', label: 'Day 180',
     title: 'Liver Recovery & Immunity',
-    change: 'Liver fibrosis begins reversing in early-stage cases. Longer periods of reduced alcohol exposure can support immune function and overall health.',
+    change: 'Liver fibrosis may begin to reverse in some early-stage cases with sustained abstinence. Longer periods of reduced alcohol exposure can support immune function and overall health.',
     cite: '',
     hiddenUntil: 60,
-    c: { emoji: '🫁', title: 'Day 180 — Liver Recovery', msg: '180 days. Liver fibrosis is beginning to reverse in early-stage cases.\n\nLonger periods of reduced alcohol exposure can support immune function and overall health.' }
+    c: { emoji: '🫁', title: 'Day 180 — Liver Recovery', msg: '180 days. Liver fibrosis may begin to reverse in some early-stage cases with sustained abstinence.\n\nLonger periods of reduced alcohol exposure can support immune function and overall health.' }
   },
   {
     day: 365, organ: '💚', label: 'Day 365',
@@ -314,20 +333,21 @@ function getVisibleScienceNodes(streak) {
   return SCIENCE_NODES.filter(n => n.hiddenUntil === undefined || streak >= n.hiddenUntil);
 }
 
-function renderScienceTimeline(currentStreak) {
+function renderScienceTimeline(data) {
   const container = el('scienceTimeline');
   if (!container) return;
+  const currentStreak = getScienceTimelineStreak(data);
 
   const nodes = getVisibleScienceNodes(currentStreak);
   let html = '';
 
   nodes.forEach((node, i) => {
     const achieved  = currentStreak >= node.day;
-    const isCurrent = currentStreak > 0 && (
-      i === nodes.length - 1
-        ? achieved
-        : currentStreak >= node.day && currentStreak < nodes[i + 1].day
-    );
+    const inStageRange = i === nodes.length - 1
+      ? achieved
+      : currentStreak >= node.day && currentStreak < nodes[i + 1].day;
+    // Full “YOU ARE HERE” card only on the active stage — never before that day is reached
+    const isCurrent = achieved && currentStreak > 0 && inStageRange;
     const lineColor = (achieved && i < nodes.length - 1 && currentStreak >= nodes[i + 1].day)
       ? '#34c759' : 'rgba(60,60,67,0.12)';
     const dotBg   = achieved ? '#34c759' : 'rgba(60,60,67,0.12)';
@@ -475,32 +495,70 @@ function scrollToPostTestView() {
   setTimeout(run, 320);
 }
 
+const WELCOME_HINT_STEP1_KEY = 'sj_welcome_step1_done';
+const WELCOME_HINT_DISMISSED_KEY = 'sj_welcome_dismissed';
+
+function isFreshFirstJourneyWelcome(data) {
+  return !!(
+    data
+    && data.currentScore
+    && data.attempt === 1
+    && data.currentScore.success === 0
+    && data.currentScore.failures === 0
+    && data.todayStatus === 'none'
+    && !data.journeyPendingReset
+  );
+}
+
 function dismissWelcomeHint() {
-  try { localStorage.setItem('sj_welcome_dismissed', '1'); } catch (e) {}
+  try { localStorage.setItem(WELCOME_HINT_STEP1_KEY, '1'); } catch (e) {}
   const card = el('welcomeHint');
+  if (card) card.style.display = 'none';
+  const d = typeof Tracker !== 'undefined' ? Tracker.data : null;
+  renderWelcomeHint(d);
+}
+
+function dismissWelcomeHint2() {
+  try { localStorage.setItem(WELCOME_HINT_DISMISSED_KEY, '1'); } catch (e) {}
+  const card = el('welcomeHint2');
   if (card) card.style.display = 'none';
 }
 
 function renderWelcomeHint(data) {
-  const card = el('welcomeHint');
-  if (!card || !data || !data.currentScore) return;
+  const card1 = el('welcomeHint');
+  const card2 = el('welcomeHint2');
+  if (!card1 || !data || !data.currentScore) {
+    if (card2) card2.style.display = 'none';
+    return;
+  }
   let dismissed = false;
-  try { dismissed = localStorage.getItem('sj_welcome_dismissed') === '1'; } catch (e) {}
-  const isFresh = data.attempt === 1
-    && data.currentScore.success === 0
-    && data.currentScore.failures === 0
-    && data.todayStatus === 'none'
-    && !data.journeyPendingReset;
-  card.style.display = (!dismissed && isFresh) ? 'block' : 'none';
+  let step1Done = false;
+  try {
+    dismissed = localStorage.getItem(WELCOME_HINT_DISMISSED_KEY) === '1';
+    step1Done = localStorage.getItem(WELCOME_HINT_STEP1_KEY) === '1';
+  } catch (e) {}
+  const isFresh = isFreshFirstJourneyWelcome(data);
+  if (!isFresh || dismissed) {
+    card1.style.display = 'none';
+    if (card2) card2.style.display = 'none';
+    return;
+  }
+  if (!step1Done) {
+    card1.style.display = 'block';
+    if (card2) card2.style.display = 'none';
+  } else {
+    card1.style.display = 'none';
+    if (card2) card2.style.display = 'block';
+  }
 }
 
 function applyTestUIChrome() {
   const active = !!CONFIG.showTestUI;
-  document.body.classList.toggle('test-ui-active', active);
-  const tb = el('testBtns');
-  if (tb) tb.style.display = active ? 'block' : 'none';
-  const tag = el('testBuildTag');
-  if (tag) tag.textContent = active ? ('Build: ' + (CONFIG.buildTag || 'dev')) : '';
+  if (typeof syncNextDayTestBar === 'function') {
+    syncNextDayTestBar(active);
+  } else {
+    document.body.classList.remove('test-ui-active');
+  }
   updatePremiumLockTestBtn();
 }
 

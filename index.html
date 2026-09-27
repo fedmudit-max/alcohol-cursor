@@ -64,8 +64,15 @@
         <button type="button" onclick="dismissWelcomeHint()" style="width:100%;padding:10px;background:rgba(52,199,89,0.1);border:1.5px solid rgba(52,199,89,0.25);border-radius:10px;font-size:13px;font-weight:600;color:#248a3d;cursor:pointer;font-family:inherit;">Got it</button>
       </div>
     </div>
+    <div id="welcomeHint2" class="card" style="display:none;margin-top:8px;animation:fadeInUp 0.35s ease both;">
+      <div style="padding:14px 16px;">
+        <div style="font-size:14px;font-weight:700;color:#1c1c1e;margin-bottom:6px;">🎯 Your first Journey</div>
+        <div style="font-size:13px;color:rgba(60,60,67,0.65);line-height:1.55;margin-bottom:12px;">This will be your first Journey, so it will also be your best Journey. Once you complete it, your next goal is to beat this score in your second Journey.</div>
+        <button type="button" onclick="dismissWelcomeHint2()" style="width:100%;padding:10px;background:rgba(52,199,89,0.1);border:1.5px solid rgba(52,199,89,0.25);border-radius:10px;font-size:13px;font-weight:600;color:#248a3d;cursor:pointer;font-family:inherit;">Got it</button>
+      </div>
+    </div>
     <div class="chances-wrap">
-      <div class="chances-shelf-wrap"><div class="chances-shelf"><div class="chances-grid" id="chancesGrid"></div></div></div>
+      <div class="chances-shelf-wrap"><div class="chances-shelf"><div class="chances-grid" id="chancesGrid" style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;min-height:130px;"><div class="slot-chance empty" aria-hidden="true"></div><div class="slot-chance empty" aria-hidden="true"></div><div class="slot-chance empty" aria-hidden="true"></div><div class="slot-chance empty" aria-hidden="true"></div><div class="slot-chance empty" aria-hidden="true"></div><div class="slot-chance empty" aria-hidden="true"></div><div class="slot-chance empty" aria-hidden="true"></div><div class="slot-chance empty" aria-hidden="true"></div><div class="slot-chance empty" aria-hidden="true"></div><div class="slot-chance empty" aria-hidden="true"></div></div></div></div>
       <div class="chances-info"><span id="journeyAvailable">10</span> drinking days left</div>
     </div>
     <div class="btn-row">
@@ -137,23 +144,14 @@
     </div>
   </div>
 
-  <!-- PERSONAL BESTS — top-3 streaks & journeys -->
+  <!-- BEST SCORES — top-3 journey sober-day totals -->
   <div class="card" id="bestPerformancesCard" data-premium-feature="journeyChart" style="animation:fadeInUp 0.4s ease 0.22s both;margin-top:12px;">
     <button type="button" id="bestPerformancesPanelToggle" onclick="SoberTracker.toggleBestPerformances()" aria-expanded="false" aria-controls="bestPerformancesBody" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;min-height:44px;">
-      <div style="font-size:13px;font-weight:700;color:#1c1c1e;">🏅 Personal Bests</div>
+      <div style="font-size:13px;font-weight:700;color:#1c1c1e;">🏅 Best Scores</div>
       <span id="bestPerformancesToggleBtn" style="font-size:12px;font-weight:500;color:rgba(60,60,67,0.4);">Show ▾</span>
     </button>
     <div id="bestPerformancesBody" style="display:none;padding:0 16px 16px;">
-      <div class="chart-toggle" role="tablist" aria-label="Personal bests mode">
-        <button type="button" class="chart-toggle-btn active" id="bestPerfToggleStreaks" role="tab" aria-selected="true" onclick="SoberTracker.switchBestPerformancesMode('streaks')">Streaks</button>
-        <button type="button" class="chart-toggle-btn" id="bestPerfToggleJourneys" role="tab" aria-selected="false" onclick="SoberTracker.switchBestPerformancesMode('journeys')">Journeys</button>
-      </div>
-      <div id="bestStreaksPane" class="best-perf-pane">
-        <div id="bestStreaksList" class="best-perf-list" role="list" aria-label="Top streaks"></div>
-      </div>
-      <div id="bestJourneysPane" class="best-perf-pane" hidden>
-        <div id="bestJourneysList" class="best-perf-list" role="list" aria-label="Top journeys"></div>
-      </div>
+      <div id="bestJourneysList" class="best-perf-list" role="list" aria-label="Top journey scores"></div>
     </div>
   </div>
 
@@ -162,7 +160,7 @@
     <button type="button" id="riskMeterToggle" class="risk-meter-toggle" onclick="SoberTracker.toggleRiskMeter()" aria-expanded="false" aria-controls="riskMeterBody">
       <span class="risk-meter-toggle-text">
         <span class="risk-meter-toggle-title">Drinking Risk Meter</span>
-        <span class="risk-meter-toggle-teaser" id="riskMeterTeaser">AUDIT-C · WHO validated</span>
+        <span class="risk-meter-toggle-teaser" id="riskMeterTeaser"></span>
       </span>
       <span id="riskMeterToggleBtn" class="risk-meter-toggle-chevron">Show ▾</span>
     </button>
@@ -180,9 +178,8 @@
   <!-- REDUCTION TARGET -->
   <div class="card" id="reductionTargetCard" style="display:none;margin-top:12px;">
     <div style="padding:16px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div style="margin-bottom:14px;">
         <div style="font-size:13px;font-weight:700;color:#1c1c1e;">🎯 Reduction Goal</div>
-        <div class="reduction-zone" id="reductionZoneLabel"></div>
       </div>
       <div id="reductionTargetBody"></div>
     </div>
@@ -205,11 +202,11 @@
       </div>
       <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:3px;" id="monthDayLabels"></div>
       <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;" id="monthGrid"></div>
-      <div style="display:flex;gap:14px;margin-top:10px;font-size:10px;color:rgba(60,60,67,0.4);justify-content:flex-start;flex-wrap:wrap;">
-        <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#34c759;vertical-align:middle;margin-right:3px;"></span><span id="calLegendSober">Sober</span></span>
-        <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:rgba(255,149,0,0.7);vertical-align:middle;margin-right:3px;"></span><span id="calLegendDrink">Drinking</span></span>
-        <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:rgba(60,60,67,0.1);border:1px solid rgba(60,60,67,0.12);vertical-align:middle;margin-right:3px;"></span>Not logged</span>
-        <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:rgba(60,60,67,0.08);border:2px solid #34c759;vertical-align:middle;margin-right:3px;"></span>Today</span>
+      <div id="monthGridBackfillHint" class="month-grid-backfill-hint" role="status" hidden></div>
+      <div class="cal-legend" role="list" aria-label="Calendar legend">
+        <span class="cal-legend-item" role="listitem"><span class="cal-legend-swatch cal-legend-swatch--sober" aria-hidden="true"></span><span id="calLegendSober">Sober days</span></span>
+        <span class="cal-legend-item" role="listitem"><span class="cal-legend-swatch cal-legend-swatch--drink" aria-hidden="true"></span><span id="calLegendDrink">Drinking days</span></span>
+        <span id="calLegendPending" hidden><span class="cal-legend-pending-swatch" aria-hidden="true"></span>Tap to log missed day</span>
       </div>
       <div id="monthEmptyState" style="display:none;text-align:center;font-size:11px;color:rgba(60,60,67,0.3);padding:6px 0 2px;">Start logging to fill your month</div>
     </div>
@@ -391,14 +388,6 @@
   </div>
 </div>
 
-<!-- Dev test bar — bottom; enable with CONFIG.showTestUI -->
-<div id="testBtns" style="display:none;">
-  <div id="testBuildTag"></div>
-  <div class="test-bar-grid">
-    <button type="button" class="test-btn-next" onclick="if(!this.disabled){this.disabled=true;SoberTracker.autoAdvanceDay();setTimeout(()=>this.disabled=false,600);}">⏭ Next Day</button>
-  </div>
-</div>
-
 <!-- HOW 10 DRINKS WORKS MODAL -->
 <div class="winning-ways-modal" id="tenDrinksGuideModal" role="dialog" aria-modal="true" aria-labelledby="tenDrinksGuideTitle">
   <div style="background:white;border-radius:24px 24px 0 0;padding:28px 20px 48px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;">
@@ -534,7 +523,7 @@
   </div>
 
 </div>
-<div id="auditModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:1000;align-items:flex-end;justify-content:center;">
+<div id="auditModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);align-items:flex-end;justify-content:center;">
   <div style="background:white;border-radius:24px 24px 0 0;padding:28px 20px 40px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 -4px 32px rgba(0,0,0,0.15);">
     <div style="width:36px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 16px;"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
@@ -549,7 +538,7 @@
           <span id="auditRunningScore" style="font-size:18px;font-weight:800;color:#34c759;min-width:24px;text-align:center;">0</span>
           <span style="font-size:11px;color:rgba(60,60,67,0.3);">/ 12</span>
         </div>
-        <button onclick="document.getElementById('auditModal').classList.remove('open')" style="background:rgba(60,60,67,0.08);border:none;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;color:rgba(60,60,67,0.5);flex-shrink:0;">✕</button>
+        <button type="button" onclick="AuditOnboarding.close()" style="background:rgba(60,60,67,0.08);border:none;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;color:rgba(60,60,67,0.5);flex-shrink:0;">✕</button>
       </div>
     </div>
 
@@ -747,8 +736,8 @@
     <div class="modal-title" id="calendarDayModalTitle">Log this day</div>
     <div id="calendarDayModalSub" style="font-size:13px;color:var(--label2);padding:0 16px 16px;line-height:1.5;">Log this day for your current journey.</div>
     <div class="modal-divider"></div>
-    <div class="modal-actions">
-      <button type="button" class="modal-action" onclick="SoberTracker.logCalendarDay('success')" style="color:var(--green);font-weight:600;">✓ Did Not Drink</button>
+    <div class="modal-actions calendar-day-modal-actions">
+      <button type="button" class="modal-action" onclick="SoberTracker.logCalendarDay('success')" style="color:var(--green);font-weight:600;">✓ Mark Sober</button>
       <button type="button" class="modal-action confirm" onclick="SoberTracker.logCalendarDay('fail')" style="color:var(--red);">🥃 I Drank</button>
       <button type="button" class="modal-action" onclick="SoberTracker.closeCalendarDayModal()" style="color:var(--label2);">Cancel</button>
     </div>
@@ -785,6 +774,7 @@
 <script src="src/utils/helpers.js"></script>
 <script src="src/constants/milestones.js"></script>
 <script src="src/journey/streak.js"></script>
+<script src="src/journey/journey-score.js"></script>
 <script src="src/journey/best-performances.js"></script>
 <script src="src/data/local-storage.js"></script>
 <script src="src/ui/journey-milestones.js"></script>
@@ -804,6 +794,7 @@
 <script src="src/assessment/meter.js"></script>
 <script src="src/assessment/questions.js"></script>
 <script src="src/constants/dyk.js"></script>
+<script src="src/dev/next-day-test.js"></script>
 <script src="src/main.js"></script>
 
 </body>

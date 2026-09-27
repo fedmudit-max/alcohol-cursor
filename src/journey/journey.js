@@ -7,6 +7,32 @@
 // Backup/import lives in src/data/backup.js (attaches after load).
 // ═══════════════════════════════════════════════════════════════
 
+// Returns true if journeyStartKey was changed (caller may persist)
+function ensureJourneyStartKey(data) {
+  if (!data) return false;
+  const before = data.journeyStartKey;
+  const appTodayKey = dateKey(getAppToday(data));
+  const calendarStart = inferJourneyStartFromCalendarDay(data);
+
+  if (!data.journeyStartKey) {
+    data.journeyStartKey = calendarStart;
+  } else if (data.journeyStartKey > appTodayKey) {
+    data.journeyStartKey = appTodayKey;
+  }
+  // Legacy infer used “oldest sober in score window” — pull start back to full journey span for backfill
+  // Only pull start backward within the current journey span — never into prior journeys' logs
+  const earliest = earliestDailyLogKey(data);
+  const pullBackFloor = earliest && earliest < appTodayKey ? earliest : null;
+  if (data.journeyStartKey > calendarStart) {
+    const next = calendarStart;
+    if (!pullBackFloor || next >= pullBackFloor) {
+      data.journeyStartKey = next;
+    }
+  }
+
+  return before !== data.journeyStartKey;
+}
+
 const Tracker = {
   data:            null,
   pendingAction:   null,
@@ -18,30 +44,9 @@ const Tracker = {
     ensureTrialStarted();
     this.data = DataManager.load();
     if (typeof this.data.dykIndex !== 'number') this.data.dykIndex = 0;
-    if (!this.data.journeyStartKey) {
-      // Legacy saves: infer journey start from oldest day in current score window
-      const keys = Object.keys(this.data.dailyLog || {}).sort().reverse();
-      let soberMarked = 0;
-      const success = (this.data.currentScore && this.data.currentScore.success) || 0;
-      const windowKeys = [];
-      for (const k of keys) {
-        if (this.data.dailyLog[k] === 'sober' && soberMarked < success) {
-          windowKeys.push(k);
-          soberMarked++;
-        }
-      }
-      this.data.journeyStartKey = windowKeys.length
-        ? windowKeys[windowKeys.length - 1]
-        : dateKey(getAppToday(this.data));
-    }
-    // Self-heal: sim clock cleared but start key still in the future blocks logging
-    const appTodayKey = dateKey(getAppToday(this.data));
-    if (this.data.journeyStartKey && this.data.journeyStartKey > appTodayKey) {
-      this.data.journeyStartKey = appTodayKey;
-    }
+    if (ensureJourneyStartKey(this.data)) DataManager.saveNow(this.data);
     DataManager._rebuildScoredDays(this.data);
-    if (reconcileDrinkLogToScore(this.data)) {
-      DataManager._rebuildScoredDays(this.data);
+    if (reconcileLogsToJourneyScore(this.data)) {
       DataManager.saveNow(this.data);
     }
     recalculateStreakFromLog(this.data);
@@ -109,36 +114,60 @@ const Tracker = {
   // --- USER ACTIONS ---
 
   // --- LOG YESTERDAY / CALENDAR BACKFILL ---
+  _ensureTrackerData() {
+    if (!this.data) this.data = DataManager.load();
+    return this.data;
+  },
+
   _logDayForKey(key, status) {
-    const d = this.data;
-    if (!d || !key) return;
+    const d = this._ensureTrackerData();
+    if (!d || !key) return false;
     const yestKey = calendarYesterdayKey(d);
     const todayKey = dateKey(getAppToday(d));
-    if (key === yestKey || key === todayKey) {
+    const isCalendarBackfill = key !== yestKey && key !== todayKey;
+    if (isCalendarBackfill) {
+      healAllOrphanScoredDays(d);
+      if (ensureJourneyStartKey(d)) DataManager.saveNow(d);
+      if (!canRecordCalendarDay(d, key, getAppToday(d))) {
+        if (typeof showToast === 'function') showToast('Could not log this day — try again.');
+        return false;
+      }
+    }
+    if (key === todayKey && typeof shouldAskYesterday === 'function' && shouldAskYesterday(d)) {
+      if (typeof showToast === 'function') {
+        showToast('Log yesterday first — use the popup or tap yesterday on the calendar.');
+      }
+      return false;
+    }
+
+    if (key === todayKey) {
       d.todayStatus = 'none';
       d.todaySuccessLogged = false;
     }
 
-    if (status === 'success') {
-      const added = this._recordSoberDay(d, key);
-      if (added) {
-        recalculateStreakFromLog(d);
-        this._checkTrophies();
-        for (const m of STREAK_MILESTONES) {
-          if (d.currentStreak === m.days && !d.celebratedStreakMilestones[m.id]) {
-            d.celebratedStreakMilestones[m.id] = true;
-            markStreakOwnedScienceCelebrated(d, m.days);
-            launchConfetti(90);
-            this._queueCelebration(m.c.emoji, m.c.title, m.c.msg);
-            break;
-          }
-        }
-        this._checkScienceMilestones();
-        this._checkJourneyTargets();
-      }
+    const isSober = status === 'success' || status === true;
+    let recorded = false;
+    if (isSober) {
+      recorded = this._recordSoberDay(d, key);
     } else {
-      this._recordDrinkDay(d, key);
-      if (d.currentScore.failures >= JOURNEY_MAX_FAILURES) { this._endJourney(); return; }
+      recorded = this._recordDrinkDay(d, key);
+    }
+    if (!recorded) {
+      if (typeof showToast === 'function') showToast('Could not log this day — try again.');
+      return false;
+    }
+
+    if (key === todayKey) {
+      if (isSober) {
+        d.todayStatus = 'success';
+        d.todaySuccessLogged = true;
+      } else {
+        d.todayStatus = 'failed';
+        d.todaySuccessLogged = false;
+        d.personalBestCelebrated = false;
+        d.celebratedStreakMilestones = {};
+        d.celebratedScienceMilestones = {};
+      }
     }
 
     recalculateStreakFromLog(d);
@@ -146,50 +175,102 @@ const Tracker = {
     DataManager.saveNow(d);
     refreshStreakUI(d);
     UI.renderAll(d);
+
+    if (!isSober && (d.currentScore.failures | 0) >= JOURNEY_MAX_FAILURES) {
+      recalculateJourneyScoreFromLog(d);
+      this._endJourney();
+      return true;
+    }
+
+    if (isSober && !isCalendarBackfill) {
+      if (!d.celebratedStreakMilestones) d.celebratedStreakMilestones = {};
+      this._checkTrophies();
+      for (const m of STREAK_MILESTONES) {
+        if (d.currentStreak === m.days && !d.celebratedStreakMilestones[m.id]) {
+          d.celebratedStreakMilestones[m.id] = true;
+          markStreakOwnedScienceCelebrated(d, m.days);
+          launchConfetti(90);
+          this._queueCelebration(m.c.emoji, m.c.title, m.c.msg);
+          break;
+        }
+      }
+      this._checkScienceMilestones();
+      this._checkJourneyTargets();
+      DataManager.saveNow(d);
+    } else if (isSober && isCalendarBackfill && typeof showToast === 'function') {
+      showToast(`Logged as sober. Score: ${formatScoreText(d.currentScore)}`);
+    }
+
+    syncTodaySessionFromLog(d);
+    DataManager.saveNow(d);
+
     if (this._celebQueue.length && !this._celebrating) this._showNext();
+    return true;
   },
 
   logYesterday(status) {
-    el('yesterdayModal').classList.remove('active');
+    const ym = el('yesterdayModal');
+    if (ym) ym.classList.remove('active');
+    if (typeof syncModalOpenBodyClass === 'function') syncModalOpenBodyClass();
     const key = calendarYesterdayKey(this.data);
     this._logDayForKey(key, status);
   },
 
   promptCalendarDay(dayKey) {
-    const d = this.data || DataManager.load();
-    if (!canLogCalendarDay(d, dayKey, getRealToday())) return;
+    if (!dayKey) return;
+    this.data = this.data || DataManager.load();
+    const d = this._ensureTrackerData();
+    if (ensureJourneyStartKey(d)) DataManager.saveNow(d);
+    if (!canLogCalendarDay(d, dayKey, getAppToday(d))) {
+      if (typeof showToast === 'function') showToast('This day cannot be logged.');
+      return;
+    }
     this._pendingCalendarDayKey = dayKey;
     const title = el('calendarDayModalTitle');
     const sub = el('calendarDayModalSub');
+    const existing = d.dailyLog && d.dailyLog[dayKey];
     if (title) title.textContent = formatCalendarDayLabel(dayKey);
-    if (sub) sub.textContent = 'Log this day for your current journey.';
+    if (sub) {
+      sub.textContent = existing
+        ? 'Change this day’s log. Unlogged days are never assumed sober.'
+        : 'This day is unlogged — choose what happened. Unlogged ≠ sober.';
+    }
     const ym = el('yesterdayModal');
     if (ym) ym.classList.remove('active');
+    const cm = el('celebrationModal');
+    if (cm) cm.classList.remove('active');
+    this._celebrating = false;
     const modal = el('calendarDayModal');
     if (modal) {
-      modal.classList.add('active');
-      document.body.classList.add('modal-open');
+      modal.dataset.pendingDayKey = dayKey;
+      if (typeof openAppModal === 'function') openAppModal(modal);
+      else modal.classList.add('active');
     }
   },
 
   closeCalendarDayModal() {
     this._pendingCalendarDayKey = null;
     const modal = el('calendarDayModal');
-    if (modal) modal.classList.remove('active');
-    if (!el('yesterdayModal')?.classList.contains('active')) {
-      document.body.classList.remove('modal-open');
+    if (modal) {
+      delete modal.dataset.pendingDayKey;
+      modal.classList.remove('active');
     }
+    if (typeof syncModalOpenBodyClass === 'function') syncModalOpenBodyClass();
   },
 
   logCalendarDay(status) {
-    const key = this._pendingCalendarDayKey;
     const modal = el('calendarDayModal');
-    if (modal) modal.classList.remove('active');
-    this._pendingCalendarDayKey = null;
-    if (!el('yesterdayModal')?.classList.contains('active')) {
-      document.body.classList.remove('modal-open');
+    const key = this._pendingCalendarDayKey || (modal && modal.dataset.pendingDayKey) || '';
+    if (modal) {
+      modal.classList.remove('active');
+      delete modal.dataset.pendingDayKey;
     }
-    if (!key) return;
+    this._pendingCalendarDayKey = null;
+    if (typeof syncModalOpenBodyClass === 'function') syncModalOpenBodyClass();
+    if (!key) {
+      if (typeof showToast === 'function') showToast('Could not log — tap the day again.');
+      return;
+    }
     this._logDayForKey(key, status);
   },
 
@@ -201,8 +282,17 @@ const Tracker = {
   },
 
   handleSuccess() {
-    if (this.data.todayStatus === 'failed' || this.data.todaySuccessLogged) return;
+    if (!this.data) this.data = DataManager.load();
+    syncTodaySessionFromLog(this.data);
+    if (this.data.todayStatus === 'failed') {
+      if (typeof showToast === 'function') showToast('You already logged a drink today.');
+      return;
+    }
+    if (this.data.todaySuccessLogged) return;
     if (shouldAskYesterday(this.data)) {
+      if (typeof showToast === 'function') {
+        showToast('Answer about yesterday first.');
+      }
       showYesterdayModal();
       return;
     }
@@ -210,7 +300,11 @@ const Tracker = {
   },
 
   showConfirmModal(action) {
+    if (!this.data) this.data = DataManager.load();
     if ((action === 'success' || action === 'fail') && shouldAskYesterday(this.data)) {
+      if (typeof showToast === 'function') {
+        showToast('Answer about yesterday first.');
+      }
       showYesterdayModal();
       return;
     }
@@ -427,7 +521,6 @@ const Tracker = {
       if (CONFIG.showTestUI) d.simulatedToday = appToday.toISOString();
     }
     d.attempt++;
-    d.currentScore = { success:0, failures:0 };
     d.scoredDays = {};
     if ((d.currentStreak | 0) > (d.longestStreak | 0)) d.longestStreak = d.currentStreak | 0;
     d.currentStreak = 0;
@@ -450,6 +543,9 @@ const Tracker = {
     d.lastDayCheck = new Date(appToday.getFullYear(), appToday.getMonth(), appToday.getDate(), 12, 0, 0).toISOString();
     d.streakPeakAtRunStart = d.longestStreak | 0;
     d.currentJourneyStreaks = [];
+    recalculateJourneyScoreFromLog(d);
+    recalculateLifetimeTotalsFromLog(d);
+    recalculateStreakFromLog(d);
     DataManager.save(d);
     refreshStreakUI(d);
     this.resetJourneyTabView();
@@ -465,54 +561,22 @@ const Tracker = {
     }
   },
 
-  // Record one sober day in dailyLog + currentScore (once per date via scoredDays)
   _recordSoberDay(d, key) {
     this._ensureScore(d);
-    if (!d.dailyLog) d.dailyLog = {};
-    if (!d.scoredDays) d.scoredDays = {};
-    if (d.journeyStartKey && key < d.journeyStartKey) return false;
-    if (d.dailyLog[key] === 'drinking') {
-      if (d.scoredDays[key]) return false;
-      // Prior-journey drink on this date — allow sober once new journey owns this day
-    } else if (d.dailyLog[key] === 'sober') {
-      if (d.scoredDays[key]) return false;
-      d.scoredDays[key] = true;
-      // Log already has sober — only bump score if this day was not counted yet
-      const need = (d.currentScore.success | 0);
-      let marked = 0;
-      const startKey = d.journeyStartKey || null;
-      for (const k of Object.keys(d.scoredDays)) {
-        if (d.dailyLog[k] === 'sober' && (!startKey || k >= startKey) && d.scoredDays[k]) marked++;
-      }
-      if (marked > need) {
-        d.currentScore.success++;
-        d.totalSuccessfulDays++;
-        this._updateBest();
-      }
-      ensureScoreNumbers(d);
-      return true;
-    }
-    if (d.scoredDays[key]) return false;
-
-    d.dailyLog[key] = 'sober';
-    d.scoredDays[key] = true;
-    d.currentScore.success++;
-    d.totalSuccessfulDays++;
-    this._updateBest();
-    ensureScoreNumbers(d);
-    return true;
+    return applyDayLogStatus(d, key, 'sober');
   },
 
-  // Record one drinking day in dailyLog + currentScore (once per date via scoredDays)
   _recordDrinkDay(d, key) {
     this._ensureScore(d);
-    const ok = recordDrinkDay(d, key);
+    const ok = applyDayLogStatus(d, key, 'drinking');
     if (ok) pushEndedStreakOnDrink(d);
     return ok;
   },
 
-  _updateBest() {
-    applyBestScore(this.data, this.data.currentScore);
+  _updateBest(data) {
+    const d = data || this.data;
+    if (!d || !d.currentScore) return;
+    applyBestScore(d, d.currentScore);
   },
 
   _checkTrophies() {
@@ -601,10 +665,18 @@ const Tracker = {
     if (!this._celebQueue.length) { this._celebrating = false; return; }
     this._celebrating = true;
     const { emoji, title, msg } = this._celebQueue.shift();
-    el('celebrationEmoji').textContent   = emoji;
-    el('celebrationTitle').textContent   = title;
-    el('celebrationMessage').textContent = msg;
-    el('celebrationModal').classList.add('active');
+    const emojiEl = el('celebrationEmoji');
+    const titleEl = el('celebrationTitle');
+    const msgEl = el('celebrationMessage');
+    const modal = el('celebrationModal');
+    if (!emojiEl || !titleEl || !msgEl || !modal) {
+      this._celebrating = false;
+      return;
+    }
+    emojiEl.textContent = emoji;
+    titleEl.textContent = title;
+    msgEl.textContent = msg;
+    modal.classList.add('active');
   },
 
   closeCelebration() {

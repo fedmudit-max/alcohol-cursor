@@ -21,6 +21,76 @@ function formatCalendarDayLabel(dayKey) {
   return dt.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
 }
 
+// First calendar day of the current journey (from journey day counter + app today)
+function inferJourneyStartFromCalendarDay(data) {
+  const appToday = getAppToday(data);
+  const cal = Math.max(1, parseInt(data && data.calendarDay, 10) || 1);
+  const start = new Date(
+    appToday.getFullYear(),
+    appToday.getMonth(),
+    appToday.getDate() - (cal - 1),
+    12, 0, 0
+  );
+  return dateKey(start);
+}
+
+function healOrphanScoredDay(d, dayKey) {
+  if (!d || !dayKey) return;
+  if (!d.scoredDays) d.scoredDays = {};
+  if (d.scoredDays[dayKey] && !d.dailyLog?.[dayKey]) delete d.scoredDays[dayKey];
+}
+
+function healAllOrphanScoredDays(d) {
+  if (!d?.scoredDays) return;
+  const log = d.dailyLog || {};
+  for (const k of Object.keys(d.scoredDays)) {
+    if (!log[k]) delete d.scoredDays[k];
+  }
+}
+
+function calendarJourneyFloorKey(d) {
+  if (typeof ensureJourneyStartKey === 'function') ensureJourneyStartKey(d);
+  return d.journeyStartKey || inferJourneyStartFromCalendarDay(d);
+}
+
+// Oldest explicit log entry (all journeys) — for calendar history display
+function earliestDailyLogKey(data) {
+  const log = data?.dailyLog || {};
+  let min = null;
+  for (const k of Object.keys(log)) {
+    if (log[k] !== 'sober' && log[k] !== 'drinking') continue;
+    if (!min || k < min) min = k;
+  }
+  return min;
+}
+
+// Earliest month the calendar should allow navigating to (prior journeys stay visible)
+function calendarHistoryAnchorKey(data) {
+  const journeyFloor = data?.journeyStartKey || inferJourneyStartFromCalendarDay(data);
+  const earliest = earliestDailyLogKey(data);
+  if (!earliest) return journeyFloor;
+  return earliest < journeyFloor ? earliest : journeyFloor;
+}
+
+// Shared rules for calendar tap + actually writing the log
+function canRecordCalendarDay(data, dayKey, appToday) {
+  if (!data || !dayKey || data.journeyPendingReset) return false;
+  const todayKey = dateKey(appToday);
+  if (dayKey > todayKey) return false;
+  // Same rule as main buttons: answer yesterday before logging today
+  if (
+    dayKey === todayKey &&
+    typeof shouldAskYesterday === 'function' &&
+    shouldAskYesterday(data)
+  ) {
+    return false;
+  }
+  healOrphanScoredDay(data, dayKey);
+  const floor = calendarJourneyFloorKey(data);
+  if (dayKey < floor) return false;
+  return true;
+}
+
 
 // Test "Next Day" advances simulatedToday; logging/streak use this instead of real clock
 function getAppToday(data) {
@@ -33,7 +103,7 @@ function getAppToday(data) {
   return getRealToday();
 }
 
-// Wall-clock today (noon local) — calendar UI never follows the test simulator
+// Wall-clock today (noon local)
 function getRealToday() {
   const n = new Date();
   return new Date(n.getFullYear(), n.getMonth(), n.getDate(), 12, 0, 0);
@@ -104,6 +174,23 @@ function normalizeTodaySession(d) {
   }
 }
 
+// Keep main buttons in sync with today's dailyLog (e.g. after logging yesterday)
+function syncTodaySessionFromLog(d) {
+  if (!d) return;
+  const todayKey = dateKey(getAppToday(d));
+  const scored = d.scoredDays || {};
+  const entry = d.dailyLog && d.dailyLog[todayKey];
+  if (entry === 'sober' && scored[todayKey]) {
+    d.todayStatus = 'success';
+    d.todaySuccessLogged = true;
+    return;
+  }
+  if (entry === 'drinking' && scored[todayKey]) {
+    d.todayStatus = 'failed';
+    d.todaySuccessLogged = false;
+  }
+}
+
 function journeyDrinkLogKeys(d) {
   const log = d.dailyLog || {};
   const startKey = d.journeyStartKey || null;
@@ -111,59 +198,5 @@ function journeyDrinkLogKeys(d) {
     .filter(k => log[k] === 'drinking' && (!startKey || k >= startKey))
     .sort();
 }
-
-// Score one drinking day into currentScore.failures (Tracker + load reconcile)
-function recordDrinkDay(d, key) {
-  if (!d) return false;
-  ensureScoreNumbers(d);
-  if (!d.currentScore) d.currentScore = { success: 0, failures: 0 };
-  if (!d.dailyLog) d.dailyLog = {};
-  if (!d.scoredDays) d.scoredDays = {};
-  if (d.journeyStartKey && key < d.journeyStartKey) return false;
-
-  recalculateStreakFromLog(d);
-  const streakBeforeDrink = d.currentStreak | 0;
-  d.streakPeakAtRunStart = Math.max(d.longestStreak | 0, streakBeforeDrink);
-
-  if (d.dailyLog[key] === 'drinking' && d.scoredDays[key]) return false;
-
-  if (d.dailyLog[key] === 'sober' && d.scoredDays[key]) {
-    d.currentScore.success = Math.max(0, d.currentScore.success - 1);
-    d.totalSuccessfulDays  = Math.max(0, d.totalSuccessfulDays - 1);
-    delete d.scoredDays[key];
-  } else if (d.scoredDays[key]) {
-    return false;
-  }
-
-  if ((d.currentScore.failures | 0) >= JOURNEY_MAX_FAILURES) return false;
-
-  d.dailyLog[key] = 'drinking';
-  d.scoredDays[key] = true;
-  d.drinkDayFrozenStreak = streakBeforeDrink;
-  d.drinkDayFrozenKey = key;
-  d.currentScore.failures++;
-  d.totalFailures++;
-  d.celebratedStreakMilestones = {};
-  d.celebratedScienceMilestones = {};
-  applyBestScore(d, d.currentScore);
-  ensureScoreNumbers(d);
-  return true;
-}
-
-// Heal drift on load (product rule A): if dailyLog has more drinks than failures,
-// score unscored log entries — user should not fix code bugs mentally.
-function reconcileDrinkLogToScore(d) {
-  if (!d || !d.dailyLog) return false;
-  if (!d.scoredDays) d.scoredDays = {};
-  let changed = false;
-  for (const key of journeyDrinkLogKeys(d)) {
-    if (d.scoredDays[key]) continue;
-    if (journeyDrinkLogKeys(d).length <= (d.currentScore.failures | 0)) break;
-    if (recordDrinkDay(d, key)) changed = true;
-  }
-  return changed;
-}
-
-
 
 // Shorthand for document.getElementById — saves typing

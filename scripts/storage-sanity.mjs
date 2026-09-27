@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
  * Quick localStorage / DataManager sanity checks (no browser).
+ * Journey score is log-derived: migrate/reload rebuild currentScore from dailyLog.
  * Run: node scripts/storage-sanity.mjs
  */
 import fs from 'fs';
@@ -35,6 +36,7 @@ const ctx = vm.createContext({
 
 runScript('src/config/app.config.js', ctx);
 runScript('src/utils/dates.js', ctx);
+runScript('src/journey/journey-score.js', ctx);
 runScript('src/utils/helpers.js', ctx);
 runScript('src/data/local-storage.js', ctx);
 vm.runInContext('this.DataManager = DataManager;', ctx);
@@ -62,17 +64,25 @@ ok('fresh install → defaults', () => {
   }
 });
 
-ok('reload → data remains', () => {
-  const d = DM.load();
-  d.currentScore.success = 12;
-  d.currentStreak = 4;
-  d.dailyLog['2026-03-01'] = 'sober';
+ok('reload → dailyLog persists and score rebuilds from log (2–1)', () => {
+  Object.keys(store).forEach((k) => delete store[k]);
+  const d = DM.defaults();
+  d.journeyStartKey = '2026-03-01';
+  d.dailyLog = {
+    '2026-03-01': 'sober',
+    '2026-03-02': 'sober',
+    '2026-03-03': 'drinking',
+  };
+  d.currentScore = { success: 12, failures: 0 };
   DM.saveNow(d);
   const again = DM.load();
-  if (again.currentScore.success !== 12 || again.currentStreak !== 4) {
-    throw new Error('score/streak not persisted');
-  }
   if (again.dailyLog['2026-03-01'] !== 'sober') throw new Error('dailyLog not persisted');
+  if (again.dailyLog['2026-03-03'] !== 'drinking') throw new Error('drink day not persisted');
+  if (again.currentScore.success !== 2 || again.currentScore.failures !== 1) {
+    throw new Error(
+      `score must be derived from log (expected 2–1, got ${again.currentScore.success}–${again.currentScore.failures})`
+    );
+  }
 });
 
 ok('corrupted JSON → defaults, no throw', () => {
@@ -88,11 +98,38 @@ ok('null / array stored → defaults', () => {
   if (DM.load().attempt !== 1) throw new Error('array');
 });
 
-ok('partial object → migrated keys', () => {
-  store[DM.KEY] = JSON.stringify({ attempt: 2, currentScore: { success: 3, failures: 1 } });
+ok('partial object → migrated keys + score reconciled from dailyLog', () => {
+  store[DM.KEY] = JSON.stringify({
+    attempt: 2,
+    journeyStartKey: '2026-03-01',
+    currentScore: { success: 3, failures: 1 },
+    dailyLog: {
+      '2026-03-01': 'sober',
+      '2026-03-02': 'sober',
+      '2026-03-03': 'drinking',
+    },
+  });
   const d = DM.load();
-  if (d.attempt !== 2 || d.currentScore.success !== 3) throw new Error('migrate failed');
+  if (d.attempt !== 2) throw new Error('attempt not migrated');
+  if (d.currentScore.success !== 2 || d.currentScore.failures !== 1) {
+    throw new Error(
+      `score should match log (expected 2–1, got ${d.currentScore.success}–${d.currentScore.failures})`
+    );
+  }
   if (!d.reminders || typeof d.reminders.dailyEnabled !== 'boolean') throw new Error('reminders missing');
+});
+
+ok('stale score without log entries → zeroed on load', () => {
+  store[DM.KEY] = JSON.stringify({
+    attempt: 1,
+    journeyStartKey: '2026-06-01',
+    currentScore: { success: 5, failures: 2 },
+    dailyLog: {},
+  });
+  const d = DM.load();
+  if (d.currentScore.success !== 0 || d.currentScore.failures !== 0) {
+    throw new Error(`orphan counters should clear (got ${d.currentScore.success}–${d.currentScore.failures})`);
+  }
 });
 
 ok('simulatedToday stripped when showTestUI false', () => {

@@ -16,7 +16,7 @@ function lerpColor(hex1, hex2, t) {
 // ─────────────────────────────────────────────
 // METER CONTROLLER
 // Draws the D3.js AUDIT-C arc meter and animates the needle.
-// Zones: Sober, Low Risk, Hazardous, Harmful, Seek Support (9–12)
+// Zones: No alcohol reported, Lower-risk range, Hazardous range, Harmful range, Seek support (9–12)
 // Score from test → needle position → feedback message
 // ─────────────────────────────────────────────
 const MeterController = {
@@ -28,11 +28,11 @@ const MeterController = {
   lastQ1: null, lastQ2: null, lastQ3: null, lastScore: null,
 
   ZONES: [
-    { label:'Sober',     sub:'Best possible',       who:'No alcohol use',                         color:'#1a7a34', scoreMin:0,  scoreMax:1,  arcUnits:0.5  },
-    { label:'Low Risk',  sub:'Your target',          who:'AUDIT-C score 1–3 · lower-risk band',    color:'#34c759', scoreMin:1,  scoreMax:4,  arcUnits:2.75 },
-    { label:'Hazardous', sub:'Risk Rising',          who:'AUDIT-C: Hazardous — men ≥4, women ≥3', color:'#ff9500', scoreMin:4,  scoreMax:6,  arcUnits:2    },
-    { label:'Harmful',   sub:'',                     who:'AUDIT-C: Harmful drinking',              color:'#ff3b30', scoreMin:6,  scoreMax:9,  arcUnits:2.75 },
-    { label:'Seek Support', sub:'Medical supervision',  who:'AUDIT-C: Professional assessment recommended', color:'#7b0000', scoreMin:9,  scoreMax:12, arcUnits:4    },
+    { label:'No alcohol reported', sub:'', who:'No alcohol reported on screening', color:'#1a7a34', scoreMin:0,  scoreMax:1,  arcUnits:0.5  },
+    { label:'Lower-risk range', sub:'', who:'AUDIT-C score 1–3', color:'#34c759', scoreMin:1,  scoreMax:4,  arcUnits:2.75 },
+    { label:'Hazardous range',  sub:'',            who:'AUDIT-C score 4–5', color:'#ff9500', scoreMin:4,  scoreMax:6,  arcUnits:2    },
+    { label:'Harmful range',    sub:'',            who:'AUDIT-C score 6–8', color:'#ff3b30', scoreMin:6,  scoreMax:9,  arcUnits:2.75 },
+    { label:'Seek support',     sub:'',            who:'AUDIT-C: Seek support range', hideArcRange:true, color:'#7b0000', scoreMin:9,  scoreMax:12, arcUnits:4    },
   ],
 
   GRADIENTS: [
@@ -52,17 +52,9 @@ const MeterController = {
 
   syncHeaderTeaser(data) {
     const teaser = el('riskMeterTeaser');
-    if (!teaser || !data) return;
-    if (data.auditQ1 == null || data.auditQ2 == null || data.auditQ3 == null) {
-      teaser.textContent = 'AUDIT-C · WHO validated';
-      teaser.style.color = '';
-      return;
-    }
-    const score = data.auditQ1 + data.auditQ2 + data.auditQ3;
-    const zi = this.getZoneIdx(score);
-    const zone = this.ZONES[zi];
-    teaser.textContent = `${zone.label} · Score ${score} / 12`;
-    teaser.style.color = zone.color;
+    if (!teaser) return;
+    teaser.textContent = '';
+    teaser.style.color = '';
   },
 
   scoreToAngle(score) {
@@ -92,6 +84,12 @@ const MeterController = {
 
   init() {
     if (this.initialized || typeof d3 === 'undefined') return;
+    const svgNode = document.getElementById('meterSvg');
+    if (!svgNode) return;
+    if (svgNode.childNodes.length > 0) {
+      this.initialized = true;
+      return;
+    }
     this.initialized = true;
 
     const CX=150, CY=158, INNER=76, OUTER=135;
@@ -104,7 +102,7 @@ const MeterController = {
 
     // Build cumulative arc positions based on arcUnits (visual width per zone)
     // Total arcUnits = 12, total arc = PI, so 1 arcUnit = PI/12 = DEG
-    // Sober = leftmost (-PI/2 = rotate -90°), Dependent = rightmost (+PI/2 = rotate +90°)
+    // No alcohol reported = leftmost (-PI/2 = rotate -90°), Seek support = rightmost (+PI/2 = rotate +90°)
     let cursor = -Math.PI/2; // left edge of semicircle
     this.ZONES.forEach(z => {
       z.arcStart = cursor;
@@ -147,20 +145,22 @@ const MeterController = {
         g.append('text')
           .attr('x', lx).attr('y', ly1)
           .attr('text-anchor', anchor).attr('dominant-baseline','middle')
-          .attr('font-size','8px').attr('font-weight','700').attr('font-family','-apple-system,sans-serif')
+          .attr('font-size','7px').attr('font-weight','700').attr('font-family','-apple-system,sans-serif')
           .attr('fill', st.fill).attr('stroke', st.stroke).attr('stroke-width', st.sw)
           .attr('stroke-linejoin','round').text(z.label);
       });
-      // Score range
-      [{ fill:'none', stroke:'white', sw:'3' }, { fill:z.color, stroke:'none', sw:'0', op:'0.7' }].forEach(st => {
-        const t2 = g.append('text')
-          .attr('x', lx).attr('y', ly2)
-          .attr('text-anchor', anchor).attr('dominant-baseline','middle')
-          .attr('font-size','7px').attr('font-family','-apple-system,sans-serif')
-          .attr('fill', st.fill).attr('stroke', st.stroke).attr('stroke-width', st.sw)
-          .attr('stroke-linejoin','round').text(RANGES[i]);
-        if (st.op) t2.attr('opacity', st.op);
-      });
+      // Score range (omitted for Seek support — screening band, not a score band label)
+      if (!z.hideArcRange) {
+        [{ fill:'none', stroke:'white', sw:'3' }, { fill:z.color, stroke:'none', sw:'0', op:'0.7' }].forEach(st => {
+          const t2 = g.append('text')
+            .attr('x', lx).attr('y', ly2)
+            .attr('text-anchor', anchor).attr('dominant-baseline','middle')
+            .attr('font-size','7px').attr('font-family','-apple-system,sans-serif')
+            .attr('fill', st.fill).attr('stroke', st.stroke).attr('stroke-width', st.sw)
+            .attr('stroke-linejoin','round').text(RANGES[i]);
+          if (st.op) t2.attr('opacity', st.op);
+        });
+      }
       // Sub-label (e.g. "Your target", "Medical supervision")
       if (z.sub) {
         [{ fill:'none', stroke:'white', sw:'3' }, { fill:z.color, stroke:'none', sw:'0', op:'0.6' }].forEach(st => {
@@ -237,18 +237,27 @@ const MeterController = {
 
     // Show current zone + target clearly below the arc
     const zoneIdx  = this.getZoneIdx(score);
-    const zoneName = this.ZONES[zoneIdx].label;
-    const zoneColor = this.ZONES[zoneIdx].color;
+    const zone     = this.ZONES[zoneIdx];
+    const zoneName = zone.label;
+    const zoneColor = zone.color;
 
     // Zone label line below SVG
     const zoneLine = el('meterZoneLine');
     if (zoneLine) zoneLine.style.display = 'block';
-    const isLowRisk = zoneName === 'Low Risk' || zoneName === 'Sober';
+    const scoreLine = zone.hideArcRange
+      ? ''
+      : `<span style="font-size:11px;color:rgba(60,60,67,0.35);margin:0 6px;">·</span>
+      <span style="font-size:11px;color:rgba(60,60,67,0.45);">Score ${score} / 12</span>`;
+    const zoneFeedback = zone.feedback
+      ? `<div style="margin-top:8px;padding:10px 12px;background:rgba(60,60,67,0.04);border-radius:10px;max-width:320px;margin-left:auto;margin-right:auto;text-align:left;line-height:1.55;">
+          <div style="font-size:11px;font-weight:600;color:${zoneColor};margin-bottom:4px;">${zone.who || zoneName}</div>
+          <div style="font-size:11px;color:rgba(60,60,67,0.65);">${zone.feedback}</div>
+        </div>`
+      : '';
     zoneLine.innerHTML = `
       <span style="font-size:13px;font-weight:700;color:${zoneColor};">${zoneName}</span>
-      <span style="font-size:11px;color:rgba(60,60,67,0.35);margin:0 6px;">·</span>
-      <span style="font-size:11px;color:rgba(60,60,67,0.45);">Score ${score} / 12</span>
-      ${isLowRisk ? `<div style="font-size:11px;color:#34c759;margin-top:3px;">✓ Lower-risk screening range — Low Risk is not Risk Free</div>` : ''}
+      ${scoreLine}
+      ${zoneFeedback}
     `;
 
     this.syncHeaderTeaser(data);

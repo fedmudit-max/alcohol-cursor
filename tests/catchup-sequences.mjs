@@ -131,7 +131,9 @@ assert('Test C — yesterday drink increments failures and resets streak', () =>
 assert('Test D — 10th drink ends journey; next calendar day starts 0–0', () => {
   const d = freshData(2026, 2, 1);
   Tracker.data = d;
-  d.currentScore = { success: 5, failures: 9 };
+  for (let day = 1; day <= 9; day++) {
+    Tracker._recordDrinkDay(d, key(2026, 2, day));
+  }
   const drinkKey = key(2026, 2, 10);
   Tracker._recordDrinkDay(d, drinkKey);
   if (d.currentScore.failures >= ctx.JOURNEY_MAX_FAILURES) Tracker._endJourney();

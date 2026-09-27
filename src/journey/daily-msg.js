@@ -11,7 +11,7 @@ function _dailyMsg(streak, score) {
     if (ratio !== prevRatio) {
       if (ratio === 2) return `${s} sober, ${f} drinking. Twice as many sober days. You are winning. 🟢`;
       if (ratio === 3) return `3 to 1. Three sober days for every drinking day. You are in control. 💪`;
-      if (ratio === 4) return `4 to 1. Four sober days for every drinking day. This is becoming who you are. 🌟`;
+      if (ratio === 4) return `4 to 1. Four sober days for every drinking day. Keep building the pattern. 🌟`;
       if (ratio === 5) return `5 to 1. Five sober days for every drinking day. The numbers do not lie. 🏆`;
       if (ratio >= 6) return `${ratio} to 1. You are rewriting your relationship with alcohol. 💎`;
     }

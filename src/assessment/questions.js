@@ -26,6 +26,13 @@ const AuditOnboarding = {
     if (tally) tally.style.display = 'none';
     if (scoreEl) { scoreEl.textContent = '0'; scoreEl.style.color = '#34c759'; }
     el('auditModal').classList.add('open');
+    document.body.classList.add('modal-open');
+  },
+
+  close() {
+    const modal = el('auditModal');
+    if (modal) modal.classList.remove('open');
+    document.body.classList.remove('modal-open');
   },
 
   select(step, val) {
@@ -120,7 +127,7 @@ const AuditOnboarding = {
     d.auditDate    = new Date().toISOString();
     Tracker.data   = d;
     DataManager.save(d);
-    el('auditModal').classList.remove('open');
+    this.close();
     MeterController.updateFromJourney(d);
     renderReductionTarget(d);
     scrollToPostTestView();

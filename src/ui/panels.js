@@ -14,20 +14,20 @@ Tracker.toggleMonthGrid = function() {
 
 Tracker.calendarPrev = function() {
   const data = Tracker.data || DataManager.load();
-  const today = getRealToday();
-  let y = _calYear ?? today.getFullYear();
-  let m = (_calMonth ?? today.getMonth()) - 1;
+  const appToday = getAppToday(data);
+  let y = _calYear ?? appToday.getFullYear();
+  let m = (_calMonth ?? appToday.getMonth()) - 1;
   if (m < 0) { m = 11; y--; }
   renderMonthGrid(data, y, m);
 };
 
 Tracker.calendarNext = function() {
   const data = Tracker.data || DataManager.load();
-  const today = getRealToday();
-  let y = _calYear ?? today.getFullYear();
-  let m = (_calMonth ?? today.getMonth()) + 1;
+  const appToday = getAppToday(data);
+  let y = _calYear ?? appToday.getFullYear();
+  let m = (_calMonth ?? appToday.getMonth()) + 1;
   if (m > 11) { m = 0; y++; }
-  if (y > today.getFullYear() || (y === today.getFullYear() && m > today.getMonth())) return;
+  if (y > appToday.getFullYear() || (y === appToday.getFullYear() && m > appToday.getMonth())) return;
   renderMonthGrid(data, y, m);
 };
 
@@ -73,12 +73,6 @@ Tracker.toggleBestPerformances = function() {
   if (btn) btn.textContent = open ? 'Show \u25be' : 'Hide \u25b4';
   if (header) header.setAttribute('aria-expanded', open ? 'false' : 'true');
   if (!open) renderBestPerformances(this.data || DataManager.load());
-};
-
-Tracker.switchBestPerformancesMode = function(mode) {
-  if (mode !== 'streaks' && mode !== 'journeys') return;
-  _bestPerformancesMode = mode;
-  renderBestPerformances(this.data || DataManager.load());
 };
 
 Tracker.toggleReminderPanel = function() {

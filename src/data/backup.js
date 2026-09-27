@@ -197,6 +197,7 @@ Tracker._deleteAllData = function() {
   try { localStorage.removeItem(DataManager.KEY); } catch (e) {}
   try { localStorage.removeItem('sj_onboarded'); } catch (e) {}
   try { localStorage.removeItem('sj_welcome_dismissed'); } catch (e) {}
+  try { localStorage.removeItem('sj_welcome_step1_done'); } catch (e) {}
   if (typeof clearPremiumRecord === 'function') clearPremiumRecord();
   if (typeof setTrialStartedAtISO === 'function') setTrialStartedAtISO(null);
   try { if (typeof TRIAL_POLICY_KEY !== 'undefined') localStorage.removeItem(TRIAL_POLICY_KEY); } catch (e) {}
@@ -204,9 +205,13 @@ Tracker._deleteAllData = function() {
   if (typeof setForcePremiumLocked === 'function') setForcePremiumLocked(false);
   clearLastBackupAt();
   this.data = DataManager.defaults();
+  if (typeof ensureJourneyStartKey === 'function') ensureJourneyStartKey(this.data);
   this._celebQueue = [];
   this._celebrating = false;
   this._currentStreaks = [];
+  this.pendingAction = null;
+  if (typeof UI !== 'undefined' && UI.hideModal) UI.hideModal();
+  document.body.classList.remove('modal-open', 'settings-open');
   DataManager.saveNow(this.data);
   this.switchTab(0);
   refreshStreakUI(this.data);

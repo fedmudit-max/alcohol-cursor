@@ -26,10 +26,38 @@ let _toastTimer;
 // Shows a green toast message at the bottom of screen for 3 seconds
 function showToast(msg) {
   const t = el('toast');
+  if (!t) return;
   t.textContent = msg;
   t.classList.add('show');
   clearTimeout(_toastTimer);
   _toastTimer = setTimeout(() => t.classList.remove('show'), TOAST_DURATION_MS);
+}
+
+function syncModalOpenBodyClass() {
+  if (!document.body || !document.querySelector) return;
+  const open = document.querySelector('.modal.active');
+  if (open) document.body.classList.add('modal-open');
+  else document.body.classList.remove('modal-open');
+}
+
+function openAppModal(modalEl) {
+  if (!modalEl) return;
+  modalEl.style.zIndex = '';
+  modalEl.classList.add('active');
+  if (document.body) document.body.classList.add('modal-open');
+}
+
+function bindMonthGridCalendarClicks() {
+  if (window._monthGridCalendarClickBound) return;
+  window._monthGridCalendarClickBound = true;
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('#monthGrid [data-cal-key]');
+    if (!btn) return;
+    const key = btn.getAttribute('data-cal-key');
+    if (!key || typeof SoberTracker === 'undefined' || !SoberTracker.promptCalendarDay) return;
+    e.preventDefault();
+    SoberTracker.promptCalendarDay(key);
+  }, true);
 }
 
 // Hide boot splash and switch page background off brand green (safe to call multiple times)

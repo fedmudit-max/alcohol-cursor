@@ -35,7 +35,7 @@ Push these files to GitHub (branch **main**, Pages source **/ root**):
 
 **Storage sanity:** `node scripts/storage-sanity.mjs`
 
-**Catch-up / journey sequences (before Capacitor):** `node tests/catchup-check.js` — locks down multi-day gaps, `unwindTodayIfYesterdayPending`, yesterday drink, and 10th-drink journey reset.
+**Catch-up / journey sequences (before Capacitor):** `node tests/catchup-check.js` (runs `tests/catchup-sequences.mjs`) — multi-day gaps leave missed days unlogged, yesterday prompt, `unwindTodayIfYesterdayPending`, and 10th-drink journey reset.
 
 ## Install on phone
 
@@ -105,11 +105,9 @@ Journey is sober days until user consumes 10 drinking days.
 
 **Science** is a tab (body recovery timeline on streak basis). **Streak** and **Milestone** are separate tabs.
 
-If a user forgets to log on 2nd, 3rd, 4th and if today is 5th.
-For 5th , he is expected to log today, for 4th he will be asked about the yesterday via popup
-and 2nd , 3rd will be considered as sober days.
+**Missed days (current behavior):** If a user forgets to log on the 2nd, 3rd and 4th and today is the 5th, the missed days remain **unlogged**. The user can tap each unlogged day on the **Calendar** and choose **Mark Sober** or **I Drank**. **Yesterday** may also be prompted separately when they return. **Unlogged days never automatically affect the journey score or streak** — only explicit log entries (today’s buttons, yesterday modal, or calendar backfill) update score and streak.
 
-MUST NOT: Catch-up must never increment failures except via logYesterday('failed') or user logging today.
+**Catch-up (`Tracker._catchUp`):** Advances the in-app calendar to today and may show the yesterday modal; it does **not** auto-fill `dailyLog` or auto-count sober/drinking days. See `src/journey/catchup.js` and `src/journey/journey-score.js`.
 
 
 When drinking day 10 is used, the journey ends, scores freeze, new journey starts fresh with score 0 - 0 from next calendar day.

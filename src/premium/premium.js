@@ -33,8 +33,22 @@ function premiumDaysLeftLabel() {
   return `${left} days left`;
 }
 
+function isPremiumInAppVisible() {
+  return CONFIG.showPremiumInApp === true;
+}
+
+function isPremiumSubscribeOffered() {
+  return isPremiumInAppVisible() && CONFIG.showPremiumSubscribe === true;
+}
+
 function syncPremiumSubscribeCta() {
   const buyBtn = el('premiumCtaBtn');
+  if (!isPremiumSubscribeOffered()) {
+    if (buyBtn) buyBtn.hidden = true;
+    const restoreBtn = el('premiumRestoreBtn');
+    if (restoreBtn) restoreBtn.hidden = true;
+    return;
+  }
   if (!buyBtn || buyBtn.hidden) return;
   if (!canApplyLocalPremiumUnlock() && !isStoreBillingConfigured()) {
     buyBtn.textContent = 'Coming in the app';
@@ -143,6 +157,7 @@ function setForcePremiumLocked(locked) {
 }
 
 function hasPremiumAccess() {
+  if (!isPremiumInAppVisible()) return !isForcePremiumLocked();
   if (isForcePremiumLocked()) return false;
   return isPremiumActive() || isTrialActive();
 }
@@ -237,7 +252,7 @@ function makePremiumLockOverlay(title, sub) {
 function setFeatureLocked(cardEl, locked, title, sub) {
   if (!cardEl) return;
   cardEl.classList.toggle('feature-locked', !!locked);
-  const existing = cardEl.querySelector(':scope > .premium-lock-overlay');
+  const existing = cardEl.querySelector('.premium-lock-overlay');
   if (!locked) {
     if (existing) existing.remove();
     return;
@@ -246,7 +261,27 @@ function setFeatureLocked(cardEl, locked, title, sub) {
   cardEl.appendChild(makePremiumLockOverlay(title, sub));
 }
 
+function unlockAllPremiumFeatures() {
+  const ids = [
+    'monthGridCard', 'journeyChartCard', 'bestPerformancesCard', 'lifetimeStatsCard',
+    'didYouKnowCard', 'riskMeterCard', 'reductionTargetCard',
+  ];
+  ids.forEach((id) => setFeatureLocked(el(id), false));
+  const segBtns = document.querySelectorAll('.seg-btn');
+  if (segBtns[2]) segBtns[2].classList.remove('seg-locked');
+  const progressTab = el('progressTabContent');
+  if (progressTab) {
+    progressTab.classList.remove('feature-locked');
+    const ov = progressTab.querySelector('.premium-lock-overlay');
+    if (ov) ov.remove();
+  }
+}
+
 function renderPremiumLocks(data) {
+  if (!isPremiumInAppVisible()) {
+    unlockAllPremiumFeatures();
+    return;
+  }
   const unlocked = hasPremiumAccess();
 
   const segBtns = document.querySelectorAll('.seg-btn');
@@ -255,7 +290,7 @@ function renderPremiumLocks(data) {
   const progressTab = el('progressTabContent');
   if (progressTab) {
     progressTab.classList.toggle('feature-locked', !unlocked);
-    let ov = progressTab.querySelector(':scope > .premium-lock-overlay');
+    let ov = progressTab.querySelector('.premium-lock-overlay');
     if (!unlocked && !ov) {
       progressTab.appendChild(makePremiumLockOverlay(
         'Science is Premium',
@@ -264,14 +299,14 @@ function renderPremiumLocks(data) {
     } else if (unlocked && ov) ov.remove();
   }
 
-  setFeatureLocked(el('monthGridCard'), !unlocked, 'Monthly calendar', 'Browse your full month history with Premium.');
+  // Calendar stays interactive so users can backfill missed in-journey days without Premium
+  setFeatureLocked(el('monthGridCard'), false);
   setFeatureLocked(el('journeyChartCard'), !unlocked, 'History', 'Compare past journeys after your trial with Premium.');
-  setFeatureLocked(el('bestPerformancesCard'), !unlocked, 'Personal Bests', 'Top streaks and journeys unlock with Premium.');
+  setFeatureLocked(el('bestPerformancesCard'), !unlocked, 'Best Scores', 'Top journey scores unlock with Premium.');
   setFeatureLocked(el('lifetimeStatsCard'), !unlocked, 'Lifetime stats', 'Career totals unlock with Premium.');
   setFeatureLocked(el('didYouKnowCard'), !unlocked, 'Knowledge cards', 'Extra insights are part of Premium.');
   setFeatureLocked(el('riskMeterCard'), !unlocked, 'Risk meter', 'AUDIT-C meter and re-tests are Premium after trial.');
 
-  // Reduce target / low risk can stay tied to meter access
   setFeatureLocked(el('reductionTargetCard'), !unlocked, 'Reduction goal', 'Reduction goal unlocks with Premium.');
 }
 
@@ -303,8 +338,9 @@ function renderPremiumPanelContent() {
       noteEl.textContent = '';
     }
   }
-  if (subBtn) subBtn.hidden = !!active;
-  if (restoreBtn) restoreBtn.hidden = !!active;
+  const offered = isPremiumSubscribeOffered();
+  if (subBtn) subBtn.hidden = !!active || !offered;
+  if (restoreBtn) restoreBtn.hidden = !!active || !offered;
 }
 
 function renderPremiumEntry() {
@@ -312,6 +348,11 @@ function renderPremiumEntry() {
   const teaser = el('premiumPanelTeaser') || el('settingsPremiumTeaser');
   const card = el('premiumPanelCard');
   const titleEl = el('premiumPanelTitle');
+  if (!isPremiumInAppVisible()) {
+    if (card) card.style.display = 'none';
+    return;
+  }
+  if (card) card.style.display = '';
   if (!status && !teaser && !card) return;
 
   let badge = 'Upgrade';
@@ -334,8 +375,11 @@ function renderPremiumEntry() {
     showBadge = false;
     trial = true;
   } else {
-    badge = 'Upgrade';
-    sub = 'Trial ended — subscribe in app';
+    badge = isPremiumSubscribeOffered() ? 'Upgrade' : '';
+    sub = isPremiumSubscribeOffered()
+      ? 'Trial ended — subscribe in app'
+      : 'Trial ended — journey logging still available';
+    if (!isPremiumSubscribeOffered()) showBadge = false;
   }
 
   if (titleEl) titleEl.textContent = '✦ Premium';
@@ -416,6 +460,18 @@ function renderPremiumCheckoutSheet() {
     if (laterBtn) laterBtn.textContent = 'Close';
     if (buyBtn) buyBtn.hidden = true;
     if (restoreBtn) restoreBtn.hidden = true;
+  } else if (!isPremiumSubscribeOffered()) {
+    titleEl.textContent = 'Premium';
+    if (subEl) {
+      subEl.hidden = false;
+      subEl.textContent = isTrialActive()
+        ? 'Your free trial includes full Premium access. Subscriptions are not available in this test build yet.'
+        : 'Premium subscriptions are not available in this test build yet. You can still use journey logging.';
+    }
+    if (priceBlock) priceBlock.hidden = true;
+    if (laterBtn) laterBtn.textContent = 'Close';
+    if (buyBtn) buyBtn.hidden = true;
+    if (restoreBtn) restoreBtn.hidden = true;
   } else {
     titleEl.textContent = 'Choose a plan';
     const checkoutBlocked = !canApplyLocalPremiumUnlock() && !isStoreBillingConfigured();
@@ -451,6 +507,7 @@ function openPremiumOverlay() {
 
 /** Locked features / unlock CTAs — opens plan picker directly. */
 Tracker.openPremium = function() {
+  if (!isPremiumInAppVisible()) return;
   selectedPremiumPlan = selectedPremiumPlan || 'yearly';
   renderPremiumCheckoutSheet();
   openPremiumOverlay();
@@ -458,6 +515,7 @@ Tracker.openPremium = function() {
 
 /** Premium tab Subscribe — same checkout popup (monthly / annual). */
 Tracker.openPremiumCheckout = function() {
+  if (!isPremiumSubscribeOffered()) return;
   if (isPremiumActive()) {
     showToast('Premium is already active on this device.');
     return;
@@ -487,6 +545,7 @@ Tracker.selectPremiumPlan = function(planId) {
 };
 
 Tracker.subscribePremium = function() {
+  if (!isPremiumSubscribeOffered()) return;
   if (isPremiumActive()) {
     showToast('Premium is already active on this device.');
     return;
@@ -516,6 +575,7 @@ Tracker.subscribePremium = function() {
 };
 
 Tracker.restorePremium = function() {
+  if (!isPremiumSubscribeOffered()) return;
   if (isPremiumActive()) {
     renderPremiumEntry();
     showToast('Premium restored on this device.');

@@ -1,17 +1,15 @@
 /* ===== src/journey/streak.js ===== */
 'use strict';
 
-// Streak engine — consecutive sober days from dailyLog (single source of truth)
+// Streak engine — consecutive sober days from explicit dailyLog only (gaps = unlogged, break streak)
 
 function isDrinkingDayToday(data) {
   if (!data) return false;
   const todayKey = dateKey(getAppToday(data));
   const log = data.dailyLog || {};
-  const scored = data.scoredDays || {};
-  return log[todayKey] === 'drinking' && !!scored[todayKey];
+  return log[todayKey] === 'drinking';
 }
 
-// First calendar day after a logged drink — Day 1 copy before sober is logged
 function isPostDrinkRestartDay(data) {
   if (!data || (data.currentStreak | 0) > 0) return false;
   if (isDrinkingDayToday(data)) return false;
@@ -20,12 +18,11 @@ function isPostDrinkRestartDay(data) {
   const yestKey = dateKey(yest);
   const todayKey = dateKey(today);
   const log = data.dailyLog || {};
-  const scored = data.scoredDays || {};
   return log[yestKey] === 'drinking' && log[todayKey] !== 'sober';
 }
 
 function inferStreakBeforeTodayDrink(data) {
-  if (!data?.dailyLog || !data.scoredDays) return 0;
+  if (!data?.dailyLog) return 0;
   const today = getAppToday(data);
   let cursor = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1, 12, 0, 0);
   const startKey = data.journeyStartKey || null;
@@ -33,8 +30,7 @@ function inferStreakBeforeTodayDrink(data) {
   while (true) {
     const key = dateKey(cursor);
     if (startKey && key < startKey) break;
-    const entry = data.dailyLog[key];
-    if (entry === 'sober' && data.scoredDays[key]) {
+    if (data.dailyLog[key] === 'sober') {
       streak++;
       cursor.setDate(cursor.getDate() - 1);
     } else {
@@ -44,7 +40,6 @@ function inferStreakBeforeTodayDrink(data) {
   return streak;
 }
 
-// Achieved streak shown in UI — frozen on the drinking day, resets next calendar day
 function getDisplayStreak(data) {
   if (!data) return 0;
   if (isDrinkingDayToday(data)) {
@@ -59,7 +54,6 @@ function getDisplayStreak(data) {
   return data.currentStreak | 0;
 }
 
-// Progress tab — consecutive sober run only (not drink-day frozen streak)
 function getScienceTimelineStreak(data) {
   if (!data) return 0;
   if (isDrinkingDayToday(data)) return 0;
@@ -72,80 +66,69 @@ function clearDrinkDayFrozenStreak(d) {
   d.drinkDayFrozenKey = '';
 }
 
-// Rebuild consecutive sober-day streak from dailyLog (single source of truth for streak)
+function longestSoberRunInLog(d, fromKey, toKey) {
+  if (!d?.dailyLog) return 0;
+  const log = d.dailyLog;
+  const start = fromKey || toKey;
+  const end = toKey || fromKey;
+  if (!start || !end) return 0;
+  let cursor = noonFromDateKey(start);
+  const endDate = noonFromDateKey(end);
+  let max = 0;
+  let run = 0;
+  while (cursor.getTime() <= endDate.getTime()) {
+    const k = dateKey(cursor);
+    if (log[k] === 'sober') {
+      run++;
+      if (run > max) max = run;
+    } else {
+      run = 0;
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return max;
+}
+
+function longestSoberRunAllTime(d) {
+  if (!d?.dailyLog) return 0;
+  const keys = Object.keys(d.dailyLog).sort();
+  if (!keys.length) return 0;
+  const todayKey = dateKey(getAppToday(d));
+  const endKey = keys[keys.length - 1] > todayKey ? todayKey : keys[keys.length - 1];
+  return longestSoberRunInLog(d, keys[0], endKey);
+}
+
+// Current streak: consecutive sober days ending at today if today sober, else ending at yesterday if yesterday sober
 function recalculateStreakFromLog(d) {
   if (!d) return 0;
   if (!d.dailyLog) d.dailyLog = {};
   ensureScoreNumbers(d);
   normalizeTodaySession(d);
 
-  const today    = getAppToday(d);
+  const today = getAppToday(d);
   const todayKey = dateKey(today);
-  const todayEntry = d.dailyLog[todayKey];
-  const scored   = d.scoredDays || {};
+  const log = d.dailyLog;
 
-  if (todayEntry === 'drinking' && scored[todayKey]) {
-    d.currentStreak  = 0;
+  if (log[todayKey] === 'drinking') {
+    d.currentStreak = 0;
     d.inPersonalBest = false;
+    const allTime = longestSoberRunAllTime(d);
+    d.longestStreak = Math.max(d.longestStreak | 0, allTime);
     return 0;
   }
 
   let cursor = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12, 0, 0);
-
-  if (todayEntry === 'sober') {
-    // Count backward from today
-  } else {
-    const yest = new Date(cursor);
-    yest.setDate(yest.getDate() - 1);
-    const yestKey = dateKey(yest);
-    const yestEntry = d.dailyLog[yestKey];
-
-    if (yestEntry === 'drinking') {
-      const sk = d.journeyStartKey || null;
-      if (!sk || yestKey >= sk) {
-        d.currentStreak  = 0;
-        d.inPersonalBest = false;
-        return 0;
-      }
-    }
-
-    if (yestEntry === 'sober') {
-      const startKeyEarly = d.journeyStartKey || null;
-      if (!scored[yestKey] && startKeyEarly && yestKey < startKeyEarly) {
-        d.currentStreak  = 0;
-        d.inPersonalBest = false;
-        return 0;
-      }
-      cursor = yest;
-    } else {
-      // Yesterday not logged yet (catch-up modal pending) — count auto-sober run before it
-      cursor.setDate(cursor.getDate() - 2);
-    }
+  if (log[todayKey] !== 'sober') {
+    cursor.setDate(cursor.getDate() - 1);
   }
 
+  const startKey = d.journeyStartKey || calendarJourneyFloorKey(d);
   let streak = 0;
-  const yestKey = dateKey(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1, 12, 0, 0));
-  const startKey = d.journeyStartKey || null;
-
   while (true) {
     const key = dateKey(cursor);
     if (startKey && key < startKey) break;
-
-    const entry = d.dailyLog[key];
-
-    if (entry === 'sober') {
-      if (startKey && key < startKey) {
-        cursor.setDate(cursor.getDate() - 1);
-        continue;
-      }
+    if (log[key] === 'sober') {
       streak++;
-      cursor.setDate(cursor.getDate() - 1);
-    } else if (entry === 'drinking' && scored[key]) {
-      break;
-    } else if (entry === 'drinking' && startKey && key >= startKey) {
-      break;
-    } else if (entry === undefined && key === yestKey) {
-      // Yesterday not logged yet (catch-up modal) — keep counting earlier sober days
       cursor.setDate(cursor.getDate() - 1);
     } else {
       break;
@@ -153,12 +136,9 @@ function recalculateStreakFromLog(d) {
   }
 
   d.currentStreak = streak;
-  if (streak > d.longestStreak) {
-    d.longestStreak  = streak;
-    d.inPersonalBest = true;
-  } else {
-    d.inPersonalBest = streak > 0 && streak >= d.longestStreak;
-  }
+  const allTime = longestSoberRunAllTime(d);
+  d.longestStreak = Math.max(d.longestStreak | 0, allTime, streak);
+  d.inPersonalBest = streak > 0 && streak >= (d.longestStreak | 0);
   return streak;
 }
 
@@ -178,22 +158,9 @@ function refreshStreakUI(data) {
     UI.renderStreakMilestones(data);
   }
   syncStreakTabChrome(data);
-  renderScienceTimeline(getScienceTimelineStreak(data));
 }
 
-
-// Returns the next unachieved streak milestone, or null if all done
-function getNextStreakMilestone(currentStreak) {
+function getNextStreakMilestone(data) {
+  const currentStreak = typeof data === 'number' ? data : getDisplayStreak(data);
   return STREAK_MILESTONES.find(m => currentStreak < m.days) || null;
-}
-
-function isStreakBroken(data) {
-  if (!data || !data.currentScore) return false;
-  ensureScoreNumbers(data);
-  if ((data.currentStreak | 0) > 0) return false;
-  if ((data.currentScore.success | 0) === 0) return false;
-  const log = data.dailyLog || {};
-  const scored = data.scoredDays || {};
-  const todayKey = dateKey(getAppToday(data));
-  return log[todayKey] === 'drinking' && !!scored[todayKey];
 }

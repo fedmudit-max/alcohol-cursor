@@ -21,9 +21,7 @@ function renderLifetimeStats(data) {
   el('ltDrink').textContent    = career.drinks;
 }
 
-// Personal bests panel
-let _bestPerformancesMode = 'streaks';
-
+// Best Scores panel (top journeys only)
 function renderBestPerformanceList(containerId, board, valueSuffix) {
   const root = el(containerId);
   if (!root || typeof buildBestPerformancesViewModel !== 'function') return;
@@ -51,63 +49,61 @@ function renderBestPerformanceList(containerId, board, valueSuffix) {
 
 function renderBestPerformances(data) {
   const card = el('bestPerformancesCard');
-  if (!card || typeof buildBestPerformancesViewModel !== 'function') return;
+  if (!card || typeof buildBestJourneysBoard !== 'function') return;
   card.style.display = 'block';
   data = data || Tracker.data || DataManager.load();
-
-  const mode = _bestPerformancesMode === 'journeys' ? 'journeys' : 'streaks';
-  const streaksBtn = el('bestPerfToggleStreaks');
-  const journeysBtn = el('bestPerfToggleJourneys');
-  if (streaksBtn) {
-    streaksBtn.classList.toggle('active', mode === 'streaks');
-    streaksBtn.setAttribute('aria-selected', mode === 'streaks' ? 'true' : 'false');
-  }
-  if (journeysBtn) {
-    journeysBtn.classList.toggle('active', mode === 'journeys');
-    journeysBtn.setAttribute('aria-selected', mode === 'journeys' ? 'true' : 'false');
-  }
-  const streaksPane = el('bestStreaksPane');
-  const journeysPane = el('bestJourneysPane');
-  if (streaksPane) streaksPane.hidden = mode !== 'streaks';
-  if (journeysPane) journeysPane.hidden = mode !== 'journeys';
-
-  const model = buildBestPerformancesViewModel(data);
-  renderBestPerformanceList('bestStreaksList', model.streaks, 'days');
-  renderBestPerformanceList('bestJourneysList', model.journeys, 'days');
+  const board = buildBestJourneysBoard(data);
+  renderBestPerformanceList('bestJourneysList', board, 'days');
 }
 
 // Calendar navigation state
 let _calYear  = null;
 let _calMonth = null;
 
-function canLogCalendarDay(data, dayKey, realToday) {
-  if (!data || !dayKey || data.journeyPendingReset) return false;
-  const todayKey = dateKey(realToday);
-  if (dayKey > todayKey) return false;
+function canLogCalendarDay(data, dayKey, appToday) {
+  return canRecordCalendarDay(data, dayKey, appToday);
+}
+
+function countJourneyPendingLogDays(data) {
+  if (!data || data.journeyPendingReset) return 0;
+  const appToday = getAppToday(data);
+  const todayKey = dateKey(appToday);
   const startKey = data.journeyStartKey;
-  if (startKey && dayKey < startKey) return false;
-  if (data.scoredDays && data.scoredDays[dayKey]) return false;
-  return true;
+  const log = data.dailyLog || {};
+  if (!startKey || startKey > todayKey) return 0;
+  let n = 0;
+  let cursor = noonFromDateKey(startKey);
+  const end = noonFromDateKey(todayKey);
+  while (cursor <= end) {
+    const k = dateKey(cursor);
+    if (k < todayKey && !log[k] && canLogCalendarDay(data, k, appToday)) n++;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return n;
 }
 
 function renderMonthGrid(data, targetYear, targetMonth) {
+  if (typeof ensureJourneyStartKey === 'function' && ensureJourneyStartKey(data)) {
+    DataManager.save(data);
+  }
   const log   = data.dailyLog || {};
-  // Calendar always uses real today — test Next Day / 3-Day Gap must not move this forward
-  const today = getRealToday();
+  // Backfill uses app today (includes test Next Day) so missed in-journey days stay tappable
+  const appToday = getAppToday(data);
+  const todayKey = dateKey(appToday);
 
   // Keep the month the user picked; only default to today on first render
   if (targetYear == null) {
-    targetYear = _calYear != null ? _calYear : today.getFullYear();
+    targetYear = _calYear != null ? _calYear : appToday.getFullYear();
   }
   if (targetMonth == null) {
-    targetMonth = _calMonth != null ? _calMonth : today.getMonth();
+    targetMonth = _calMonth != null ? _calMonth : appToday.getMonth();
   }
 
-  // Never show or stay on a month after real today (e.g. after test day advance)
-  if (targetYear > today.getFullYear() ||
-      (targetYear === today.getFullYear() && targetMonth > today.getMonth())) {
-    targetYear = today.getFullYear();
-    targetMonth = today.getMonth();
+  // Never show or stay on a month after app today
+  if (targetYear > appToday.getFullYear() ||
+      (targetYear === appToday.getFullYear() && targetMonth > appToday.getMonth())) {
+    targetYear = appToday.getFullYear();
+    targetMonth = appToday.getMonth();
   }
 
   // Store for navigation
@@ -117,17 +113,14 @@ function renderMonthGrid(data, targetYear, targetMonth) {
   const days  = new Date(targetYear, targetMonth + 1, 0).getDate();
   const first = new Date(targetYear, targetMonth, 1).getDay();
 
-  // Find app start date
-  const allKeys = Object.keys(log).sort();
-  const startKey = allKeys.length > 0 ? allKeys[0] : dateKey(new Date(data.lastDayCheck));
-  const startDate = new Date(startKey + 'T00:00:00');
-  const startYear  = startDate.getFullYear();
-  const startMonth = startDate.getMonth();
-  const startDay   = startDate.getDate();
+  const journeyFloorKey = data.journeyStartKey || inferJourneyStartFromCalendarDay(data);
+  const historyAnchorKey = calendarHistoryAnchorKey(data);
+  const anchorDate = noonFromDateKey(historyAnchorKey);
+  const startYear  = anchorDate.getFullYear();
+  const startMonth = anchorDate.getMonth();
 
   const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  const isCurrentMonth = (targetYear === today.getFullYear() && targetMonth === today.getMonth());
-  const isStartMonth   = (targetYear === startYear && targetMonth === startMonth);
+  const isCurrentMonth = (targetYear === appToday.getFullYear() && targetMonth === appToday.getMonth());
 
   // Month label
   const mlEl = el('monthGridMonthLabel');
@@ -150,51 +143,89 @@ function renderMonthGrid(data, targetYear, targetMonth) {
     if (log[k]==='sober')    soberN++;
     if (log[k]==='drinking') drinkN++;
   }
-  // Counts go into legend labels
   const soberLbl = el('calLegendSober');
   const drinkLbl = el('calLegendDrink');
-  if (soberLbl) soberLbl.textContent = soberN > 0 ? `Sober ${soberN}` : 'Sober';
-  if (drinkLbl) drinkLbl.textContent = drinkN > 0 ? `Drinking ${drinkN}` : 'Drinking';
+  if (soberLbl) {
+    soberLbl.textContent = soberN === 0 ? 'Sober days'
+      : soberN === 1 ? '1 sober day' : `${soberN} sober days`;
+  }
+  if (drinkLbl) {
+    drinkLbl.textContent = drinkN === 0 ? 'Drinking days'
+      : drinkN === 1 ? '1 drinking day' : `${drinkN} drinking days`;
+  }
 
   // Day labels
-  el('monthDayLabels').innerHTML = ['S','M','T','W','T','F','S'].map(d =>
-    `<div style="font-size:9px;font-weight:600;color:rgba(60,60,67,0.35);text-align:center;">${d}</div>`
-  ).join('');
+  const dayLabelsEl = el('monthDayLabels');
+  if (dayLabelsEl) {
+    dayLabelsEl.innerHTML = ['S','M','T','W','T','F','S'].map(d =>
+      `<div style="font-size:9px;font-weight:600;color:rgba(60,60,67,0.35);text-align:center;">${d}</div>`
+    ).join('');
+  }
 
   // Grid
   let html = Array(first).fill('<div></div>').join('');
+  let pendingInMonth = 0;
   for (let d = 1; d <= days; d++) {
     const k = `${targetYear}-${String(targetMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const isToday     = isCurrentMonth && d === today.getDate();
-    const isFuture    = isCurrentMonth && d > today.getDate();
-    const beforeStart = isStartMonth && d < startDay;
+    const isToday     = k === todayKey;
+    const isFuture    = k > todayKey;
+    const beforeCurrentJourney = k < journeyFloorKey;
     const status      = log[k];
 
-    let bg='rgba(60,60,67,0.06)', border='1px solid rgba(60,60,67,0.10)', color='rgba(60,60,67,0.35)';
+    let bg = 'rgba(255,255,255,0.92)';
+    let border = '1px solid rgba(60,60,67,0.12)';
+    let color = 'rgba(28,28,30,0.75)';
     let cls = 'cal-cell';
     if (status==='sober')    { bg='#34c759'; border='1px solid #248a3d'; color='white'; cls += ' cal-cell--sober'; }
     if (status==='drinking') { bg='rgba(255,149,0,0.18)'; border='1px solid rgba(255,149,0,0.45)'; color='#cc6600'; cls += ' cal-cell--drink'; }
-    if (isFuture || beforeStart) { bg='rgba(60,60,67,0.03)'; border='1px solid rgba(60,60,67,0.06)'; color='rgba(60,60,67,0.18)'; }
-    if (isToday && !isFuture && !beforeStart) {
-      cls += ' cal-cell--today';
-      if (!status) {
-        bg = 'rgba(60,60,67,0.08)';
-        color = 'rgba(60,60,67,0.55)';
-      }
-      border = '2px solid #34c759';
+    if (beforeCurrentJourney && status) cls += ' cal-cell--history';
+    if (isFuture || (beforeCurrentJourney && !status)) {
+      bg='rgba(60,60,67,0.03)'; border='1px solid rgba(60,60,67,0.06)'; color='rgba(60,60,67,0.18)';
     }
 
-    const tappable = !isFuture && !beforeStart && canLogCalendarDay(data, k, today);
+    const tappable = !isFuture && canRecordCalendarDay(data, k, appToday);
+    const isPastPending = tappable && k < todayKey && !status;
     if (tappable) cls += ' cal-cell--tappable';
+    if (isPastPending) {
+      cls += ' cal-cell--pending';
+      pendingInMonth++;
+    }
     const style = `background:${bg};border:${border};color:${color};`;
     if (tappable) {
-      const label = `Log ${formatCalendarDayLabel(k)}`;
-      html += `<button type="button" class="${cls}" style="${style}" onclick="SoberTracker.promptCalendarDay('${k}')" aria-label="${label}">${d}</button>`;
+      const label = isPastPending
+        ? `Log missed day, ${formatCalendarDayLabel(k)}`
+        : `Log ${formatCalendarDayLabel(k)}`;
+      html += `<button type="button" class="${cls}" style="${style}" data-cal-key="${k}" aria-label="${label}">${d}</button>`;
     } else {
       html += `<div class="${cls}" style="${style}">${d}</div>`;
     }
   }
-  el('monthGrid').innerHTML = html;
+  const grid = el('monthGrid');
+  if (grid) grid.innerHTML = html;
+
+  const journeyPending = countJourneyPendingLogDays(data);
+  const pendingLegend = el('calLegendPending');
+  if (pendingLegend) pendingLegend.hidden = journeyPending <= 0;
+
+  const hintEl = el('monthGridBackfillHint');
+  if (hintEl) {
+    if (journeyPending > 0) {
+      let msg;
+      if (pendingInMonth > 0) {
+        const dayWord = pendingInMonth === 1 ? 'day' : 'days';
+        msg = `${pendingInMonth} missed ${dayWord} in this month — tap a dashed date to log sober or drink.`;
+      } else {
+        msg = journeyPending === 1
+          ? '1 missed day in this journey — use ‹ › to find the dashed date and log it.'
+          : `${journeyPending} missed days in this journey — use ‹ › to find dashed dates and log them.`;
+      }
+      hintEl.textContent = msg;
+      hintEl.hidden = false;
+    } else {
+      hintEl.hidden = true;
+      hintEl.textContent = '';
+    }
+  }
 
   const empty = el('monthEmptyState');
   if (empty) empty.style.display = (soberN===0 && drinkN===0 && !isCurrentMonth) ? 'block' : 'none';

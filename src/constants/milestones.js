@@ -29,14 +29,14 @@ function markStreakOwnedScienceCelebrated(data, day) {
 const JOURNEY_TROPHIES = [
   { days:10,  el:'jm-10',  label:'10 Days — First Win',          c:{ emoji:'⚡', title:'First Win!',          msg:"10 sober days. Your first real milestone. Sober days now equal your drinking days. You are no longer losing." }},
   { days:15,  el:'jm-15',  label:'15 Days — Holding Ground',     c:{ emoji:'🌿', title:'Holding Ground!',     msg:"15 sober days. Sober days now outnumber drinking days. For the first time — you are ahead. The tide has turned." }},
-  { days:20,  el:'jm-20',  label:'20 Days — Getting Ahead',      c:{ emoji:'🌟', title:'Getting Ahead!',      msg:"20 sober days. Twice as many sober days as drinking days. Your liver is getting the recovery it needs." }},
-  { days:30,  el:'jm-30',  label:'30 Days — Momentum',           c:{ emoji:'💪', title:'Momentum!',           msg:"30 sober days. Three sober days for every drinking day. Your brain is remembering what normal feels like. This is recovery." }},
-  { days:40,  el:'jm-40',  label:'40 Days — Building Habit',     c:{ emoji:'🎯', title:'Building Habit!',     msg:"40 sober days. Four sober days for every drinking day. This is no longer a struggle. This is becoming who you are." }},
-  { days:50,  el:'jm-50',  label:'50 Days — Half Century',       c:{ emoji:'🌱', title:'Half Century!',       msg:"50 sober days. Five for every one. You have built a pattern that your body now expects. Keep it." }},
+  { days:20,  el:'jm-20',  label:'20 Days — 20 Sober Days',      c:{ emoji:'🌟', title:'20 Sober Days',      msg:"20 sober days. You've built substantially more alcohol-free time. Keep building on the progress you've made." }},
+  { days:30,  el:'jm-30',  label:'30 Days — Momentum',           c:{ emoji:'💪', title:'Momentum!',           msg:"30 sober days. You've built a strong run of alcohol-free time. Keep building on the progress you've made." }},
+  { days:40,  el:'jm-40',  label:'40 Days — Building Habit',     c:{ emoji:'🎯', title:'Building Habit!',     msg:"40 sober days. You've built a substantial amount of alcohol-free time. Keep building on the progress you've made." }},
+  { days:50,  el:'jm-50',  label:'50 Days — Half Century',       c:{ emoji:'🌱', title:'Half Century!',       msg:"50 sober days. You've built a sustained pattern of alcohol-free days. Keep going." }},
   { days:60,  el:'jm-60',  label:'60 Days — Turning Point',      c:{ emoji:'✨', title:'Turning Point!',      msg:"60 sober days. Your sober-to-drinking ratio continues to improve. Keep building on the progress you've made." }},
   { days:80,  el:'jm-80',  label:'80 Days — Building Control',   c:{ emoji:'🏔️', title:'Building Control!',  msg:"80 sober days. You've built a substantial amount of alcohol-free time. The pattern you're creating matters." }},
   { days:100, el:'jm-100', label:'100 Days — Taking Control',    c:{ emoji:'💎', title:'Taking Control!',    msg:"100 sober days. This is a real achievement. Retake the AUDIT-C test — the score you see today may not be the score you started with." }},
-  { days:150, el:'jm-150', label:'150 Days — Staying Strong',    c:{ emoji:'🏆', title:'Staying Strong!',    msg:"150 sober days. You've built something most people never do. Keep the pattern." }},
+  { days:150, el:'jm-150', label:'150 Days — Staying Strong',    c:{ emoji:'🏆', title:'Staying Strong!',    msg:"150 sober days. That's a substantial period of alcohol-free time. Keep building on your progress." }},
   { days:200, el:'jm-200', label:'200 Days — 200 Sober Days',     c:{ emoji:'👑', title:'200 Sober Days!',    msg:"200 sober days. Not a number most people reach. This is yours." }},
 ];
 

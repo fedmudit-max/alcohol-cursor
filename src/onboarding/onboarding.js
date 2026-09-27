@@ -104,6 +104,10 @@ const Onboarding = {
       overlay.style.transition = '';
       overlay.classList.remove('onboarding-overlay--journey');
       overlay.style.background = '#1e9e3e';
+      document.body.classList.remove('modal-open');
+      if (typeof Tracker !== 'undefined' && Tracker.data && typeof UI !== 'undefined' && UI.renderAll) {
+        UI.renderAll(Tracker.data);
+      }
     }, 400);
   }
 };

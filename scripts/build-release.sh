@@ -18,6 +18,7 @@ rsync -a \
   --exclude 'alcohol-backend-testing' \
   --exclude '*.backup.html' \
   --exclude 'index.monolith.backup.html' \
+  --exclude '*.zip' \
   --exclude 'README.md' \
   "${ROOT}/" "${OUT}/"
 

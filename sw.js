@@ -1,6 +1,11 @@
 'use strict';
 
-const CACHE_NAME = '10drinks-v149';
+const CACHE_NAME = '10drinks-v208';
+
+function isStaticAssetPath(pathname) {
+  return /\.(js|mjs|css|json|png|jpe?g|webp|svg|woff2?)$/i.test(pathname)
+    || pathname.includes('/src/');
+}
 
 function scopeUrl(path) {
   return new URL(path, self.registration.scope).href;
@@ -21,6 +26,7 @@ function precacheUrls() {
     scopeUrl('src/data/local-storage.js'),
     scopeUrl('src/data/backup.js'),
     scopeUrl('src/journey/streak.js'),
+    scopeUrl('src/journey/journey-score.js'),
     scopeUrl('src/journey/best-performances.js'),
     scopeUrl('src/journey/midnight.js'),
     scopeUrl('src/journey/daily-msg.js'),
@@ -37,6 +43,7 @@ function precacheUrls() {
     scopeUrl('src/onboarding/onboarding.js'),
     scopeUrl('src/assessment/meter.js'),
     scopeUrl('src/assessment/questions.js'),
+    scopeUrl('src/dev/next-day-test.js'),
     scopeUrl('src/main.js'),
     scopeUrl('assets/icons/icon-180.png'),
     scopeUrl('assets/icons/icon-192.png'),
@@ -90,18 +97,22 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Network-first for JS/CSS; never serve index.html as a script (causes global error banner)
   event.respondWith(
-    caches.match(event.request)
-      .then((cached) => {
-        if (cached) return cached;
-        return fetch(event.request)
-          .then((response) => {
-            if (!response || !response.ok) return response;
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-            return response;
-          })
-          .catch(() => caches.match(scopeUrl('index.html')));
+    fetch(event.request)
+      .then((response) => {
+        if (response && response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        }
+        return response;
       })
+      .catch(() => caches.match(event.request).then((cached) => {
+        if (cached) return cached;
+        if (isStaticAssetPath(url.pathname)) {
+          return new Response('', { status: 503, statusText: 'Offline' });
+        }
+        return caches.match(scopeUrl('index.html'));
+      }))
   );
 });
