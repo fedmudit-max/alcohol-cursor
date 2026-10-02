@@ -111,6 +111,8 @@ const CONFIG = {
   showPremiumInApp: false,
   /** Only applies when showPremiumInApp is true. */
   showPremiumSubscribe: false,
+  /** false = hide Premium section in Settings until billing is live. */
+  showPremiumInSettings: false,
 };
 
 // ═══════════════════════════════════════════════════════════════

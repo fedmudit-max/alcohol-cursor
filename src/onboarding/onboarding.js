@@ -32,10 +32,32 @@ const Onboarding = {
     overlay.style.background = '#1e9e3e';
   },
 
+  /** True while onboarding intercepts taps (not during fade-out). */
+  isBlocking() {
+    const overlay = el('onboardingOverlay');
+    if (!overlay || overlay.style.display === 'none') return false;
+    return overlay.style.display === 'flex' && overlay.style.pointerEvents !== 'none';
+  },
+
+  _onComplete() {
+    if (typeof dismissAppSplash === 'function') dismissAppSplash();
+    document.body.classList.remove('modal-open', 'settings-open');
+    const data = (typeof Tracker !== 'undefined' && Tracker.data)
+      ? Tracker.data
+      : (typeof DataManager !== 'undefined' ? DataManager.load() : null);
+    if (data && typeof UI !== 'undefined' && UI.renderAll) {
+      UI.renderAll(data);
+    }
+    if (data && typeof promptYesterdayIfNeeded === 'function') {
+      promptYesterdayIfNeeded(data, 150);
+    }
+  },
+
   show() {
     const done = localStorage.getItem('sj_onboarded');
     if (done) return;
 
+    if (typeof dismissAppSplash === 'function') dismissAppSplash();
     this.current = 0;
     this._showSlide(0);
     this._showOverlay();
@@ -92,22 +114,18 @@ const Onboarding = {
   skip() {
     localStorage.setItem('sj_onboarded', '1');
     const overlay = el('onboardingOverlay');
-    if (!overlay) return;
+    if (!overlay) {
+      this._onComplete();
+      return;
+    }
     clearTimeout(this._skipTimer);
     overlay.style.transition = 'opacity 0.4s ease';
     overlay.style.opacity = '0';
     overlay.style.pointerEvents = 'none';
     this._skipTimer = setTimeout(() => {
       this._skipTimer = null;
-      overlay.style.display = 'none';
-      overlay.style.opacity = '1';
-      overlay.style.transition = '';
-      overlay.classList.remove('onboarding-overlay--journey');
-      overlay.style.background = '#1e9e3e';
-      document.body.classList.remove('modal-open');
-      if (typeof Tracker !== 'undefined' && Tracker.data && typeof UI !== 'undefined' && UI.renderAll) {
-        UI.renderAll(Tracker.data);
-      }
+      this.hideImmediate();
+      this._onComplete();
     }, 400);
   }
 };

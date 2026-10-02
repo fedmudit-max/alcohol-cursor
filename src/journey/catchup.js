@@ -51,12 +51,19 @@ function showYesterdayModal() {
   else ym.classList.add('active');
 }
 
+function isOnboardingBlockingUi() {
+  if (typeof Onboarding !== 'undefined' && Onboarding.isBlocking) {
+    return Onboarding.isBlocking();
+  }
+  const ob = el('onboardingOverlay');
+  return !!(ob && ob.style.display === 'flex' && ob.style.pointerEvents !== 'none');
+}
+
 function promptYesterdayIfNeeded(data, delayMs = 400) {
   if (!shouldAskYesterday(data)) return;
   setTimeout(() => {
     if (!shouldAskYesterday(data)) return;
-    const ob = el('onboardingOverlay');
-    if (ob && ob.style.display === 'flex') {
+    if (isOnboardingBlockingUi()) {
       promptYesterdayIfNeeded(data, 500);
       return;
     }

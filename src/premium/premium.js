@@ -352,7 +352,11 @@ function renderPremiumEntry() {
     if (card) card.style.display = 'none';
     return;
   }
-  if (card) card.style.display = '';
+  if (card) {
+    const showInSettings = CONFIG.showPremiumInSettings !== false;
+    card.style.display = showInSettings ? '' : 'none';
+    if (!showInSettings) return;
+  }
   if (!status && !teaser && !card) return;
 
   let badge = 'Upgrade';

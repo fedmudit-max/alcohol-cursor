@@ -266,38 +266,41 @@
 
 </div><!-- /scroll-view -->
 
-<!-- SETTINGS (laotzu101-style: full-screen sheet, slides from top) -->
-<div class="overlay settings-overlay" id="appSettingsOverlay" aria-hidden="true" role="presentation">
+<!-- SETTINGS (laotzu101-style bottom sheet) -->
+<div class="overlay settings-overlay" id="appSettingsOverlay" aria-hidden="true" role="presentation"
+  onclick="if(event.target===this)SoberTracker.closeSettings()">
   <div class="settings-sheet" role="dialog" aria-modal="true" aria-label="Settings" onclick="event.stopPropagation()">
-    <div class="settings-sheet-top" aria-hidden="true"></div>
+    <div class="settings-sheet-handle" aria-hidden="true"></div>
     <div class="settings-sheet-scroll">
-
-      <div class="settings-block settings-reminder-wrap" id="reminderCard">
-        <div class="settings-group settings-group-reminder" id="reminderCardBody">
-          <div class="settings-remind-head">
-            <span class="settings-remind-label">Reminder</span>
-            <label class="remind-switch" aria-label="Daily check-in reminder">
-              <input type="checkbox" id="reminderDailyEnabled" onchange="SoberTracker.setReminderDailyEnabled(this.checked)">
-              <span class="remind-switch-ui" aria-hidden="true"></span>
-            </label>
-          </div>
-          <div class="remind-time-row settings-remind-time-inline" id="reminderTimeRow">
-            <input type="time" id="reminderDailyTime" class="reminder-time-input settings-time-native" value="20:00" onchange="SoberTracker.setReminderDailyTime(this.value)">
-          </div>
-          <p class="settings-remind-status" id="reminderStatusText" hidden></p>
-          <p class="settings-group-note settings-group-note--footer reminder-capacitor-note">Alerts will work in the upcoming mobile app. Your choices are saved on this device until then.</p>
-        </div>
-      </div>
 
       <div class="settings-block" id="settingsLearnSection">
         <div class="settings-group">
           <button type="button" class="settings-row" onclick="SoberTracker.openTenDrinksGuideFromSettings()">
             <img class="settings-row-icon settings-row-app-logo" src="assets/icons/icon-192.png" width="30" height="30" alt="" aria-hidden="true">
             <span class="settings-row-text">
-              <span class="settings-row-title">How 10 Drinks helps you cut back or quit</span>
+              <span class="settings-row-title">How 10 Drinks Works</span>
             </span>
             <span class="settings-row-chevron" aria-hidden="true">›</span>
           </button>
+        </div>
+      </div>
+
+      <div class="settings-block settings-reminder-wrap" id="settingsReminderSection">
+        <div class="settings-group settings-group-reminder" id="reminderCardBody">
+          <div class="settings-remind-head">
+            <span class="settings-remind-label">Reminder</span>
+            <label class="remind-switch" aria-label="Daily check-in reminder">
+              <input type="checkbox" id="reminderDailyEnabled">
+              <span class="remind-switch-ui" aria-hidden="true"></span>
+            </label>
+          </div>
+          <div class="remind-time-row settings-remind-time-inline" id="reminderTimeRow">
+            <button type="button" class="remind-time-btn" id="remindHour" aria-label="Hour" data-field="hour">8</button>
+            <span class="remind-time-colon" aria-hidden="true">:</span>
+            <button type="button" class="remind-time-btn" id="remindMinute" aria-label="Minute" data-field="minute">00</button>
+            <button type="button" class="remind-time-btn remind-time-ampm" id="remindAmPm" aria-label="AM or PM" data-field="ampm">PM</button>
+          </div>
+          <p class="settings-remind-status" id="reminderStatusText" hidden></p>
         </div>
       </div>
 
@@ -322,6 +325,19 @@
         </div>
       </div>
 
+      <div class="settings-block" id="settingsLegalSection">
+        <div class="settings-group">
+          <button type="button" class="settings-row" onclick="SoberTracker.openPrivacyPolicy()">
+            <span class="settings-row-icon settings-row-icon-muted" aria-hidden="true">◆</span>
+            <span class="settings-row-text">
+              <span class="settings-row-title">Privacy policy</span>
+              <span class="settings-row-sub">10Drinks does not store your data on servers; it stays on your device.</span>
+            </span>
+            <span class="settings-row-chevron" aria-hidden="true">›</span>
+          </button>
+        </div>
+      </div>
+
       <div class="settings-block" id="settingsDataSection">
         <div class="settings-group" id="backupPanelBody">
           <button type="button" class="settings-row" onclick="SoberTracker.exportBackup()">
@@ -341,19 +357,6 @@
             <span class="settings-row-chevron" aria-hidden="true">›</span>
           </button>
           <p class="settings-group-note settings-group-note--footer backup-status" id="lastBackupLabel">Last exported: Never</p>
-          <input type="file" id="importFileInput" accept=".json,application/json" hidden>
-        </div>
-      </div>
-
-      <div class="settings-block" id="settingsLegalSection">
-        <div class="settings-group">
-          <button type="button" class="settings-row" onclick="SoberTracker.openPrivacyPolicy()">
-            <span class="settings-row-icon settings-row-icon-muted" aria-hidden="true">◆</span>
-            <span class="settings-row-text">
-              <span class="settings-row-title">Privacy policy</span>
-            </span>
-            <span class="settings-row-chevron" aria-hidden="true">›</span>
-          </button>
         </div>
       </div>
 
@@ -371,6 +374,16 @@
 
     </div>
     <button type="button" class="settings-done-btn" onclick="SoberTracker.closeSettings()">Done</button>
+    <input type="file" id="importFileInput" accept=".json,application/json" hidden>
+  </div>
+</div>
+
+<!-- Reminder time picker (Settings) -->
+<div class="modal" id="remindTimePicker" aria-hidden="true">
+  <div class="modal-card remind-time-picker-card" role="dialog" aria-modal="true" aria-labelledby="remindTimePickerTitle" onclick="event.stopPropagation()">
+    <h3 id="remindTimePickerTitle">Hour</h3>
+    <div class="remind-time-picker-list" id="remindTimePickerList" role="listbox"></div>
+    <button type="button" class="remind-time-picker-close" id="remindTimePickerClose">Cancel</button>
   </div>
 </div>
 

@@ -2,6 +2,7 @@
 'use strict';
 function boot() {
   applyDevChrome();
+  dismissAppSplash();
 
   // Flush pending debounced saves only — never write stale Tracker.data over localStorage edits
   window.addEventListener('pagehide', () => DataManager.flush());
