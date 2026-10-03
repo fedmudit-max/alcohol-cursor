@@ -48,7 +48,12 @@ const Onboarding = {
     if (data && typeof UI !== 'undefined' && UI.renderAll) {
       UI.renderAll(data);
     }
-    if (data && typeof promptYesterdayIfNeeded === 'function') {
+    if (
+      data &&
+      typeof promptYesterdayIfNeeded === 'function' &&
+      typeof shouldAskYesterday === 'function' &&
+      shouldAskYesterday(data)
+    ) {
       promptYesterdayIfNeeded(data, 150);
     }
   },

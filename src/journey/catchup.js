@@ -5,10 +5,13 @@
 
 function shouldAskYesterday(data) {
   if (!data || data.journeyPendingReset) return false;
+  const cal = Math.max(1, parseInt(data.calendarDay, 10) || 1);
+  if (cal === 1) return false;
   if (!data.scoredDays) data.scoredDays = {};
   const yestKey = calendarYesterdayKey(data);
-  const startKey = data.journeyStartKey;
-  if (startKey && yestKey < startKey) return false;
+  const startKey =
+    data.journeyStartKey || inferJourneyStartFromCalendarDay(data);
+  if (yestKey < startKey) return false;
   const log = data.dailyLog || {};
   return !log[yestKey];
 }
@@ -35,6 +38,7 @@ function unwindTodayIfYesterdayPending(d) {
 
 function showYesterdayModal() {
   const d = typeof Tracker !== 'undefined' ? Tracker.data : null;
+  if (d && !shouldAskYesterday(d)) return;
   if (d && unwindTodayIfYesterdayPending(d)) {
     DataManager.saveNow(d);
     recalculateStreakFromLog(d);
@@ -124,6 +128,7 @@ Tracker._catchUp = function() {
   if (!this.data.dailyLog) this.data.dailyLog = {};
 
   if (!this.data.scoredDays) this.data.scoredDays = {};
+  if (typeof ensureJourneyStartKey === 'function') ensureJourneyStartKey(this.data);
   const askYesterday = shouldAskYesterday(this.data);
 
   this.data.lastDayCheck = new Date(appToday.getFullYear(), appToday.getMonth(), appToday.getDate(), 12, 0, 0).toISOString();

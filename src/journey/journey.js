@@ -23,11 +23,18 @@ function ensureJourneyStartKey(data) {
   // Only pull start backward within the current journey span — never into prior journeys' logs
   const earliest = earliestDailyLogKey(data);
   const pullBackFloor = earliest && earliest < appTodayKey ? earliest : null;
-  if (data.journeyStartKey > calendarStart) {
+  // Only infer an earlier start from calendarDay when logs prove days before journeyStartKey
+  if (data.journeyStartKey > calendarStart && pullBackFloor) {
     const next = calendarStart;
-    if (!pullBackFloor || next >= pullBackFloor) {
+    if (next >= pullBackFloor) {
       data.journeyStartKey = next;
     }
+  }
+
+  // Day 1 with no log yet — journey begins today (fixes stale start after reset / wipe)
+  const cal = Math.max(1, parseInt(data.calendarDay, 10) || 1);
+  if (cal === 1 && !earliestDailyLogKey(data) && data.journeyStartKey !== appTodayKey) {
+    data.journeyStartKey = appTodayKey;
   }
 
   return before !== data.journeyStartKey;
@@ -212,7 +219,12 @@ const Tracker = {
     const ym = el('yesterdayModal');
     if (ym) ym.classList.remove('active');
     if (typeof syncModalOpenBodyClass === 'function') syncModalOpenBodyClass();
+    if (typeof ensureJourneyStartKey === 'function') ensureJourneyStartKey(this.data);
     const key = calendarYesterdayKey(this.data);
+    const cal = Math.max(1, parseInt(this.data.calendarDay, 10) || 1);
+    if (cal === 1) return;
+    const floor = calendarJourneyFloorKey(this.data);
+    if (key < floor) return;
     this._logDayForKey(key, status);
   },
 

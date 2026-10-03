@@ -6,11 +6,12 @@
 import { createTrackerContext, key, noon } from './lib/load-tracker.mjs';
 
 const ctx = createTrackerContext();
-const { Tracker, DataManager, shouldAskYesterday, unwindTodayIfYesterdayPending } = {
+const { Tracker, DataManager, shouldAskYesterday, unwindTodayIfYesterdayPending, ensureJourneyStartKey } = {
   Tracker: ctx.Tracker,
   DataManager: ctx.DataManager,
   shouldAskYesterday: ctx.shouldAskYesterday,
   unwindTodayIfYesterdayPending: ctx.unwindTodayIfYesterdayPending,
+  ensureJourneyStartKey: ctx.ensureJourneyStartKey,
 };
 
 let failed = 0;
@@ -107,11 +108,11 @@ assert('Test C — yesterday drink increments failures and resets streak', () =>
   Tracker.data = d;
   Tracker._recordSoberDay(d, key(2026, 1, 1));
   Tracker._recordSoberDay(d, key(2026, 1, 2));
-  Tracker._recordSoberDay(d, key(2026, 1, 3));
-  d.currentStreak = 3;
-  d.lastDayCheck = noon(2026, 1, 3).toISOString();
+  d.currentStreak = 2;
+  d.lastDayCheck = noon(2026, 1, 2).toISOString();
   setSimDay(d, 2026, 1, 4);
   d.todayStatus = 'none';
+  runCatchUp(d);
 
   const failuresBefore = d.currentScore.failures;
   Tracker.logYesterday('fail');
@@ -124,6 +125,48 @@ assert('Test C — yesterday drink increments failures and resets streak', () =>
   }
   if (d.dailyLog[key(2026, 1, 3)] !== 'drinking') {
     throw new Error('yesterday should be logged as drinking');
+  }
+});
+
+// ── Test E: fresh journey day 1 — never ask about pre-journey yesterday ──
+assert('Test E — reset day 1 does not prompt for yesterday', () => {
+  const d = DataManager.defaults();
+  d.calendarDay = 1;
+  d.journeyStartKey = null;
+  d.simulatedToday = noon(2026, 6, 15).toISOString();
+  d.lastDayCheck = d.simulatedToday;
+  ensureJourneyStartKey(d);
+  if (shouldAskYesterday(d)) {
+    throw new Error('null journeyStartKey on day 1 should not ask yesterday');
+  }
+  d.journeyStartKey = key(2026, 6, 14);
+  ensureJourneyStartKey(d);
+  if (d.journeyStartKey !== key(2026, 6, 15)) {
+    throw new Error(`stale start should heal to today, got ${d.journeyStartKey}`);
+  }
+  if (shouldAskYesterday(d)) {
+    throw new Error('healed day 1 journey should not ask yesterday');
+  }
+  Tracker.data = d;
+  runCatchUp(d);
+  if (shouldAskYesterday(d)) {
+    throw new Error('catch-up on day 1 should not leave yesterday pending');
+  }
+});
+
+assert('Test F — journey start not pulled backward without logs', () => {
+  const d = DataManager.defaults();
+  d.journeyStartKey = key(2026, 7, 11);
+  d.calendarDay = 2;
+  d.simulatedToday = noon(2026, 7, 12).toISOString();
+  d.lastDayCheck = d.simulatedToday;
+  ensureJourneyStartKey(d);
+  if (d.journeyStartKey !== key(2026, 7, 11)) {
+    throw new Error(`expected Jul 11 start, got ${d.journeyStartKey}`);
+  }
+  const yest = key(2026, 7, 11);
+  if (yest < d.journeyStartKey && shouldAskYesterday(d)) {
+    throw new Error('should not ask for calendar days before journey start');
   }
 });
 

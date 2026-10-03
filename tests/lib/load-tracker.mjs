@@ -114,6 +114,7 @@ export function createTrackerContext() {
     this.recalculateJourneyScoreFromLog = recalculateJourneyScoreFromLog;
     this.recalculateStreakFromLog = recalculateStreakFromLog;
     this.reconcileLogsToJourneyScore = reconcileLogsToJourneyScore;
+    this.ensureJourneyStartKey = ensureJourneyStartKey;
   `, ctx);
   return ctx;
 }

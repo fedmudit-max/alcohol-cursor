@@ -205,6 +205,15 @@ Tracker._deleteAllData = function() {
   if (typeof setForcePremiumLocked === 'function') setForcePremiumLocked(false);
   clearLastBackupAt();
   this.data = DataManager.defaults();
+  const resetToday = getAppToday(this.data);
+  this.data.lastDayCheck = new Date(
+    resetToday.getFullYear(),
+    resetToday.getMonth(),
+    resetToday.getDate(),
+    12, 0, 0
+  ).toISOString();
+  this.data.journeyStartKey = dateKey(resetToday);
+  this.data.calendarDay = 1;
   if (typeof ensureJourneyStartKey === 'function') ensureJourneyStartKey(this.data);
   this._celebQueue = [];
   this._celebrating = false;
