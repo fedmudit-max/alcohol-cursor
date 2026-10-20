@@ -157,11 +157,8 @@ Tracker.closePrivacyPolicy = function() {
   if (!overlay) return;
   overlay.classList.remove('active');
   overlay.setAttribute('aria-hidden', 'true');
-  if (!el('appSettingsOverlay')?.classList.contains('active')
-    && !el('tenDrinksGuideModal')?.classList.contains('open')) {
-    if (typeof unlockBodyScroll === 'function') unlockBodyScroll();
-    else document.body.classList.remove('modal-open');
-  }
+  if (typeof reconcileBodyScrollLock === 'function') reconcileBodyScrollLock();
+  else if (typeof unlockBodyScroll === 'function') unlockBodyScroll();
 };
 
 Tracker.openTenDrinksGuide = function() {

@@ -76,6 +76,8 @@ const DataManager = {
       drinkDayFrozenStreak:       0,    // achieved streak held on the drinking calendar day
       drinkDayFrozenKey:          '',   // date key for drinkDayFrozenStreak
       reminders:                  { dailyEnabled: false, dailyTime: '20:00' },
+      /** ISO — free-trial anchor (mirrors sj_trialStartedAt in localStorage). */
+      trialStartedAt:             null,
     };
   },
 

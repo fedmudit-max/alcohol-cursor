@@ -46,7 +46,7 @@
         <div class="card-label">Day</div>
         <div class="calendar-value" id="calendarDay">1</div>
       </div>
-      <div class="best-card">
+      <div class="best-card" id="bestScoreCard">
         <div class="card-label">🏆 Best Score</div>
         <div class="card-value" id="bestScore">0 – 0</div>
         <div class="score-explain" id="bestScoreExplain" style="display:none;"></div>
@@ -92,7 +92,7 @@
     </div>
 
     <!-- Streak Tab -->
-    <div class="tab-content active">
+    <div class="tab-content active" id="streakTabContent">
       <div class="milestone-list" id="streakMilestoneList">
         <div class="milestone-row" id="cs-day1"><div class="milestone-left"><div class="milestone-icon">🌞</div><div class="milestone-text"><div class="milestone-name">Day 1</div><div class="milestone-sub" id="cs-day1-sub"></div></div></div><div class="milestone-status">—</div></div>
         <div class="milestone-row" id="cs-day2"><div class="milestone-left"><div class="milestone-icon">🚶</div><div class="milestone-text"><div class="milestone-name">Day 2</div><div class="milestone-sub" id="cs-day2-sub"></div></div></div><div class="milestone-status">—</div></div>
@@ -105,7 +105,7 @@
       </div>
     </div>
     <!-- Milestone Tab -->
-    <div class="tab-content">
+    <div class="tab-content" id="journeyMilestoneTabContent">
       <div class="milestone-list" id="journeyMilestoneList">
         <div class="stage-label stage-building" id="journeyStageEarly">Early Battle</div>
         <div id="journeySectionEarly"></div>
@@ -278,8 +278,7 @@
           <button type="button" class="settings-row" onclick="SoberTracker.openTenDrinksGuideFromSettings()">
             <img class="settings-row-icon settings-row-app-logo" src="assets/icons/icon-192.png" width="30" height="30" alt="" aria-hidden="true">
             <span class="settings-row-text">
-              <span class="settings-row-title">How 10Drinks Help You Cut Back/Quit</span>
-              <span class="settings-row-sub">10Drinks is a self-tracking and educational tool, not a medical device. It does not diagnose, treat, cure, or prevent alcohol use disorder or any other medical condition.</span>
+              <span class="settings-row-title">How 10Drinks builds will-power</span>
             </span>
             <span class="settings-row-chevron" aria-hidden="true">›</span>
           </button>
@@ -370,6 +369,7 @@
             </span>
             <span class="settings-row-chevron" aria-hidden="true">›</span>
           </button>
+          <p class="settings-group-note settings-medical-disclaimer">10Drinks is a self-tracking and educational tool, not a medical device. It does not diagnose, treat, cure, or prevent alcohol use disorder or any other medical condition.</p>
         </div>
       </div>
 
@@ -408,7 +408,7 @@
   <div style="background:white;border-radius:24px 24px 0 0;padding:28px 20px 48px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;">
     <div style="width:36px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 20px;"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-      <div id="tenDrinksGuideTitle" style="font-size:18px;font-weight:800;color:#1c1c1e;">How 10Drinks Help You Cut Back/Quit</div>
+      <div id="tenDrinksGuideTitle" style="font-size:18px;font-weight:800;color:#1c1c1e;">How 10Drinks builds will-power</div>
       <button type="button" onclick="SoberTracker.closeTenDrinksGuide()" aria-label="Close" style="background:rgba(60,60,67,0.08);border:none;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;">✕</button>
     </div>
     <div class="ten-drinks-guide">
@@ -419,9 +419,12 @@
       <p>Each journey has <strong>10 drinking days</strong>. Log as many sober days as you can before 10 drinking days are used. Then this journey ends and a new one starts with 10 drinking days again.</p>
 
       <div class="ten-drinks-guide-example">
-        <p><strong>Example — Journey 1</strong></p>
-        <p>☀️ 7 sober days<br>🍺 10 drinking days used<br>🏆 Journey score: <strong>7</strong> (sober days when the journey ended)</p>
-        <p><strong>Journey 2</strong> — Beat <strong>7</strong> sober days</p>
+        <p><strong>Example</strong> — each journey allows up to <strong>10 drinking days</strong>. Your score is sober days when the journey ends (e.g. <strong>7–10</strong> means 7 sober days and 10 drinking days used).</p>
+        <p><strong>Journey 1:</strong> <strong>7–10</strong> (7 sober days)</p>
+        <p><strong>Journey 2:</strong> <strong>10–10</strong> — <strong>3 days</strong> improvement vs Journey 1</p>
+        <p><strong>Journey 3:</strong> <strong>13–10</strong> — <strong>3 days</strong> improvement vs Journey 2</p>
+        <p><strong>Journey 4:</strong> <strong>20–10</strong> — <strong>7 days</strong> improvement vs Journey 3</p>
+        <p>…and so on. Against the benchmark of <strong>10 drinking days</strong>, aim to score <strong>more sober days than your last journey</strong>.</p>
       </div>
 
       <p><strong>Streak tab</strong> — consecutive sober days in a row.<br>
@@ -805,6 +808,7 @@
 <script src="src/assessment/questions.js"></script>
 <script src="src/constants/dyk.js"></script>
 <script src="src/capacitor/native.bundle.js" defer></script>
+<!-- Optional QA bars (not shipped): add before main.js — see src/dev/next-day-test.js & trial-test-bar.js -->
 <script src="src/main.js"></script>
 
 </body>

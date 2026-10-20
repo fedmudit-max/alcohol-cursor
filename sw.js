@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = '10drinks-v210';
+const CACHE_NAME = '10drinks-v212';
 
 function isStaticAssetPath(pathname) {
   return /\.(js|mjs|css|json|png|jpe?g|webp|svg|woff2?)$/i.test(pathname)

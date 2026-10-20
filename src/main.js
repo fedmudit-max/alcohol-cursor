@@ -22,8 +22,10 @@ function boot() {
   if (privacyLink && CONFIG.privacyPolicyUrl) privacyLink.href = CONFIG.privacyPolicyUrl;
 
   try {
+    if (typeof healStuckBodyScroll === 'function') healStuckBodyScroll();
     Tracker.init();
     bindMonthGridCalendarClicks();
+    if (typeof healStuckBodyScroll === 'function') healStuckBodyScroll();
   } catch (err) {
     console.error('[10Drinks] boot failed:', err);
     dismissAppSplash();

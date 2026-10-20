@@ -66,7 +66,6 @@ const Tracker = {
   _pendingCalendarDayKey: null,
   init() {
     try {
-    ensureTrialStarted();
     this.data = DataManager.load();
     if (typeof this.data.dykIndex !== 'number') this.data.dykIndex = 0;
     if (typeof syncCalendarDayFromJourneyStart === 'function') {
@@ -79,6 +78,18 @@ const Tracker = {
     if (typeof healJourneyStartForMissedDays === 'function' && healJourneyStartForMissedDays(this.data)) {
       syncCalendarDayFromJourneyStart(this.data);
       DataManager.saveNow(this.data);
+    }
+    if (typeof reconcileTrialClock === 'function') {
+      const prev = this.data.trialStartedAt;
+      reconcileTrialClock(this.data);
+      if (this.data.trialStartedAt && this.data.trialStartedAt !== prev) {
+        DataManager.saveNow(this.data);
+      }
+    } else if (typeof ensureTrialStarted === 'function') {
+      ensureTrialStarted(this.data);
+    }
+    if (typeof Tracker !== 'undefined') {
+      Tracker._lastPremiumAccess = typeof hasPremiumAccess === 'function' && hasPremiumAccess();
     }
     DataManager._rebuildScoredDays(this.data);
     if (reconcileLogsToJourneyScore(this.data)) {
@@ -425,8 +436,19 @@ const Tracker = {
   closeAcknowledge() { el('acknowledgeModal').classList.remove('active'); },
 
   switchTab(idx) {
-    if (idx === 2 && !hasPremiumAccess()) {
-      this.openPremium();
+    const premiumTab = idx === 0 || idx === 1 || idx === 2;
+    if (
+      premiumTab &&
+      typeof isTrialEntitlementEnforced === 'function' &&
+      isTrialEntitlementEnforced() &&
+      !hasPremiumAccess()
+    ) {
+      if (typeof isPremiumSubscribeOffered === 'function' && isPremiumSubscribeOffered()) {
+        this.openPremium();
+      } else if (typeof showToast === 'function') {
+        showToast('Your free trial has ended. Premium subscriptions are coming soon.');
+      }
+      return;
     }
     document.querySelectorAll('.seg-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
     document.querySelectorAll('.tab-content').forEach((c, i) => c.classList.toggle('active', i === idx));

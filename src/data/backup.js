@@ -328,8 +328,10 @@ Tracker._deleteAllData = function() {
   try { localStorage.removeItem('sj_welcome_step1_done'); } catch (e) {}
   if (typeof clearPremiumRecord === 'function') clearPremiumRecord();
   if (typeof setTrialStartedAtISO === 'function') setTrialStartedAtISO(null);
+  if (this.data) this.data.trialStartedAt = null;
   try { if (typeof TRIAL_POLICY_KEY !== 'undefined') localStorage.removeItem(TRIAL_POLICY_KEY); } catch (e) {}
-  if (typeof ensureTrialStarted === 'function') ensureTrialStarted();
+  if (typeof reconcileTrialClock === 'function') reconcileTrialClock(this.data);
+  else if (typeof ensureTrialStarted === 'function') ensureTrialStarted(this.data);
   if (typeof setForcePremiumLocked === 'function') setForcePremiumLocked(false);
   clearLastBackupAt();
   this.data = DataManager.defaults();

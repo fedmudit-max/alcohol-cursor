@@ -19,6 +19,18 @@ async function initNativeShell() {
       window.TenDrinks_handleAndroidBack();
     }
   });
+
+  App.addListener('appStateChange', ({ isActive }) => {
+    if (!isActive) return;
+    if (typeof window.healStuckBodyScroll === 'function') {
+      window.healStuckBodyScroll();
+    }
+    const d = typeof Tracker !== 'undefined' && Tracker.data
+      ? Tracker.data
+      : (typeof DataManager !== 'undefined' ? DataManager.load() : null);
+    if (typeof refreshEntitlementIfChanged === 'function') refreshEntitlementIfChanged(d);
+    else if (d && typeof UI !== 'undefined' && UI.renderAll) UI.renderAll(d);
+  });
 }
 
 initNativeShell();

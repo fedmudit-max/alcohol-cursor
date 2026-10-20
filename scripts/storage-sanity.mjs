@@ -25,7 +25,7 @@ const localStorage = {
 };
 
 const ctx = vm.createContext({
-  CONFIG: { showTestUI: false, isProduction: true, premiumBilling: 'local-stub' },
+  CONFIG: { showTestUI: false, isProduction: true, premiumBilling: 'local-stub', enforceTrialEntitlement: true },
   console,
   localStorage,
   document: { getElementById: () => null },
@@ -136,6 +136,88 @@ ok('simulatedToday stripped when showTestUI false', () => {
   store[DM.KEY] = JSON.stringify({ simulatedToday: '2030-01-01T12:00:00.000Z', attempt: 1 });
   const d = DM.load();
   if (d.simulatedToday) throw new Error('simulatedToday should be removed in production config');
+});
+
+console.log('\nTrial entitlement\n');
+
+ctx.Tracker = { data: null };
+ctx.CONFIG.showTestUI = true;
+runScript('src/premium/premium.js', ctx);
+const {
+  reconcileTrialClock,
+  isTrialActive,
+  isBestScoreLocked,
+  getTrialEndTimestamp,
+  getAppTrialSpanDays,
+} = ctx;
+const TRIAL_STORE_KEY = 'sj_trialStartedAt';
+
+ok('wall-clock trial expired → isTrialActive false', () => {
+  Object.keys(store).forEach((k) => delete store[k]);
+  const past = new Date(Date.now() - ((16) * 86400000));
+  store[TRIAL_STORE_KEY] = past.toISOString();
+  ctx.Tracker.data = DM.load();
+  if (isTrialActive()) throw new Error('trial should be expired');
+});
+
+ok('wall-clock trial active → isTrialActive true', () => {
+  store[TRIAL_STORE_KEY] = new Date().toISOString();
+  ctx.Tracker.data = DM.load();
+  if (!isTrialActive()) throw new Error('trial should be active');
+});
+
+ok('Best Score unlocked on journey 2 after trial ended', () => {
+  const past = new Date(Date.now() - ((16) * 86400000));
+  store[TRIAL_STORE_KEY] = past.toISOString();
+  ctx.Tracker.data = { attempt: 2 };
+  if (isBestScoreLocked(ctx.Tracker.data)) throw new Error('best score should stay open on J2');
+});
+
+ok('Best Score locked from journey 3 even if trial still active', () => {
+  store[TRIAL_STORE_KEY] = new Date().toISOString();
+  ctx.Tracker.data = { attempt: 3 };
+  if (!isBestScoreLocked(ctx.Tracker.data)) throw new Error('best score should lock on J3');
+});
+
+ok('trial ends after 15 calendar days from start', () => {
+  const start = new Date(2026, 0, 1, 10, 0, 0);
+  store[TRIAL_STORE_KEY] = start.toISOString();
+  ctx.Tracker.data = DM.load();
+  const endMs = getTrialEndTimestamp(start);
+  const day16 = new Date(2026, 0, 16, 12, 0, 0).getTime();
+  if (day16 <= endMs) throw new Error('day 16 should be after trial end');
+});
+
+ok('reconcileTrialClock anchors to earliest dailyLog when trial stamp is newer', () => {
+  Object.keys(store).forEach((k) => delete store[k]);
+  store[DM.KEY] = JSON.stringify({
+    attempt: 1,
+    journeyStartKey: '2026-01-01',
+    dailyLog: { '2026-01-01': 'sober', '2026-01-16': 'sober' },
+    trialStartedAt: null,
+  });
+  store[TRIAL_STORE_KEY] = new Date(2026, 0, 10, 12, 0, 0).toISOString();
+  const data = DM.load();
+  reconcileTrialClock(data);
+  const anchored = new Date(store[TRIAL_STORE_KEY]).getTime();
+  const expected = new Date(2026, 0, 1, 12, 0, 0).getTime();
+  if (Math.abs(anchored - expected) > 60000) throw new Error('trial should anchor to first log day');
+  if (isTrialActive()) throw new Error('16+ days of logs should mean expired trial');
+});
+
+ok('QA simulated app day > 15 ends trial when internal test bar enabled', () => {
+  ctx.CONFIG.showInternalTestBar = true;
+  const start = new Date(2026, 0, 1, 12, 0, 0);
+  store[TRIAL_STORE_KEY] = start.toISOString();
+  ctx.Tracker.data = {
+    attempt: 1,
+    journeyStartKey: '2026-01-01',
+    simulatedToday: new Date(2026, 0, 17, 12, 0, 0).toISOString(),
+    dailyLog: {},
+    trialStartedAt: start.toISOString(),
+  };
+  if (getAppTrialSpanDays(ctx.Tracker.data) <= 15) throw new Error('expected app span 17');
+  if (isTrialActive()) throw new Error('simulated day 17 should end trial in QA mode');
 });
 
 console.log(failed ? `\n${failed} check(s) failed.\n` : '\nAll checks passed.\n');

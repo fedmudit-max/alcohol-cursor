@@ -1,9 +1,12 @@
 /* ===== src/dev/next-day-test.js ===== */
 'use strict';
 
-// Dev-only: bottom "Next Day" bar (not included in index.html).
-// To use locally, add before main.js:
-//   <script src="src/dev/next-day-test.js"></script>
+/**
+ * Dev-only: bottom "Next Day (journey)" bar — simulates the next calendar day in-app.
+ * Not loaded in production index.html — add before main.js when testing locally:
+ *   <script src="src/dev/next-day-test.js"></script>
+ * Optional: also load trial-test-bar.js for trial clock controls.
+ */
 const ENABLE_NEXT_DAY_TEST_BAR = true;
 
 (function () {
@@ -11,6 +14,7 @@ const ENABLE_NEXT_DAY_TEST_BAR = true;
 
   if (typeof CONFIG === 'object' && CONFIG) {
     CONFIG.showTestUI = true;
+    CONFIG.showInternalTestBar = true;
     if (CONFIG.buildTag === 'production') CONFIG.buildTag = 'dev';
   }
 
@@ -34,6 +38,12 @@ body.test-ui-active .scroll-view {
 body.test-ui-active .toast.show {
   bottom: calc(88px + env(safe-area-inset-bottom));
 }
+body.test-ui-active.trial-test-ui-active .scroll-view {
+  padding-bottom: calc(158px + env(safe-area-inset-bottom));
+}
+body.test-ui-active.trial-test-ui-active .toast.show {
+  bottom: calc(158px + env(safe-area-inset-bottom));
+}
 #testBuildTag {
   font-size: 10px;
   color: rgba(255, 255, 255, 0.35);
@@ -56,7 +66,7 @@ body.test-ui-active .toast.show {
   font-family: inherit;
   line-height: 1.2;
 }
-#testBtns .test-btn-next { background: #34c759; }
+#testBtns .test-btn-next { background: #007aff; }
 `;
 
   function onNextDayClick(btn) {
@@ -89,7 +99,7 @@ body.test-ui-active .toast.show {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'test-btn-next';
-    btn.textContent = '\u23ED Next Day';
+    btn.textContent = 'Next Day (journey)';
     btn.addEventListener('click', () => onNextDayClick(btn));
 
     grid.appendChild(btn);
@@ -112,7 +122,4 @@ body.test-ui-active .toast.show {
     const tag = el('testBuildTag');
     if (tag) tag.textContent = on ? ('Build: ' + (CONFIG.buildTag || 'dev')) : '';
   };
-
-  mountNextDayTestBar();
-  syncNextDayTestBar(true);
 })();

@@ -18,5 +18,8 @@ const MidnightTimer = {
       recalculateStreakFromLog(data);
       if (Tracker.data) Tracker.data = data;
     }
+    if (typeof refreshEntitlementIfChanged === 'function') {
+      refreshEntitlementIfChanged(data);
+    }
   }
 };

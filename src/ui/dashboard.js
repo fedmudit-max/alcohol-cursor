@@ -11,25 +11,34 @@ const UI = {
   renderPrimary(data) {
     el('calendarDay').textContent = data.calendarDay;
     el('currentScore').innerHTML  = formatScoreHTML(data.currentScore);
-    el('bestScore').textContent   = formatScoreText(getDisplayBestScore(data));
+    const bestScoreLocked = typeof isBestScoreLocked === 'function' && isBestScoreLocked(data);
+    el('bestScore').textContent = bestScoreLocked
+      ? '—'
+      : formatScoreText(getDisplayBestScore(data));
     el('scoreExplain').textContent = `${data.currentScore.success} sober days — ${data.currentScore.failures} drinking days`;
     const target = getNextJourneyTarget(data);
     const bestExplainEl = el('bestScoreExplain');
     if (bestExplainEl) {
-      const beatingBest = isBeatingBestScore(data);
-      const showTarget = !beatingBest && !data.journeyPendingReset && data.attempt > 1 && target > 0;
-      if (beatingBest) {
-        bestExplainEl.textContent = 'New Best! Keep Going!';
-        bestExplainEl.classList.add('is-new-best');
-        bestExplainEl.style.display = '';
-      } else if (showTarget) {
-        bestExplainEl.textContent = `Beat ${target} to win`;
-        bestExplainEl.classList.remove('is-new-best');
-        bestExplainEl.style.display = '';
-      } else {
+      if (bestScoreLocked) {
         bestExplainEl.textContent = '';
         bestExplainEl.classList.remove('is-new-best');
         bestExplainEl.style.display = 'none';
+      } else {
+        const beatingBest = isBeatingBestScore(data);
+        const showTarget = !beatingBest && !data.journeyPendingReset && data.attempt > 1 && target > 0;
+        if (beatingBest) {
+          bestExplainEl.textContent = 'New Best! Keep Going!';
+          bestExplainEl.classList.add('is-new-best');
+          bestExplainEl.style.display = '';
+        } else if (showTarget) {
+          bestExplainEl.textContent = `Beat ${target} to win`;
+          bestExplainEl.classList.remove('is-new-best');
+          bestExplainEl.style.display = '';
+        } else {
+          bestExplainEl.textContent = '';
+          bestExplainEl.classList.remove('is-new-best');
+          bestExplainEl.style.display = 'none';
+        }
       }
     }
     const appName = typeof APP_DISPLAY_NAME !== 'undefined' ? APP_DISPLAY_NAME : '10Drinks';
@@ -417,6 +426,11 @@ function applyTestUIChrome() {
     syncNextDayTestBar(active);
   } else {
     document.body.classList.remove('test-ui-active');
+  }
+  if (typeof syncTrialTestBar === 'function') {
+    syncTrialTestBar(active);
+  } else {
+    document.body.classList.remove('trial-test-ui-active');
   }
   updatePremiumLockTestBtn();
 }

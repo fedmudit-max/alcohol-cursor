@@ -120,8 +120,10 @@ const MAX_COMPLETED_JOURNEYS_PREMIUM = 100; // premium journey history cap
 const PREMIUM_KEY = 'sj_premium';
 const TRIAL_KEY = 'sj_trialStartedAt';
 const TRIAL_POLICY_KEY = 'sj_trialPolicyDays'; // last shipped TRIAL_DAYS (for length bumps)
-const TRIAL_DAYS = 30;
+const TRIAL_DAYS = 15;
 const LEGACY_TRIAL_DAYS = 14;
+/** Dashboard Best Score tile: free on journeys 1–2; locks from this attempt without Premium. */
+const BEST_SCORE_LOCK_FROM_ATTEMPT = 3;
 const FREE_JOURNEY_MILESTONE_DAYS = 50;
 const PREMIUM_PLANS = {
   monthly: { id: 'monthly', label: 'Monthly', days: 31 },
@@ -149,12 +151,22 @@ const PREMIUM_BILLING_MODE = 'local-stub';
 const CONFIG = {
   isProduction:   true,
   showTestUI:     false,
+  /**
+   * Set true only when optional dev scripts are loaded (next-day-test.js / trial-test-bar.js).
+   * Default false — production index.html does not load those files.
+   */
+  showInternalTestBar: false,
   showOnboarding: true,
   buildTag:       'production',
   premiumBilling: PREMIUM_BILLING_MODE,
   /**
-   * false = hide all Premium/trial/paywall UI and treat features as unlocked (internal test builds).
-   * true = show entitlement UX; pair with showPremiumSubscribe when billing is live.
+   * When true, Premium features lock after the free trial unless the user has Premium.
+   * Independent of paywall/subscribe UI (use showPremiumInApp for that).
+   */
+  enforceTrialEntitlement: true,
+  /**
+   * false = hide paywall sheet and most Premium marketing UI.
+   * true = show full entitlement UX; pair with showPremiumSubscribe when billing is live.
    */
   showPremiumInApp: false,
   /** Only applies when showPremiumInApp is true. */

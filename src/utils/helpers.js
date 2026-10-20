@@ -33,8 +33,8 @@ function showToast(msg) {
   _toastTimer = setTimeout(() => t.classList.remove('show'), TOAST_DURATION_MS);
 }
 
-let _bodyScrollLockDepth = 0;
 let _bodyScrollLockY = 0;
+let _bodyScrollLocked = false;
 
 function _readScrollY() {
   if (typeof window === 'undefined') return 0;
@@ -42,6 +42,13 @@ function _readScrollY() {
   const docEl = document.documentElement;
   if (docEl && typeof docEl.scrollTop === 'number') return docEl.scrollTop;
   return 0;
+}
+
+function _scrollYFromBodyTop(body) {
+  if (!body?.style?.top) return null;
+  const n = parseInt(String(body.style.top), 10);
+  if (Number.isNaN(n)) return null;
+  return Math.max(0, -n);
 }
 
 function _restoreScrollY(y) {
@@ -53,57 +60,90 @@ function _restoreScrollY(y) {
   }
 }
 
-/** Keep page scroll position when body.modal-open uses position:fixed (iOS/Capacitor). */
-function lockBodyScroll() {
-  const body = document.body;
-  if (!body || !body.classList) return;
-  if (_bodyScrollLockDepth === 0) {
-    _bodyScrollLockY = _readScrollY();
-    if (body.style) {
-      body.style.top = `-${_bodyScrollLockY}px`;
-      body.style.left = '0';
-      body.style.right = '0';
-    }
+function isScrollLockOverlayOpen() {
+  if (typeof document === 'undefined' || !document.querySelector) return false;
+  if (document.querySelector('.modal.active')) return true;
+  const sheetIds = ['auditModal', 'tenDrinksGuideModal', 'acknowledgeModal2'];
+  for (const id of sheetIds) {
+    const node = el(id);
+    if (node && node.classList.contains('open')) return true;
   }
-  _bodyScrollLockDepth++;
-  body.classList.add('modal-open');
+  const overlayIds = ['appSettingsOverlay', 'privacyPolicyOverlay', 'premiumOverlay'];
+  for (const id of overlayIds) {
+    const node = el(id);
+    if (node && node.classList.contains('active')) return true;
+  }
+  const ob = el('onboardingOverlay');
+  if (ob && ob.style.display === 'flex' && ob.style.pointerEvents !== 'none') return true;
+  return false;
+}
+
+/** Sync body.modal-open with any open modal/sheet (fixes stuck scroll after close). */
+function reconcileBodyScrollLock() {
+  const body = document.body;
+  if (!body || !body.classList || typeof body.classList.add !== 'function') return;
+  const shouldLock = isScrollLockOverlayOpen();
+  if (shouldLock) {
+    if (!_bodyScrollLocked) {
+      _bodyScrollLockY = _readScrollY();
+      if (body.style) {
+        body.style.top = `-${_bodyScrollLockY}px`;
+        body.style.left = '0';
+        body.style.right = '0';
+      }
+      _bodyScrollLocked = true;
+    }
+    body.classList.add('modal-open');
+    const html = document.documentElement;
+    if (html?.classList) html.classList.add('modal-open');
+    return;
+  }
+  const hasModalClass = typeof body.classList.contains === 'function'
+    && body.classList.contains('modal-open');
+  if (_bodyScrollLocked || hasModalClass || body.style?.top) {
+    const y = _scrollYFromBodyTop(body) ?? _bodyScrollLockY;
+    _bodyScrollLocked = false;
+    body.classList.remove('modal-open');
+    if (document.documentElement?.classList) {
+      document.documentElement.classList.remove('modal-open');
+    }
+    if (body.style) {
+      body.style.top = '';
+      body.style.left = '';
+      body.style.right = '';
+    }
+    _restoreScrollY(y);
+  }
+}
+
+function healStuckBodyScroll() {
+  reconcileBodyScrollLock();
+}
+if (typeof window !== 'undefined') window.healStuckBodyScroll = healStuckBodyScroll;
+
+function lockBodyScroll() {
+  reconcileBodyScrollLock();
 }
 
 function unlockBodyScroll() {
-  const body = document.body;
-  if (!body || !body.classList || _bodyScrollLockDepth === 0) return;
-  _bodyScrollLockDepth--;
-  if (_bodyScrollLockDepth > 0) return;
-  const y = _bodyScrollLockY;
-  body.classList.remove('modal-open');
-  if (body.style) {
-    body.style.top = '';
-    body.style.left = '';
-    body.style.right = '';
-  }
-  _restoreScrollY(y);
+  reconcileBodyScrollLock();
 }
 
 /** Clears scroll lock when legacy code removed modal-open without unlock. */
 function forceUnlockBodyScroll() {
-  if (!document.body) return;
-  if (_bodyScrollLockDepth === 0 && !document.body.classList.contains('modal-open')) return;
-  _bodyScrollLockDepth = 1;
-  unlockBodyScroll();
+  _bodyScrollLocked = false;
+  reconcileBodyScrollLock();
 }
 
 function syncModalOpenBodyClass() {
-  if (!document.body || !document.querySelector) return;
-  const open = document.querySelector('.modal.active');
-  if (open) lockBodyScroll();
-  else unlockBodyScroll();
+  reconcileBodyScrollLock();
 }
 
 function openAppModal(modalEl) {
   if (!modalEl) return;
   modalEl.style.zIndex = '';
   modalEl.classList.add('active');
-  lockBodyScroll();
+  reconcileBodyScrollLock();
 }
 
 /** After AUDIT-C: anchor viewport on Drinking Risk Meter + Reduction Goal (post modal unlock). */
