@@ -202,6 +202,9 @@ const DataManager = {
     // Rebuild scoredDays from score + dailyLog — fixes stale flags that block catch-up scoring
     this._rebuildScoredDays(data);
     reconcileLogsToJourneyScore(data);
+    if (typeof healInvalidHighestScore === 'function' && healInvalidHighestScore(data)) {
+      if (typeof applyBestScore === 'function') applyBestScore(data, data.currentScore);
+    }
 
     // Coerce and clamp AUDIT-C scores — prevent corrupted values affecting meter
     if (data.auditQ1 !== null && data.auditQ1 !== undefined)

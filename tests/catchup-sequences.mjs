@@ -6,12 +6,13 @@
 import { createTrackerContext, key, noon } from './lib/load-tracker.mjs';
 
 const ctx = createTrackerContext();
-const { Tracker, DataManager, shouldAskYesterday, unwindTodayIfYesterdayPending, ensureJourneyStartKey } = {
+const { Tracker, DataManager, shouldAskYesterday, unwindTodayIfYesterdayPending, ensureJourneyStartKey, canRecordCalendarDay } = {
   Tracker: ctx.Tracker,
   DataManager: ctx.DataManager,
   shouldAskYesterday: ctx.shouldAskYesterday,
   unwindTodayIfYesterdayPending: ctx.unwindTodayIfYesterdayPending,
   ensureJourneyStartKey: ctx.ensureJourneyStartKey,
+  canRecordCalendarDay: ctx.canRecordCalendarDay,
 };
 
 let failed = 0;
@@ -72,6 +73,12 @@ assert('Test A — Day 2 unlogged, Day 3 yesterday prompt, Day 4 unlogged', () =
   }
   if (d.currentScore.success !== 1) {
     throw new Error(`Expected score 1–0 sober side, got ${d.currentScore.success}–${d.currentScore.failures}`);
+  }
+  for (const day of [2, 3]) {
+    const k = key(2026, 1, day);
+    if (!canRecordCalendarDay(d, k, noon(2026, 1, 4))) {
+      throw new Error(`Jan ${day} should be tappable on the calendar`);
+    }
   }
 });
 

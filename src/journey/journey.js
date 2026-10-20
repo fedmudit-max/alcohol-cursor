@@ -11,8 +11,14 @@
 function ensureJourneyStartKey(data) {
   if (!data) return false;
   const before = data.journeyStartKey;
-  const appTodayKey = dateKey(getAppToday(data));
+  const appToday = getAppToday(data);
+  const appTodayKey = dateKey(appToday);
   const calendarStart = inferJourneyStartFromCalendarDay(data);
+  const calField = Math.max(1, parseInt(data.calendarDay, 10) || 1);
+
+  if (typeof syncCalendarDayFromJourneyStart === 'function') {
+    syncCalendarDayFromJourneyStart(data);
+  }
 
   if (!data.journeyStartKey) {
     data.journeyStartKey = calendarStart;
@@ -31,10 +37,22 @@ function ensureJourneyStartKey(data) {
     }
   }
 
-  // Day 1 with no log yet — journey begins today (fixes stale start after reset / wipe)
-  const cal = Math.max(1, parseInt(data.calendarDay, 10) || 1);
-  if (cal === 1 && !earliestDailyLogKey(data) && data.journeyStartKey !== appTodayKey) {
+  // Fresh journey day 1 on this open (lastDayCheck is today): stale start from reset/wipe → today.
+  const lastKey = data.lastDayCheck ? dateKey(new Date(data.lastDayCheck)) : '';
+  const openedToday = lastKey === appTodayKey;
+  if (
+    calField === 1 &&
+    openedToday &&
+    !earliestDailyLogKey(data) &&
+    data.journeyStartKey &&
+    data.journeyStartKey < appTodayKey &&
+    !(lastKey && lastKey < appTodayKey)
+  ) {
     data.journeyStartKey = appTodayKey;
+  }
+
+  if (typeof syncCalendarDayFromJourneyStart === 'function') {
+    syncCalendarDayFromJourneyStart(data);
   }
 
   return before !== data.journeyStartKey;
@@ -51,7 +69,17 @@ const Tracker = {
     ensureTrialStarted();
     this.data = DataManager.load();
     if (typeof this.data.dykIndex !== 'number') this.data.dykIndex = 0;
+    if (typeof syncCalendarDayFromJourneyStart === 'function') {
+      syncCalendarDayFromJourneyStart(this.data);
+    }
     if (ensureJourneyStartKey(this.data)) DataManager.saveNow(this.data);
+    if (typeof syncCalendarDayFromJourneyStart === 'function') {
+      syncCalendarDayFromJourneyStart(this.data);
+    }
+    if (typeof healJourneyStartForMissedDays === 'function' && healJourneyStartForMissedDays(this.data)) {
+      syncCalendarDayFromJourneyStart(this.data);
+      DataManager.saveNow(this.data);
+    }
     DataManager._rebuildScoredDays(this.data);
     if (reconcileLogsToJourneyScore(this.data)) {
       DataManager.saveNow(this.data);
@@ -64,6 +92,9 @@ const Tracker = {
     ensureJourneyTargetChain(this.data);
     UI.renderAll(this.data);
     MidnightTimer.start();
+    if (typeof TenDrinksReminderNative !== 'undefined' && TenDrinksReminderNative.init) {
+      TenDrinksReminderNative.init();
+    }
     } catch (err) {
       console.error('[10Drinks] init failed:', err);
     } finally {
@@ -220,9 +251,11 @@ const Tracker = {
     if (ym) ym.classList.remove('active');
     if (typeof syncModalOpenBodyClass === 'function') syncModalOpenBodyClass();
     if (typeof ensureJourneyStartKey === 'function') ensureJourneyStartKey(this.data);
+    if (typeof syncCalendarDayFromJourneyStart === 'function') {
+      syncCalendarDayFromJourneyStart(this.data);
+    }
+    if (!shouldAskYesterday(this.data)) return;
     const key = calendarYesterdayKey(this.data);
-    const cal = Math.max(1, parseInt(this.data.calendarDay, 10) || 1);
-    if (cal === 1) return;
     const floor = calendarJourneyFloorKey(this.data);
     if (key < floor) return;
     this._logDayForKey(key, status);

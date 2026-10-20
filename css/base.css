@@ -190,8 +190,8 @@ html,body{background:#1e9e3e;}
 }
 
 /* ── Modals ─────────────────────────────────────────────── */
-.winning-ways-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:1001;align-items:flex-end;justify-content:center;}
-.winning-ways-modal.open{display:flex;}
+.bottom-sheet-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:1001;align-items:flex-end;justify-content:center;}
+.bottom-sheet-modal.open{display:flex;}
 #acknowledgeModal2{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:700;align-items:flex-end;justify-content:center;}
 #acknowledgeModal2.open{display:flex;}
 .reduction-zone{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(255,149,0,0.1);color:#cc6600;}
@@ -528,6 +528,8 @@ body.settings-open .app-top-bar-settings {
 .privacy-policy-title { margin:0 0 14px; font-size:20px; font-weight:700; color:var(--label); }
 .privacy-policy-body p { margin:0 0 12px; font-size:14px; line-height:1.5; color:var(--label2); }
 .privacy-policy-body p:last-child { margin-bottom:0; }
+.privacy-policy-external { font-size:14px; font-weight:600; color:#007aff; text-decoration:none; }
+.privacy-policy-external:active { opacity:0.75; }
 .privacy-policy-done { margin-top:16px; }
 
 /* Risk meter collapsible */
@@ -844,6 +846,9 @@ button.cal-cell:active { transform:scale(0.96); }
 
 /* MILESTONE LIST */
 .milestone-list { display:flex; flex-direction:column; }
+#streakMilestoneList > .milestone-row + .milestone-row {
+  border-top: 0.5px solid rgba(60, 60, 67, 0.16);
+}
 .milestone-text { display:flex; flex-direction:column; gap:2px; }
 .milestone-sub  { font-size:11px; color:var(--label2); line-height:1.3; }
 
@@ -1163,10 +1168,59 @@ button.cal-cell:active { transform:scale(0.96); }
 .backup-status {
   margin:2px 0 4px; font-size:12px; color:var(--label3); text-align:center;
 }
+.export-choice-card h3 {
+  margin: 0 0 10px;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--label);
+}
+.export-choice-note {
+  font-size: 13px;
+  color: var(--label2);
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+.export-choice-btn {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 0 8px;
+  font-size: 13px;
+  padding: 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  background: transparent;
+  color: var(--label);
+  border: 1px solid var(--separator);
+  font-weight: 600;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.export-choice-btn:active { transform: scale(0.98); }
+.export-choice-cancel {
+  width: 100%;
+  margin-top: 4px;
+  padding: 10px;
+  border: none;
+  border-radius: 10px;
+  background: var(--bg3);
+  color: var(--label2);
+  font-size: 15px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+}
 #resetConfirmWrap input:focus { border-color:var(--red); }
 
 .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); z-index:3500; justify-content:center; align-items:center; padding:max(20px, env(safe-area-inset-top)) 20px calc(20px + env(safe-area-inset-bottom)); }
 .modal.active { display:flex; }
+/* Yesterday catch-up: lighter dim + subtle blur so the app stays readable behind */
+#yesterdayModal {
+  background:rgba(0,0,0,0.32);
+  backdrop-filter:blur(2px);
+  -webkit-backdrop-filter:blur(2px);
+}
 .modal-card {
   background:var(--card); padding:28px; border-radius:20px; max-width:340px; width:100%;
   text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.3);

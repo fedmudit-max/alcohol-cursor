@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = '10drinks-v209';
+const CACHE_NAME = '10drinks-v210';
 
 function isStaticAssetPath(pathname) {
   return /\.(js|mjs|css|json|png|jpe?g|webp|svg|woff2?)$/i.test(pathname)
@@ -43,7 +43,6 @@ function precacheUrls() {
     scopeUrl('src/onboarding/onboarding.js'),
     scopeUrl('src/assessment/meter.js'),
     scopeUrl('src/assessment/questions.js'),
-    scopeUrl('src/dev/next-day-test.js'),
     scopeUrl('src/main.js'),
     scopeUrl('assets/icons/icon-180.png'),
     scopeUrl('assets/icons/icon-192.png'),

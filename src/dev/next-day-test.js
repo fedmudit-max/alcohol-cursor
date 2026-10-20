@@ -1,8 +1,9 @@
 /* ===== src/dev/next-day-test.js ===== */
 'use strict';
 
-// Dev-only: bottom "Next Day" bar. Delete this file + its <script> tag to remove.
-// Set to false to keep the file but hide the bar.
+// Dev-only: bottom "Next Day" bar (not included in index.html).
+// To use locally, add before main.js:
+//   <script src="src/dev/next-day-test.js"></script>
 const ENABLE_NEXT_DAY_TEST_BAR = true;
 
 (function () {

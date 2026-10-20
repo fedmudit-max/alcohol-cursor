@@ -20,6 +20,14 @@ const STREAK_MILESTONES = [
 // Progress tab shares Day 1/3/7 with Streak — Streak popup wins; skip Progress celebration.
 const STREAK_SCIENCE_OVERLAP_DAYS = new Set(STREAK_MILESTONES.map(m => m.days));
 
+function isTrophyEarned(successCount, trophyDays, celebratedTrophies) {
+  return successCount === trophyDays && !celebratedTrophies[trophyDays];
+}
+
+function isScienceMilestoneEarned(streak, nodeDay, celebratedScienceMilestones) {
+  return streak === nodeDay && !celebratedScienceMilestones[nodeDay];
+}
+
 function markStreakOwnedScienceCelebrated(data, day) {
   if (!STREAK_SCIENCE_OVERLAP_DAYS.has(day)) return;
   if (!data.celebratedScienceMilestones) data.celebratedScienceMilestones = {};

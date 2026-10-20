@@ -1,0 +1,27 @@
+{
+  "name": "10drinks",
+  "version": "1.0.0",
+  "private": true,
+  "description": "10Drinks — alcohol journey tracker (PWA + Capacitor Android)",
+  "scripts": {
+    "build": "bash scripts/build-release.sh && npm run build:native-bridge",
+    "build:native-bridge": "node scripts/build-native-bridge.mjs",
+    "cap:sync": "npm run build && npx cap sync android",
+    "cap:open": "npx cap open android",
+    "android": "npm run cap:sync && npx cap open android",
+    "android:install": "bash scripts/android-install.sh",
+    "android:run": "npm run cap:sync && npm run android:install",
+    "android:bundle": "npm test && npm run cap:sync && bash scripts/android-bundle-release.sh",
+    "test": "node tests/catchup-check.js && node tests/unlogged-day-model.mjs && node tests/catchup-sequences.mjs && node scripts/storage-sanity.mjs"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.2.0",
+    "@capacitor/app": "^7.0.1",
+    "@capacitor/core": "^7.2.0",
+    "@capacitor/status-bar": "^7.0.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.2.0",
+    "esbuild": "^0.25.0"
+  }
+}

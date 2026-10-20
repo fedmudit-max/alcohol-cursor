@@ -26,13 +26,15 @@ const AuditOnboarding = {
     if (tally) tally.style.display = 'none';
     if (scoreEl) { scoreEl.textContent = '0'; scoreEl.style.color = '#34c759'; }
     el('auditModal').classList.add('open');
-    document.body.classList.add('modal-open');
+    if (typeof lockBodyScroll === 'function') lockBodyScroll();
+    else document.body.classList.add('modal-open');
   },
 
   close() {
     const modal = el('auditModal');
     if (modal) modal.classList.remove('open');
-    document.body.classList.remove('modal-open');
+    if (typeof unlockBodyScroll === 'function') unlockBodyScroll();
+    else document.body.classList.remove('modal-open');
   },
 
   select(step, val) {
@@ -127,9 +129,10 @@ const AuditOnboarding = {
     d.auditDate    = new Date().toISOString();
     Tracker.data   = d;
     DataManager.save(d);
-    this.close();
     MeterController.updateFromJourney(d);
     renderReductionTarget(d);
-    scrollToPostTestView();
+    if (typeof Tracker.expandRiskMeter === 'function') Tracker.expandRiskMeter();
+    this.close();
+    if (typeof scrollToPostTestView === 'function') scrollToPostTestView();
   }
 };

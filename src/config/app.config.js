@@ -31,22 +31,65 @@ function isFirstJourneyInProgress(data) {
   return (data.attempt | 0) === 1 && !(data.completedJourneys || []).length;
 }
 
-// Best Score card — mirrors current score on journey 1 (no prior best yet).
+function isValidJourneyScore(score) {
+  if (!score || typeof score !== 'object' || Array.isArray(score)) return false;
+  const f = score.failures | 0;
+  return f >= 0 && f <= JOURNEY_MAX_FAILURES;
+}
+
+function recomputeBestFromValidSources(data) {
+  let best = { success: 0, failures: 0 };
+  for (const j of (data?.completedJourneys || [])) {
+    if (!j?.score || !isValidJourneyScore(j.score)) continue;
+    const s = { success: j.score.success | 0, failures: j.score.failures | 0 };
+    best = pickBetterScore(s, best);
+  }
+  if (data?.currentScore && isValidJourneyScore(data.currentScore)) {
+    const cur = { success: data.currentScore.success | 0, failures: data.currentScore.failures | 0 };
+    best = pickBetterScore(cur, best);
+  }
+  return best;
+}
+
+function healInvalidHighestScore(data) {
+  if (!data) return false;
+  ensureScoreNumbers(data);
+  if (isValidJourneyScore(data.highestScore)) return false;
+  data.highestScore = recomputeBestFromValidSources(data);
+  return true;
+}
+
+function pickBetterScore(candidate, best) {
+  if (!best || typeof best !== 'object') {
+    return { success: candidate.success | 0, failures: candidate.failures | 0 };
+  }
+  return isScoreBetterThan(candidate, best)
+    ? { success: candidate.success | 0, failures: candidate.failures | 0 }
+    : { success: best.success | 0, failures: best.failures | 0 };
+}
+
+// Best Score card — journey 1 mirrors current; later journeys show better of live score vs stored best (laotzu-style).
 function getDisplayBestScore(data) {
   ensureScoreNumbers(data);
-  if (isFirstJourneyInProgress(data)) {
-    return { success: data.currentScore.success | 0, failures: data.currentScore.failures | 0 };
-  }
-  return data.highestScore;
+  const cur = { success: data.currentScore.success | 0, failures: data.currentScore.failures | 0 };
+  if (isFirstJourneyInProgress(data)) return cur;
+  const stored = isValidJourneyScore(data.highestScore)
+    ? { success: data.highestScore.success | 0, failures: data.highestScore.failures | 0 }
+    : recomputeBestFromValidSources(data);
+  return pickBetterScore(cur, stored);
 }
 
 function applyBestScore(data, cur) {
+  if (!isValidJourneyScore(cur)) return;
   if (!data.highestScore || typeof data.highestScore !== 'object') {
     data.highestScore = { success: 0, failures: 0 };
   }
   if (isFirstJourneyInProgress(data)) {
     data.highestScore = { success: cur.success | 0, failures: cur.failures | 0 };
     return;
+  }
+  if (!isValidJourneyScore(data.highestScore)) {
+    data.highestScore = recomputeBestFromValidSources(data);
   }
   if (!isScoreBetterThan(cur, data.highestScore)) return;
   data.highestScore = { success: cur.success | 0, failures: cur.failures | 0 };
@@ -55,7 +98,9 @@ function applyBestScore(data, cur) {
 function getBestCompletedJourneyScore(data) {
   let best = { success: 0, failures: 0 };
   for (const j of (data?.completedJourneys || [])) {
-    if (j?.score) best = isScoreBetterThan(j.score, best) ? { success: j.score.success | 0, failures: j.score.failures | 0 } : best;
+    if (!j?.score || !isValidJourneyScore(j.score)) continue;
+    const s = { success: j.score.success | 0, failures: j.score.failures | 0 };
+    best = isScoreBetterThan(s, best) ? s : best;
   }
   return best;
 }
@@ -95,6 +140,9 @@ const D3_RETRY_MAX           = 20;   // stop retrying after this many attempts
 // User-facing app name (manifest/title/metadata — keep in sync with manifest.json).
 const APP_DISPLAY_NAME = '10Drinks';
 
+// Public privacy policy (Google Play, Settings link).
+const PRIVACY_POLICY_URL = 'https://splendid-hamster-833d21.netlify.app/';
+
 // Billing mode: 'local-stub' (dev/test via showTestUI) or 'store' (native IAP when wired).
 const PREMIUM_BILLING_MODE = 'local-stub';
 
@@ -113,6 +161,7 @@ const CONFIG = {
   showPremiumSubscribe: false,
   /** false = hide Premium section in Settings until billing is live. */
   showPremiumInSettings: false,
+  privacyPolicyUrl: PRIVACY_POLICY_URL,
 };
 
 // ═══════════════════════════════════════════════════════════════

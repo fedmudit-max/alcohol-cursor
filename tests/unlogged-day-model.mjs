@@ -13,6 +13,8 @@ const {
   recalculateJourneyScoreFromLog,
   recalculateStreakFromLog,
   JOURNEY_MAX_FAILURES,
+  shouldAskYesterday,
+  canRecordCalendarDay,
 } = ctx;
 
 let failed = 0;
@@ -156,6 +158,25 @@ assert('11 — reload preserves unlogged/sober/drink', () => {
   }
 });
 
+assert('12b — corrupt stored best (failures > 10) does not display', () => {
+  const d = fresh(2026, 7, 20);
+  applyDayLogStatus(d, key(2026, 7, 20), 'sober');
+  for (let i = 0; i < 10; i++) {
+    const dt = noon(2026, 7, 21 + i);
+    applyDayLogStatus(d, key(dt.getFullYear(), dt.getMonth() + 1, dt.getDate()), 'drinking');
+  }
+  d.highestScore = { success: 11, failures: 16 };
+  d.attempt = 2;
+  d.completedJourneys = [{ attempt: 1, score: { success: 7, failures: 6 }, date: '' }];
+  const display = ctx.getDisplayBestScore(d);
+  if (display.failures > JOURNEY_MAX_FAILURES) {
+    throw new Error(`display best ${display.success}-${display.failures}`);
+  }
+  if (display.success === 11 && display.failures === 16) {
+    throw new Error('should not show corrupt 11-16');
+  }
+});
+
 assert('12 — best score updates from recalculated journey score', () => {
   const d = fresh(2026, 7, 1);
   for (let i = 0; i < 5; i++) {
@@ -164,6 +185,94 @@ assert('12 — best score updates from recalculated journey score', () => {
   }
   recalculateJourneyScoreFromLog(d);
   if ((d.highestScore.success | 0) < 5) throw new Error(`best ${d.highestScore.success}`);
+});
+
+assert('13b — score never exceeds 10 drinks when log has more in one journey', () => {
+  const d = fresh(2026, 9, 1);
+  for (let i = 0; i < 16; i++) {
+    const dt = noon(2026, 9, 1 + i);
+    d.dailyLog[key(dt.getFullYear(), dt.getMonth() + 1, dt.getDate())] = 'drinking';
+  }
+  recalculateJourneyScoreFromLog(d);
+  if ((d.currentScore.failures | 0) !== JOURNEY_MAX_FAILURES) {
+    throw new Error(`failures ${d.currentScore.failures} should cap at ${JOURNEY_MAX_FAILURES}`);
+  }
+});
+
+assert('14b — multi-day gap: only yesterday logged, earlier days tappable unlogged', () => {
+  const d = DataManager.defaults();
+  d.attempt = 1;
+  d.journeyStartKey = key(2026, 4, 1);
+  d.simulatedToday = noon(2026, 4, 1).toISOString();
+  d.lastDayCheck = d.simulatedToday;
+  Tracker.data = d;
+
+  d.simulatedToday = noon(2026, 4, 5).toISOString();
+  d.lastDayCheck = noon(2026, 4, 1).toISOString();
+  Tracker._catchUp();
+  const k1 = key(2026, 4, 1);
+  const k2 = key(2026, 4, 2);
+  const k3 = key(2026, 4, 3);
+  const k4 = key(2026, 4, 4);
+  if (d.journeyStartKey !== k1) throw new Error(`start ${d.journeyStartKey}`);
+  Tracker.logYesterday('success');
+  if (d.dailyLog[k4] !== 'sober') throw new Error('Apr 4 should be sober');
+  for (const k of [k1, k2, k3]) {
+    if (d.dailyLog[k]) throw new Error(`${k} must stay unlogged`);
+    if (!canRecordCalendarDay(d, k, noon(2026, 4, 5))) throw new Error(`${k} should be tappable`);
+  }
+});
+
+assert('15 — collapsed start healed: every unlogged day before yesterday is tappable', () => {
+  const d = DataManager.defaults();
+  d.attempt = 1;
+  d.journeyStartKey = key(2026, 5, 10);
+  d.calendarDay = 1;
+  d.simulatedToday = noon(2026, 5, 10).toISOString();
+  d.lastDayCheck = noon(2026, 5, 7).toISOString();
+  Tracker.data = d;
+  Tracker._catchUp();
+  if (d.journeyStartKey !== key(2026, 5, 7)) {
+    throw new Error(`journey floor should be May 7, got ${d.journeyStartKey}`);
+  }
+  for (let day = 7; day <= 9; day++) {
+    const k = key(2026, 5, day);
+    if (d.dailyLog[k]) throw new Error(`${k} must stay unlogged`);
+    if (!canRecordCalendarDay(d, k, noon(2026, 5, 10))) {
+      throw new Error(`${k} should be loggable from the calendar`);
+    }
+  }
+});
+
+assert('14 — yesterday sober does not auto-mark earlier missed days', () => {
+  const d = DataManager.defaults();
+  d.attempt = 1;
+  d.journeyStartKey = key(2026, 4, 1);
+  d.simulatedToday = noon(2026, 4, 1).toISOString();
+  d.lastDayCheck = d.simulatedToday;
+  Tracker.data = d;
+
+  d.simulatedToday = noon(2026, 4, 2).toISOString();
+  d.lastDayCheck = noon(2026, 4, 1).toISOString();
+  Tracker._catchUp();
+  if (d.journeyStartKey !== key(2026, 4, 1)) {
+    throw new Error(`journey start should stay Apr 1, got ${d.journeyStartKey}`);
+  }
+  if ((d.calendarDay | 0) !== 2) throw new Error(`expected calendar day 2, got ${d.calendarDay}`);
+  if (!shouldAskYesterday(d)) throw new Error('day 2 should prompt for yesterday');
+  if (d.dailyLog[key(2026, 4, 1)]) throw new Error('day 1 should stay unlogged on day 2');
+
+  d.simulatedToday = noon(2026, 4, 3).toISOString();
+  d.lastDayCheck = noon(2026, 4, 2).toISOString();
+  Tracker._catchUp();
+  Tracker.logYesterday('success');
+  const k1 = key(2026, 4, 1);
+  const k2 = key(2026, 4, 2);
+  if (d.dailyLog[k2] !== 'sober') throw new Error('yesterday (Apr 2) should be sober');
+  if (d.dailyLog[k1]) throw new Error(`Apr 1 must stay unlogged, got ${d.dailyLog[k1]}`);
+  if (!canRecordCalendarDay(d, k1, noon(2026, 4, 3))) {
+    throw new Error('Apr 1 should remain tappable on the calendar');
+  }
 });
 
 assert('13 — new journey keeps prior dailyLog entries on calendar', () => {

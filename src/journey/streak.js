@@ -10,17 +10,6 @@ function isDrinkingDayToday(data) {
   return log[todayKey] === 'drinking';
 }
 
-function isPostDrinkRestartDay(data) {
-  if (!data || (data.currentStreak | 0) > 0) return false;
-  if (isDrinkingDayToday(data)) return false;
-  const today = getAppToday(data);
-  const yest = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1, 12, 0, 0);
-  const yestKey = dateKey(yest);
-  const todayKey = dateKey(today);
-  const log = data.dailyLog || {};
-  return log[yestKey] === 'drinking' && log[todayKey] !== 'sober';
-}
-
 function inferStreakBeforeTodayDrink(data) {
   if (!data?.dailyLog) return 0;
   const today = getAppToday(data);

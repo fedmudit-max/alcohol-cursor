@@ -9,10 +9,9 @@ src/
 ├── main.js                 — boot
 ├── config/app.config.js
 ├── data/local-storage.js   — DataManager
-├── firebase.js, data/firestore.js — sync placeholders (not in index.html until wired)
 ├── journey/journey.js      — Tracker (TenDrinksTracker / legacy SoberTracker alias)
 ├── ui/renderAll.js
-├── assessment/audit.js
+├── assessment/          — AUDIT-C meter + questions
 ├── premium/premium.js
 ├── onboarding/onboarding.js
 ├── constants/
@@ -62,11 +61,39 @@ After pushing updates to GitHub, wait ~1 minute, then repeat step 2 if the icon 
 
 Use Live Server or `npx serve .` — open the folder URL. Service worker needs `http://`, not `file://`.
 
+## Android (Capacitor + Android Studio)
+
+**Prerequisites:** [Node.js](https://nodejs.org/) 20+, [Android Studio](https://developer.android.com/studio) (SDK 34+, JDK 17).
+
+```bash
+npm install
+npm run android          # build web assets, sync, open Android Studio
+```
+
+Or step by step:
+
+```bash
+npm run build            # dist/ + native Capacitor bridge
+npx cap sync android
+npx cap open android     # opens android/ in Android Studio
+```
+
+In Android Studio: wait for Gradle sync → **Run** on a device or emulator (API 24+).
+
+- **App ID:** `com.tendrinks.app` (`capacitor.config.json`)
+- **Web assets:** `dist/` (regenerate with `npm run build` before each native release)
+- **Service worker** is disabled inside the native WebView; the PWA shell still uses it on GitHub Pages.
+- **Daily reminder** (Settings): same hour/minute/AM–PM UI as laotzu101; Android uses `AlarmManager` + local notifications (`TenDrinksReminder` plugin). Allow notifications and “alarms & reminders” when prompted.
+
+**Play internal testing:** see [docs/PLAY_INTERNAL_TESTING.md](docs/PLAY_INTERNAL_TESTING.md). Signed AAB: configure `android/keystore.properties`, then `npm run android:bundle`.
+
+Or in Android Studio: **Build → Generate Signed Bundle / APK** (same upload keystore).
+
 ## Naming (Capacitor / store metadata)
 
 - **App:** `10Drinks` (`APP_DISPLAY_NAME` + `manifest.json`)
 - **Feature:** Journey — UI labels **Current Journey**, **Best Score**, **Streak**, **Science**
-- **Unchanged (data compat):** `localStorage` key `soberJourney_v1`, backup format `sober-journey-backup`, HTML `SoberTracker` onclick alias
+- **Unchanged (data compat):** `localStorage` key `soberJourney_v1`, HTML `SoberTracker` onclick alias; imports still accept legacy `sober-journey-backup` format
 
 ## Config (`src/config/app.config.js`)
 

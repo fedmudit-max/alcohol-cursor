@@ -57,6 +57,40 @@ const MeterController = {
     teaser.style.color = '';
   },
 
+  hasAuditSession(data) {
+    if (!data) return false;
+    return data.auditQ1 != null && data.auditQ2 != null && data.auditQ3 != null;
+  },
+
+  clearDisplay() {
+    if (!this.initialized) this.init();
+    if (!this.initialized || typeof d3 === 'undefined') return;
+
+    this.lastQ1 = null;
+    this.lastQ2 = null;
+    this.lastQ3 = null;
+    this.lastScore = null;
+    this.activeZoneIdx = -1;
+    this.currentAngle = -90;
+    this.targetAngle = -90;
+    cancelAnimationFrame(this.raf);
+    this._applyNeedle(-90);
+    d3.select('#mScore').text('—').attr('fill', '#c7c7cc');
+
+    const zoneLine = el('meterZoneLine');
+    if (zoneLine) {
+      zoneLine.style.display = 'none';
+      zoneLine.innerHTML = '';
+    }
+    const reduction = document.getElementById('reductionTargetCard');
+    if (reduction) reduction.style.display = 'none';
+  },
+
+  syncFromData(data) {
+    if (this.hasAuditSession(data)) this.updateFromJourney(data);
+    else this.clearDisplay();
+  },
+
   scoreToAngle(score) {
     // Score 12 = maximum = needle at far right end of arc (90°)
     if (score >= 12) return 90;

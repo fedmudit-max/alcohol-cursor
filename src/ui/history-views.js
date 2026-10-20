@@ -68,7 +68,9 @@ function countJourneyPendingLogDays(data) {
   if (!data || data.journeyPendingReset) return 0;
   const appToday = getAppToday(data);
   const todayKey = dateKey(appToday);
-  const startKey = data.journeyStartKey;
+  const startKey = typeof calendarJourneyFloorKey === 'function'
+    ? calendarJourneyFloorKey(data)
+    : (data.journeyStartKey || inferJourneyStartFromCalendarDay(data));
   const log = data.dailyLog || {};
   if (!startKey || startKey > todayKey) return 0;
   let n = 0;
@@ -113,7 +115,9 @@ function renderMonthGrid(data, targetYear, targetMonth) {
   const days  = new Date(targetYear, targetMonth + 1, 0).getDate();
   const first = new Date(targetYear, targetMonth, 1).getDay();
 
-  const journeyFloorKey = data.journeyStartKey || inferJourneyStartFromCalendarDay(data);
+  const journeyFloorKey = typeof calendarJourneyFloorKey === 'function'
+    ? calendarJourneyFloorKey(data)
+    : (data.journeyStartKey || inferJourneyStartFromCalendarDay(data));
   const historyAnchorKey = calendarHistoryAnchorKey(data);
   const anchorDate = noonFromDateKey(historyAnchorKey);
   const startYear  = anchorDate.getFullYear();

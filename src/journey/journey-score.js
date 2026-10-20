@@ -19,7 +19,9 @@ function recalculateJourneyScoreFromLog(d) {
   const scored = {};
   let success = 0;
   let failures = 0;
+  let journeyEnded = false;
   for (const k of journeyLogKeysInRange(d)) {
+    if (journeyEnded) break;
     const entry = d.dailyLog[k];
     if (entry === 'sober') {
       success++;
@@ -27,6 +29,7 @@ function recalculateJourneyScoreFromLog(d) {
     } else if (entry === 'drinking') {
       failures++;
       scored[k] = true;
+      if (failures >= JOURNEY_MAX_FAILURES) journeyEnded = true;
     }
   }
   d.currentScore = { success, failures };

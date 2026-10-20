@@ -22,8 +22,12 @@ UI.renderAll = function(data) {
     renderLifetimeStats(data);
     renderPremiumLocks(data);
     renderRemindersTab(data);
-    if (typeof MeterController !== 'undefined' && MeterController.syncHeaderTeaser) {
-      MeterController.syncHeaderTeaser(data);
+    if (typeof TenDrinksReminderNative !== 'undefined' && TenDrinksReminderNative.syncLoggedDate) {
+      TenDrinksReminderNative.syncLoggedDate(data);
+    }
+    if (typeof MeterController !== 'undefined') {
+      if (MeterController.syncHeaderTeaser) MeterController.syncHeaderTeaser(data);
+      if (MeterController.syncFromData) MeterController.syncFromData(data);
     }
   } catch (err) {
     console.error('[10Drinks] renderAll failed:', err);

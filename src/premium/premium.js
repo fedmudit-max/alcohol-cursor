@@ -505,7 +505,8 @@ function openPremiumOverlay() {
   if (overlay) {
     overlay.classList.add('active');
     overlay.setAttribute('aria-hidden', 'false');
-    document.body.classList.add('modal-open');
+    if (typeof lockBodyScroll === 'function') lockBodyScroll();
+    else document.body.classList.add('modal-open');
   }
 }
 
@@ -536,7 +537,8 @@ Tracker.closePremium = function() {
     overlay.classList.remove('active');
     overlay.setAttribute('aria-hidden', 'true');
   }
-  document.body.classList.remove('modal-open');
+  if (typeof unlockBodyScroll === 'function') unlockBodyScroll();
+  else document.body.classList.remove('modal-open');
 };
 
 Tracker.selectPremiumPlan = function(planId) {

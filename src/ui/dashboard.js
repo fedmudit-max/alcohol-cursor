@@ -171,9 +171,14 @@ const UI = {
   showModal(msg) {
     el('modalMessage').textContent = msg;
     el('confirmModal').classList.add('active');
-    document.body.classList.add('modal-open');
+    if (typeof lockBodyScroll === 'function') lockBodyScroll();
+    else document.body.classList.add('modal-open');
   },
-  hideModal() { el('confirmModal').classList.remove('active'); document.body.classList.remove('modal-open'); }
+  hideModal() {
+    el('confirmModal').classList.remove('active');
+    if (typeof unlockBodyScroll === 'function') unlockBodyScroll();
+    else document.body.classList.remove('modal-open');
+  }
 };
 
 // Drinking-days shelf (10 slots) — must run on every UI.renderAll (not only from main.js)
@@ -195,28 +200,6 @@ function renderChances(data) {
   if (info) info.textContent = String(remaining);
 }
 
-function computeAuditScore(q1, q2, q3) {
-  return (q1 || 0) + (q2 || 0) + (q3 || 0);
-}
-
-// Returns which drinking behaviour is the biggest contributor
-// Used to give personalised feedback in the meter card
-function getLever(q1, q2, q3) {
-  if (q1 >= q2 && q1 >= q3) return 'Drink less frequently.';
-  if (q2 >= q1 && q2 >= q3) return 'Have fewer drinks per session.';
-  return 'Reduce heavy sessions.';
-}
-
-
-// Returns true if a journey trophy should be awarded right now
-function isTrophyEarned(successCount, trophyDays, celebratedTrophies) {
-  return successCount === trophyDays && !celebratedTrophies[trophyDays];
-}
-
-function isScienceMilestoneEarned(streak, nodeDay, celebratedScienceMilestones) {
-  return streak === nodeDay && !celebratedScienceMilestones[nodeDay];
-}
-
 // Returns integer days between an ISO date string and ref day (default: real today)
 function daysSince(isoString, refDate) {
   const last = new Date(isoString);
@@ -228,91 +211,6 @@ function daysSince(isoString, refDate) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-
-const SCIENCE_NODES = [
-  {
-    day: 1, organ: '🫀', label: 'Day 1',
-    title: 'Heart & Blood',
-    change: 'Alcohol is gradually cleared from the body. How long this takes depends on factors including how much was consumed and individual metabolism. The brain begins adapting as alcohol exposure decreases. Heart rate and blood pressure begin returning to baseline.',
-    cite: '',
-    c: { emoji: '🫀', title: 'Day 1 — Heart & Blood', msg: 'Blood alcohol is clearing. The brain begins adapting as alcohol exposure decreases.\n\nHeart rate and blood pressure are beginning to return to baseline.' }
-  },
-  {
-    day: 3, organ: '🫁', label: 'Day 3',
-    title: 'Body Adjusting',
-    change: 'Alcohol may be largely cleared from the bloodstream by this stage, depending on how much and when you last drank. The body continues adjusting as alcohol exposure decreases. Withdrawal symptoms can vary widely; if symptoms are severe or concerning, seek medical help.',
-    cite: '',
-    c: { emoji: '🫁', title: 'Day 3 — Body Adjusting', msg: 'Three days strong. The body continues adjusting to lower alcohol exposure. Withdrawal symptoms can vary widely; if symptoms are severe or concerning, seek medical help.' }
-  },
-  {
-    day: 7, organ: '🧠', label: 'Day 7',
-    title: 'Brain Chemistry',
-    change: 'Brain reward pathways can begin adapting as alcohol exposure decreases. Sleep and mood may begin to improve as the body adjusts.',
-    cite: '',
-    c: { emoji: '🧠', title: 'Day 7 — Brain Adapting', msg: 'One week. Brain reward pathways can begin adapting as alcohol exposure decreases.\n\nSleep and mood may begin to improve as the body adjusts.' }
-  },
-  {
-    day: 14, organ: '🌿', label: 'Day 14',
-    title: 'Liver & Blood Pressure',
-    change: 'Changes in the gut microbiome may begin as alcohol exposure decreases. Reducing alcohol can support healthier blood pressure. The amount and timing of change vary from person to person. Sleep patterns may continue to adjust as alcohol exposure decreases.',
-    cite: '',
-    c: { emoji: '🌿', title: 'Day 14 — Two Weeks', msg: 'Changes in the gut microbiome may begin as alcohol exposure decreases.\n\nReducing alcohol can support healthier blood pressure. The amount and timing of change vary from person to person.\n\nSleep patterns may continue to adjust as alcohol exposure decreases.' }
-  },
-  {
-    day: 21, organ: '🛡️', label: 'Day 21',
-    title: 'Immune System',
-    change: 'Immune function may begin to improve as alcohol exposure decreases. Cardiovascular health can begin to improve as alcohol exposure decreases.',
-    cite: '',
-    c: { emoji: '🛡️', title: 'Day 21 — Immune System', msg: 'Three weeks. Immune function may begin to improve as alcohol exposure decreases.\n\nCardiovascular health can begin to improve as alcohol exposure decreases.' }
-  },
-  {
-    day: 28, organ: '💎', label: 'Day 28',
-    title: 'Full Month',
-    change: 'Some people notice improvements in sleep, mood, energy, or overall wellbeing by this point. Cardiovascular health can improve with sustained reduction or abstinence; the extent and timing vary by person.',
-    cite: '',
-    c: { emoji: '💎', title: 'Day 28 — Full Month', msg: 'Four weeks without alcohol.\n\nSome people notice improvements in sleep, mood, energy, or overall wellbeing by this point.\n\nCardiovascular health can improve with sustained reduction or abstinence; the extent and timing vary by person.' }
-  },
-  {
-    day: 30, organ: '🫀', label: 'Day 30',
-    title: 'Blood Pressure & Cancer Risk',
-    change: 'With continued reduction or abstinence, blood pressure may improve over time. Some cardiovascular and cancer risk factors may begin to improve over time.',
-    cite: '',
-    hiddenUntil: 28,
-    c: { emoji: '🫀', title: 'Day 30 — Blood Pressure', msg: '30 days. With continued reduction or abstinence, blood pressure may improve over time.\n\nSome cardiovascular and cancer risk factors may begin to improve over time.' }
-  },
-  {
-    day: 60, organ: '🧠', label: 'Day 60',
-    title: 'Liver & Cognition',
-    change: 'For some people, reducing or stopping alcohol can allow fatty changes in the liver to improve. Some people experience improvements in memory, concentration, or thinking as the brain adjusts over time.',
-    cite: '',
-    hiddenUntil: 30,
-    c: { emoji: '🧠', title: 'Day 60 — Liver & Cognition', msg: '60 days. For some people, reducing or stopping alcohol can allow fatty changes in the liver to improve.\n\nSome people experience improvements in memory, concentration, or thinking as the brain adjusts over time.' }
-  },
-  {
-    day: 90, organ: '🧬', label: 'Day 90',
-    title: 'Brain, Heart & Gut',
-    change: 'The brain continues adapting to lower alcohol exposure. Recovery can continue over months and varies between people. Reducing alcohol can lower some cardiovascular risks over time. The gut microbiome can change as alcohol exposure decreases, although the timing and extent vary between people.',
-    cite: '',
-    hiddenUntil: 60,
-    c: { emoji: '🧬', title: 'Day 90 — Brain, Heart & Gut', msg: '90 days. The brain continues adapting to lower alcohol exposure. Recovery can continue over months and varies between people.\n\nReducing alcohol can lower some cardiovascular risks over time.\n\nThe gut microbiome can change as alcohol exposure decreases, although the timing and extent vary between people.' }
-  },
-  {
-    day: 180, organ: '🫁', label: 'Day 180',
-    title: 'Liver Recovery & Immunity',
-    change: 'Liver fibrosis may begin to reverse in some early-stage cases with sustained abstinence. Longer periods of reduced alcohol exposure can support immune function and overall health.',
-    cite: '',
-    hiddenUntil: 60,
-    c: { emoji: '🫁', title: 'Day 180 — Liver Recovery', msg: '180 days. Liver fibrosis may begin to reverse in some early-stage cases with sustained abstinence.\n\nLonger periods of reduced alcohol exposure can support immune function and overall health.' }
-  },
-  {
-    day: 365, organ: '💚', label: 'Day 365',
-    title: 'Cardiovascular Reset',
-    change: 'Cardiovascular health can improve with sustained reduction or abstinence; the extent and timing vary by person (Ronksley et al., BMJ 2011).',
-    cite: 'Ronksley et al., BMJ 2011',
-    hiddenUntil: 180,
-    c: { emoji: '💚', title: 'Day 365 — One Full Year', msg: 'One year sober.\n\nCardiovascular health can improve with sustained reduction or abstinence; the extent and timing vary by person.\n\nThis is not luck. This is who you are.' }
-  },
-];
 
 function toggleSciNode(idx) {
   SCIENCE_NODES.forEach((_, i) => {
@@ -456,45 +354,6 @@ window.addEventListener('unhandledrejection', function(e) {
 // ═══════════════════════════════════════════════════════════════
 // BOOT — runs once when page loads
 // ═══════════════════════════════════════════════════════════════
-function scrollToPostTestView() {
-  function run() {
-    if (typeof Tracker.expandRiskMeter === 'function') Tracker.expandRiskMeter();
-    const scoreEl = el('currentCard');
-    const meterCard = el('riskMeterCard') || (el('assessBtn') && el('assessBtn').closest('.card'));
-    const reduction = el('reductionTargetCard');
-    if (!meterCard) return;
-
-    const vh = window.innerHeight;
-    const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
-
-    const topStart = (scoreEl || meterCard).getBoundingClientRect().top + scrollY;
-    const topEnd = meterCard.getBoundingClientRect().bottom + scrollY;
-
-    let bottomStart = topEnd;
-    if (reduction && reduction.style.display !== 'none') {
-      bottomStart = reduction.getBoundingClientRect().top + scrollY;
-    }
-
-    const bottomEnd = reduction && reduction.style.display !== 'none'
-      ? reduction.getBoundingClientRect().bottom + scrollY
-      : bottomStart + 140;
-
-    // Place boundary between meter (top block) and targets (bottom block) at screen centre
-    const splitY = (topEnd + bottomStart) / 2;
-    let target = splitY - vh / 2;
-
-    const minScroll = topStart - vh * 0.06;
-    const maxScroll = Math.max(0, bottomEnd - vh * 0.94);
-    target = Math.max(minScroll, Math.min(target, maxScroll));
-    target = Math.max(0, target);
-
-    window.scrollTo({ top: target, behavior: 'smooth' });
-  }
-
-  requestAnimationFrame(() => setTimeout(run, 80));
-  setTimeout(run, 320);
-}
-
 const WELCOME_HINT_STEP1_KEY = 'sj_welcome_step1_done';
 const WELCOME_HINT_DISMISSED_KEY = 'sj_welcome_dismissed';
 

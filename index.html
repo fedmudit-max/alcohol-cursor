@@ -144,6 +144,33 @@
     </div>
   </div>
 
+  <!-- MONTHLY GRID -->
+  <div class="card" id="monthGridCard" data-premium-feature="monthGrid" style="animation:fadeInUp 0.4s ease 0.22s both;margin-top:12px;">
+    <button onclick="SoberTracker.toggleMonthGrid()" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;min-height:44px;">
+      <div style="font-size:13px;font-weight:700;color:#1c1c1e;">📅 Calendar</div>
+      <span id="monthGridToggleBtn" style="font-size:12px;font-weight:500;color:rgba(60,60,67,0.4);">Show ▾</span>
+    </button>
+    <div id="monthGridBody" style="display:none;padding:0 16px 16px;">
+      <div class="cal-nav-header">
+        <button type="button" class="month-nav-btn" onclick="SoberTracker.calendarPrev()" id="calPrevBtn" aria-label="Previous month">‹</button>
+        <div style="text-align:center;">
+          <div style="font-size:13px;font-weight:700;color:#1c1c1e;" id="monthGridMonthLabel"></div>
+          <div id="monthGridSubtitle" style="display:none;"></div>
+        </div>
+        <button type="button" class="month-nav-btn" onclick="SoberTracker.calendarNext()" id="calNextBtn" aria-label="Next month">›</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:3px;" id="monthDayLabels"></div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;" id="monthGrid"></div>
+      <div id="monthGridBackfillHint" class="month-grid-backfill-hint" role="status" hidden></div>
+      <div class="cal-legend" role="list" aria-label="Calendar legend">
+        <span class="cal-legend-item" role="listitem"><span class="cal-legend-swatch cal-legend-swatch--sober" aria-hidden="true"></span><span id="calLegendSober">Sober days</span></span>
+        <span class="cal-legend-item" role="listitem"><span class="cal-legend-swatch cal-legend-swatch--drink" aria-hidden="true"></span><span id="calLegendDrink">Drinking days</span></span>
+        <span id="calLegendPending" hidden><span class="cal-legend-pending-swatch" aria-hidden="true"></span>Tap to log missed day</span>
+      </div>
+      <div id="monthEmptyState" style="display:none;text-align:center;font-size:11px;color:rgba(60,60,67,0.3);padding:6px 0 2px;">Start logging to fill your month</div>
+    </div>
+  </div>
+
   <!-- BEST SCORES — top-3 journey sober-day totals -->
   <div class="card" id="bestPerformancesCard" data-premium-feature="journeyChart" style="animation:fadeInUp 0.4s ease 0.22s both;margin-top:12px;">
     <button type="button" id="bestPerformancesPanelToggle" onclick="SoberTracker.toggleBestPerformances()" aria-expanded="false" aria-controls="bestPerformancesBody" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;min-height:44px;">
@@ -182,33 +209,6 @@
         <div style="font-size:13px;font-weight:700;color:#1c1c1e;">🎯 Reduction Goal</div>
       </div>
       <div id="reductionTargetBody"></div>
-    </div>
-  </div>
-
-  <!-- MONTHLY GRID -->
-  <div class="card" id="monthGridCard" data-premium-feature="monthGrid" style="animation:fadeInUp 0.4s ease 0.3s both;margin-top:12px;">
-    <button onclick="SoberTracker.toggleMonthGrid()" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;min-height:44px;">
-      <div style="font-size:13px;font-weight:700;color:#1c1c1e;">📅 Calendar</div>
-      <span id="monthGridToggleBtn" style="font-size:12px;font-weight:500;color:rgba(60,60,67,0.4);">Show ▾</span>
-    </button>
-    <div id="monthGridBody" style="display:none;padding:0 16px 16px;">
-      <div class="cal-nav-header">
-        <button type="button" class="month-nav-btn" onclick="SoberTracker.calendarPrev()" id="calPrevBtn" aria-label="Previous month">‹</button>
-        <div style="text-align:center;">
-          <div style="font-size:13px;font-weight:700;color:#1c1c1e;" id="monthGridMonthLabel"></div>
-          <div id="monthGridSubtitle" style="display:none;"></div>
-        </div>
-        <button type="button" class="month-nav-btn" onclick="SoberTracker.calendarNext()" id="calNextBtn" aria-label="Next month">›</button>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:3px;" id="monthDayLabels"></div>
-      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;" id="monthGrid"></div>
-      <div id="monthGridBackfillHint" class="month-grid-backfill-hint" role="status" hidden></div>
-      <div class="cal-legend" role="list" aria-label="Calendar legend">
-        <span class="cal-legend-item" role="listitem"><span class="cal-legend-swatch cal-legend-swatch--sober" aria-hidden="true"></span><span id="calLegendSober">Sober days</span></span>
-        <span class="cal-legend-item" role="listitem"><span class="cal-legend-swatch cal-legend-swatch--drink" aria-hidden="true"></span><span id="calLegendDrink">Drinking days</span></span>
-        <span id="calLegendPending" hidden><span class="cal-legend-pending-swatch" aria-hidden="true"></span>Tap to log missed day</span>
-      </div>
-      <div id="monthEmptyState" style="display:none;text-align:center;font-size:11px;color:rgba(60,60,67,0.3);padding:6px 0 2px;">Start logging to fill your month</div>
     </div>
   </div>
 
@@ -278,7 +278,8 @@
           <button type="button" class="settings-row" onclick="SoberTracker.openTenDrinksGuideFromSettings()">
             <img class="settings-row-icon settings-row-app-logo" src="assets/icons/icon-192.png" width="30" height="30" alt="" aria-hidden="true">
             <span class="settings-row-text">
-              <span class="settings-row-title">How 10 Drinks Works</span>
+              <span class="settings-row-title">How 10Drinks Help You Cut Back/Quit</span>
+              <span class="settings-row-sub">10Drinks is a self-tracking and educational tool, not a medical device. It does not diagnose, treat, cure, or prevent alcohol use disorder or any other medical condition.</span>
             </span>
             <span class="settings-row-chevron" aria-hidden="true">›</span>
           </button>
@@ -396,17 +397,18 @@
       <p>Journey data stays on this device in your browser storage. We do not run accounts or upload your log to our servers.</p>
       <p>Drink-risk (AUDIT-C) answers are kept for this session only and are not saved when you close the app.</p>
       <p>Export creates a file you control. Reset all data clears progress on this device only.</p>
+      <p><a class="privacy-policy-external" id="privacyPolicyFullLink" href="https://splendid-hamster-833d21.netlify.app/" target="_blank" rel="noopener noreferrer">Read the full privacy policy online</a></p>
     </div>
     <button type="button" class="settings-done-btn privacy-policy-done" onclick="SoberTracker.closePrivacyPolicy()">Done</button>
   </div>
 </div>
 
 <!-- HOW 10 DRINKS WORKS MODAL -->
-<div class="winning-ways-modal" id="tenDrinksGuideModal" role="dialog" aria-modal="true" aria-labelledby="tenDrinksGuideTitle">
+<div class="bottom-sheet-modal" id="tenDrinksGuideModal" role="dialog" aria-modal="true" aria-labelledby="tenDrinksGuideTitle">
   <div style="background:white;border-radius:24px 24px 0 0;padding:28px 20px 48px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;">
     <div style="width:36px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 20px;"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-      <div id="tenDrinksGuideTitle" style="font-size:18px;font-weight:800;color:#1c1c1e;">How 10 Drinks helps you cut back or quit</div>
+      <div id="tenDrinksGuideTitle" style="font-size:18px;font-weight:800;color:#1c1c1e;">How 10Drinks Help You Cut Back/Quit</div>
       <button type="button" onclick="SoberTracker.closeTenDrinksGuide()" aria-label="Close" style="background:rgba(60,60,67,0.08);border:none;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;">✕</button>
     </div>
     <div class="ten-drinks-guide">
@@ -432,25 +434,6 @@
       <p class="ten-drinks-guide-foot">Logging honestly is the win. Each journey is a fresh chance to beat your Best Score.</p>
     </div>
     <button type="button" onclick="SoberTracker.closeTenDrinksGuide()" style="width:100%;margin-top:20px;padding:14px;background:#34c759;border:none;border-radius:14px;color:white;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;">Got it</button>
-  </div>
-</div>
-
-<!-- WINNING WAYS MODAL -->
-<div class="winning-ways-modal" id="winningWaysModal">
-  <div style="background:white;border-radius:24px 24px 0 0;padding:28px 20px 48px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;">
-    <div style="width:36px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 20px;"></div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-      <div style="font-size:18px;font-weight:800;color:#1c1c1e;">🏆 Ways You Are Winning</div>
-      <button onclick="SoberTracker.closeWinningWays()" style="background:rgba(60,60,67,0.08);border:none;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;">✕</button>
-    </div>
-    <div style="font-size:13px;color:rgba(60,60,67,0.6);margin-bottom:20px;line-height:1.5;">Progress comes in many forms. The score is just one of them.</div>
-    <div style="display:flex;flex-direction:column;gap:0;">
-      <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid rgba(60,60,67,0.06);"><span style="font-size:18px;">🎯</span><div><div style="font-size:13px;font-weight:600;">Beat your last journey score</div><div style="font-size:12px;color:rgba(60,60,67,0.6);margin-top:2px;line-height:1.5;">Each journey — can you score more sober days than the last?</div></div></div>
-      <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid rgba(60,60,67,0.06);"><span style="font-size:18px;">⚡</span><div><div style="font-size:13px;font-weight:600;">Set a new personal best streak</div><div style="font-size:12px;color:rgba(60,60,67,0.6);margin-top:2px;line-height:1.5;">How many consecutive sober days can you reach?</div></div></div>
-      <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid rgba(60,60,67,0.06);"><span style="font-size:18px;">🚫</span><div><div style="font-size:13px;font-weight:600;">Eliminate binge sessions</div><div style="font-size:12px;color:rgba(60,60,67,0.6);margin-top:2px;line-height:1.5;">Avoid heavy drinking occasions. The amount of alcohol in a given volume depends on the drink&apos;s strength (ABV). For 40% whisky, 180 ml is approximately 5.7 standard drinks of 10 g alcohol each.</div></div></div>
-      <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;"><span style="font-size:18px;">📓</span><div><div style="font-size:13px;font-weight:600;">Log every day</div><div style="font-size:12px;color:rgba(60,60,67,0.6);margin-top:2px;line-height:1.5;">Awareness is the first step. Knowing your pattern honestly is winning.</div></div></div>
-    </div>
-    <button onclick="SoberTracker.closeWinningWays()" style="width:100%;margin-top:16px;padding:14px;background:#34c759;border:none;border-radius:14px;color:white;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;">Got it</button>
   </div>
 </div>
 
@@ -485,6 +468,7 @@
     <!-- Screen 2 — Journey example (matches laotzu101) -->
     <div class="ob-slide" id="ob-1" style="display:none;">
       <div class="onboarding-journey-scroll">
+        <p class="onb-journey-formula-box">A Journey is your sober days scored against 10 drinking days.</p>
         <div class="onb-journey-example-divider">— Example —</div>
 
         <table class="onb-journey-example-table" aria-label="Example journeys">
@@ -569,8 +553,8 @@
 
     <!-- Step 2: Q2 -->
     <div id="audit-step-2" style="display:none;">
-      <div style="font-size:14px;font-weight:600;color:#1c1c1e;margin-bottom:4px;">How many pegs on a typical drinking day?</div>
-      <div style="font-size:10px;color:rgba(60,60,67,0.35);margin-bottom:12px;line-height:1.45;">For this test: 1 standard drink ≈ 30 ml of 40% whisky (about 10 g alcohol).</div>
+      <div style="font-size:14px;font-weight:600;color:#1c1c1e;margin-bottom:4px;">How many standard drinks do you have on a typical drinking day?</div>
+      <div style="font-size:10px;color:rgba(60,60,67,0.35);margin-bottom:12px;line-height:1.45;">For reference: 1 standard drink ≈ 30 ml of 40% whisky (about 10 g alcohol).</div>
 
       <!-- Beer button — visible, tap to expand -->
       <div style="border:1.5px solid rgba(60,60,67,0.12);border-radius:12px;overflow:hidden;margin-bottom:12px;">
@@ -579,40 +563,40 @@
           font-size:13px;font-weight:500;color:rgba(60,60,67,0.6);cursor:pointer;
           font-family:inherit;text-align:left;display:flex;align-items:center;
           justify-content:space-between;min-height:44px;">
-          <span>🍺 I drink beer — how many pegs is that?</span>
+          <span>🍺 I drink beer — how many drinks is that?</span>
           <span id="q2arr" style="font-size:18px;color:rgba(60,60,67,0.35);transition:transform 0.2s;">▸</span>
         </button>
         <div id="q2beer" style="display:none;border-top:1px solid rgba(60,60,67,0.08);padding:12px 14px;background:white;">
           <div style="display:grid;grid-template-columns:auto 1fr auto;gap:6px 12px;align-items:center;">
             <div style="font-size:11px;font-weight:600;color:rgba(60,60,67,0.4);padding-bottom:4px;">BOTTLE</div>
             <div style="font-size:11px;font-weight:600;color:rgba(60,60,67,0.4);padding-bottom:4px;">TYPE</div>
-            <div style="font-size:11px;font-weight:600;color:rgba(60,60,67,0.4);padding-bottom:4px;text-align:right;">PEGS</div>
+            <div style="font-size:11px;font-weight:600;color:rgba(60,60,67,0.4);padding-bottom:4px;text-align:right;">DRINKS</div>
 
             <div style="font-size:13px;color:#1c1c1e;">650ml</div>
             <div style="font-size:12px;color:rgba(60,60,67,0.5);">Strong (7.5% ABV)</div>
-            <div style="font-size:13px;font-weight:700;color:#cc6600;text-align:right;">≈ 4 pegs</div>
+            <div style="font-size:13px;font-weight:700;color:#cc6600;text-align:right;">≈ 4 drinks</div>
 
             <div style="font-size:13px;color:#1c1c1e;">500ml</div>
             <div style="font-size:12px;color:rgba(60,60,67,0.5);">Strong (7.5% ABV)</div>
-            <div style="font-size:13px;font-weight:700;color:#cc6600;text-align:right;">≈ 3 pegs</div>
+            <div style="font-size:13px;font-weight:700;color:#cc6600;text-align:right;">≈ 3 drinks</div>
 
             <div style="font-size:13px;color:#1c1c1e;">650ml</div>
             <div style="font-size:12px;color:rgba(60,60,67,0.5);">Regular (5% ABV)</div>
-            <div style="font-size:13px;font-weight:600;color:rgba(60,60,67,0.6);text-align:right;">≈ 2.5 pegs</div>
+            <div style="font-size:13px;font-weight:600;color:rgba(60,60,67,0.6);text-align:right;">≈ 2.5 drinks</div>
 
             <div style="font-size:13px;color:#1c1c1e;">500ml</div>
             <div style="font-size:12px;color:rgba(60,60,67,0.5);">Regular (5% ABV)</div>
-            <div style="font-size:13px;font-weight:600;color:rgba(60,60,67,0.6);text-align:right;">≈ 2 pegs</div>
+            <div style="font-size:13px;font-weight:600;color:rgba(60,60,67,0.6);text-align:right;">≈ 2 drinks</div>
           </div>
         </div>
       </div>
 
       <div style="display:flex;flex-direction:column;gap:8px;" id="q2Options">
-        <button onclick="AuditOnboarding.select(2,0)" class="audit-opt" data-val="0"><span class="audit-badge">0</span><span>1 or 2 pegs <span style="color:rgba(60,60,67,0.4);font-size:11px;">(30 or 60ml)</span></span></button>
-        <button onclick="AuditOnboarding.select(2,1)" class="audit-opt" data-val="1"><span class="audit-badge">1</span><span>3 or 4 pegs <span style="color:rgba(60,60,67,0.4);font-size:11px;">(90 or 120ml)</span></span></button>
-        <button onclick="AuditOnboarding.select(2,2)" class="audit-opt" data-val="2"><span class="audit-badge">2</span><span>5 or 6 pegs <span style="color:rgba(60,60,67,0.4);font-size:11px;">(~150–180 ml @ 40% whisky)</span></span></button>
-        <button onclick="AuditOnboarding.select(2,3)" class="audit-opt" data-val="3"><span class="audit-badge">3</span><span>7, 8 or 9 pegs <span style="color:rgba(60,60,67,0.4);font-size:11px;">(210 to 270ml)</span></span></button>
-        <button onclick="AuditOnboarding.select(2,4)" class="audit-opt" data-val="4"><span class="audit-badge">4</span><span>10 or more pegs <span style="color:rgba(60,60,67,0.4);font-size:11px;">(300ml+)</span></span></button>
+        <button onclick="AuditOnboarding.select(2,0)" class="audit-opt" data-val="0"><span class="audit-badge">0</span><span>1 or 2 drinks <span style="color:rgba(60,60,67,0.4);font-size:11px;">(30 or 60ml)</span></span></button>
+        <button onclick="AuditOnboarding.select(2,1)" class="audit-opt" data-val="1"><span class="audit-badge">1</span><span>3 or 4 drinks <span style="color:rgba(60,60,67,0.4);font-size:11px;">(90 or 120ml)</span></span></button>
+        <button onclick="AuditOnboarding.select(2,2)" class="audit-opt" data-val="2"><span class="audit-badge">2</span><span>5 or 6 drinks <span style="color:rgba(60,60,67,0.4);font-size:11px;">(~150–180 ml @ 40% whisky)</span></span></button>
+        <button onclick="AuditOnboarding.select(2,3)" class="audit-opt" data-val="3"><span class="audit-badge">3</span><span>7, 8 or 9 drinks <span style="color:rgba(60,60,67,0.4);font-size:11px;">(210 to 270ml)</span></span></button>
+        <button onclick="AuditOnboarding.select(2,4)" class="audit-opt" data-val="4"><span class="audit-badge">4</span><span>10 or more drinks <span style="color:rgba(60,60,67,0.4);font-size:11px;">(300ml+)</span></span></button>
       </div>
     </div>
 
@@ -711,6 +695,17 @@
   </div>
 </div>
 
+<!-- EXPORT CHOICE (Android — Downloads or system folder picker) -->
+<div class="modal" id="exportChoiceModal" aria-hidden="true">
+  <div class="modal-card export-choice-card" role="dialog" aria-modal="true" aria-labelledby="exportChoiceTitle" onclick="event.stopPropagation()">
+    <h3 id="exportChoiceTitle">Export progress</h3>
+    <p class="export-choice-note">Save your backup on this device.</p>
+    <button type="button" class="export-choice-btn" data-export-action="downloads">Save to Downloads</button>
+    <button type="button" class="export-choice-btn" data-export-action="folder">Choose folder</button>
+    <button type="button" class="export-choice-cancel" data-export-action="cancel">Cancel</button>
+  </div>
+</div>
+
 <!-- CONFIRM MODAL -->
 <div class="modal" id="confirmModal">
   <div class="modal-content">
@@ -786,6 +781,7 @@
 <script src="src/utils/dates.js"></script>
 <script src="src/utils/helpers.js"></script>
 <script src="src/constants/milestones.js"></script>
+<script src="src/constants/science-nodes.js"></script>
 <script src="src/journey/streak.js"></script>
 <script src="src/journey/journey-score.js"></script>
 <script src="src/journey/best-performances.js"></script>
@@ -797,6 +793,7 @@
 <script src="src/journey/midnight.js"></script>
 <script src="src/journey/daily-msg.js"></script>
 <script src="src/journey/journey.js"></script>
+<script src="src/ui/reminder-native.js"></script>
 <script src="src/ui/reminders.js"></script>
 <script src="src/ui/panels.js"></script>
 <script src="src/premium/pricing.js"></script>
@@ -807,7 +804,7 @@
 <script src="src/assessment/meter.js"></script>
 <script src="src/assessment/questions.js"></script>
 <script src="src/constants/dyk.js"></script>
-<script src="src/dev/next-day-test.js"></script>
+<script src="src/capacitor/native.bundle.js" defer></script>
 <script src="src/main.js"></script>
 
 </body>

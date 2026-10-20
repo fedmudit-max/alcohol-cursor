@@ -18,6 +18,9 @@ function boot() {
   }
 
   // Start the app — always dismiss splash even if init throws
+  const privacyLink = el('privacyPolicyFullLink');
+  if (privacyLink && CONFIG.privacyPolicyUrl) privacyLink.href = CONFIG.privacyPolicyUrl;
+
   try {
     Tracker.init();
     bindMonthGridCalendarClicks();
@@ -52,8 +55,13 @@ function boot() {
     setTimeout(() => Onboarding.show(), 350);
   }
 
-  // Personal PWA — offline shell + install support
-  if (CONFIG.isProduction && 'serviceWorker' in navigator) {
+  // Personal PWA — offline shell (skip in Capacitor WebView; native shell uses bundled assets)
+  const isNativeShell =
+    typeof window !== 'undefined' &&
+    window.Capacitor &&
+    typeof window.Capacitor.isNativePlatform === 'function' &&
+    window.Capacitor.isNativePlatform();
+  if (CONFIG.isProduction && !isNativeShell && 'serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register(new URL('sw.js', window.location.href), { scope: './' })
         .then((reg) => reg.update())
@@ -62,12 +70,11 @@ function boot() {
   }
 }
 
-// Android back button — close any open modal instead of closing the app
-window.addEventListener('popstate', function() {
-  // Close modals in priority order
+// Android back / history — close modals before exiting the app
+function TenDrinks_handleAndroidBack() {
   const modals = [
     'auditModal', 'celebrationModal', 'confirmModal',
-    'acknowledgeModal', 'yesterdayModal', 'calendarDayModal', 'onboardingOverlay'
+    'acknowledgeModal', 'yesterdayModal', 'calendarDayModal', 'exportChoiceModal', 'onboardingOverlay'
   ];
   for (const id of modals) {
     const m = el(id);
@@ -78,13 +85,15 @@ window.addEventListener('popstate', function() {
         m.classList.remove('active', 'open');
         m.style.display = 'none';
       }
-      document.body.classList.remove('modal-open');
-      // Push state again so next back press works
+      if (typeof forceUnlockBodyScroll === 'function') forceUnlockBodyScroll();
+      else document.body.classList.remove('modal-open');
       history.pushState(null, '', window.location.href);
       return;
     }
   }
-});
+}
+window.TenDrinks_handleAndroidBack = TenDrinks_handleAndroidBack;
+window.addEventListener('popstate', TenDrinks_handleAndroidBack);
 
 // Push initial state so back button works
 history.pushState(null, '', window.location.href);
@@ -142,6 +151,34 @@ function _getReductionLever(q1, q2, q3) {
   if (b >= 3) return 'quantity';
   if (a >= 3) return 'frequency';
   return 'maintain';
+}
+
+/** Pick a focus lever when total score is elevated but no single item hit legacy thresholds. */
+function _resolveReductionLever(q1, q2, q3, score) {
+  const lever = _getReductionLever(q1, q2, q3);
+  if (lever !== 'maintain' || score < AUDIT_HAZARDOUS_SCORE) return lever;
+  const a = q1 | 0;
+  const b = q2 | 0;
+  const c = q3 | 0;
+  if (c >= 2) return 'binge';
+  if (b >= a) return 'quantity';
+  return 'frequency';
+}
+
+function _zoneAlignedReductionCopy(zoneIdx, baseCopy) {
+  if (zoneIdx >= 3) {
+    return {
+      ...baseCopy,
+      headline: 'Your screening score is in a harmful range',
+    };
+  }
+  if (zoneIdx >= 2) {
+    return {
+      ...baseCopy,
+      headline: 'Your screening score is in a hazardous range',
+    };
+  }
+  return baseCopy;
 }
 
 const REDUCTION_LEVER_COPY = {
@@ -228,8 +265,8 @@ function renderReductionTarget(data) {
     return;
   }
 
-  const lever = _getReductionLever(q1, q2, q3);
-  const copy = REDUCTION_LEVER_COPY[lever];
+  const lever = _resolveReductionLever(q1, q2, q3, score);
+  const copy = _zoneAlignedReductionCopy(zoneIdx, REDUCTION_LEVER_COPY[lever]);
   const secondaryList = copy.secondary
     .map((item) => `<li style="margin-bottom:4px;">${item}</li>`)
     .join('');
@@ -250,8 +287,18 @@ function renderReductionTarget(data) {
       </div>`
     : '';
 
+  let accentBg = 'rgba(52,199,89,0.05)';
+  let accentBorder = 'rgba(52,199,89,0.3)';
+  if (zoneIdx >= 3) {
+    accentBg = 'rgba(255,59,48,0.08)';
+    accentBorder = 'rgba(255,59,48,0.45)';
+  } else if (zoneIdx >= 2) {
+    accentBg = 'rgba(255,149,0,0.08)';
+    accentBorder = 'rgba(255,149,0,0.45)';
+  }
+
   body.innerHTML = `
-    <div style="padding:10px 14px;background:rgba(52,199,89,0.05);border-radius:10px;border-left:3px solid rgba(52,199,89,0.3);">
+    <div style="padding:10px 14px;background:${accentBg};border-radius:10px;border-left:3px solid ${accentBorder};">
       <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:rgba(28,28,30,0.9);line-height:1.45;">${copy.headline}</p>
       <p style="margin:0 0 10px;font-size:12px;color:rgba(60,60,67,0.7);line-height:1.65;">${copy.detail}</p>
       <p style="margin:0 0 6px;font-size:11px;font-weight:600;color:rgba(60,60,67,0.55);">You may also find it helpful to:</p>
@@ -262,9 +309,6 @@ function renderReductionTarget(data) {
     ${footer}`;
 }
 
-// ── WINNING WAYS ──────────────────────────────────────────────
-SoberTracker.showWinningWays   = function() { const m=document.getElementById('winningWaysModal'); if(m) m.classList.add('open'); };
-SoberTracker.closeWinningWays  = function() { const m=document.getElementById('winningWaysModal'); if(m) m.classList.remove('open'); };
 // ── PATCH renderAll ───────────────────────────────────────────
 const _origRenderAll = UI.renderAll.bind(UI);
 UI.renderAll = function(data) {

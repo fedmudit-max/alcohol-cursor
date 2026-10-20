@@ -5,8 +5,6 @@
 
 function shouldAskYesterday(data) {
   if (!data || data.journeyPendingReset) return false;
-  const cal = Math.max(1, parseInt(data.calendarDay, 10) || 1);
-  if (cal === 1) return false;
   if (!data.scoredDays) data.scoredDays = {};
   const yestKey = calendarYesterdayKey(data);
   const startKey =
@@ -120,15 +118,30 @@ Tracker._catchUp = function() {
     return;
   }
 
-  // Land on today — never auto-log yesterday; ask the user instead
-  this.data.calendarDay++;
+  if ((this.data.currentScore?.failures | 0) >= JOURNEY_MAX_FAILURES) {
+    if (!this.data.journeyPendingReset) this._endJourney();
+    DataManager.saveNow(this.data);
+    UI.renderAll(this.data);
+    return;
+  }
+
+  // Land on today — never auto-log missed days; ask about yesterday only
   this.data.todayStatus = 'none';
   this.data.todaySuccessLogged = false;
   clearDrinkDayFrozenStreak(this.data);
   if (!this.data.dailyLog) this.data.dailyLog = {};
 
   if (!this.data.scoredDays) this.data.scoredDays = {};
+  if (typeof syncCalendarDayFromJourneyStart === 'function') {
+    syncCalendarDayFromJourneyStart(this.data);
+  }
   if (typeof ensureJourneyStartKey === 'function') ensureJourneyStartKey(this.data);
+  if (typeof syncCalendarDayFromJourneyStart === 'function') {
+    syncCalendarDayFromJourneyStart(this.data);
+  }
+  if (typeof healJourneyStartForMissedDays === 'function' && healJourneyStartForMissedDays(this.data)) {
+    syncCalendarDayFromJourneyStart(this.data);
+  }
   const askYesterday = shouldAskYesterday(this.data);
 
   this.data.lastDayCheck = new Date(appToday.getFullYear(), appToday.getMonth(), appToday.getDate(), 12, 0, 0).toISOString();

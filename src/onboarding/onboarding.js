@@ -41,7 +41,9 @@ const Onboarding = {
 
   _onComplete() {
     if (typeof dismissAppSplash === 'function') dismissAppSplash();
-    document.body.classList.remove('modal-open', 'settings-open');
+    if (typeof forceUnlockBodyScroll === 'function') forceUnlockBodyScroll();
+    else document.body.classList.remove('modal-open');
+    document.body.classList.remove('settings-open');
     const data = (typeof Tracker !== 'undefined' && Tracker.data)
       ? Tracker.data
       : (typeof DataManager !== 'undefined' ? DataManager.load() : null);

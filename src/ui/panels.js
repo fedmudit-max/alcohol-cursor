@@ -97,11 +97,9 @@ Tracker.toggleRiskMeter = function() {
   this._setRiskMeterOpen(!open);
   if (!open) {
     if (typeof MeterController !== 'undefined') {
-      if (!MeterController.initialized) MeterController.init();
       const data = this.data || DataManager.load();
-      if (data && data.auditQ1 != null && data.auditQ2 != null && data.auditQ3 != null) {
-        MeterController.updateFromJourney(data);
-      }
+      if (MeterController.syncFromData) MeterController.syncFromData(data);
+      else if (!MeterController.initialized) MeterController.init();
     }
   }
 };
@@ -121,7 +119,8 @@ Tracker.openSettings = function() {
   if (!overlay) return;
   overlay.classList.add('active');
   overlay.setAttribute('aria-hidden', 'false');
-  document.body.classList.add('modal-open');
+  if (typeof lockBodyScroll === 'function') lockBodyScroll();
+  else document.body.classList.add('modal-open');
   document.body.classList.add('settings-open');
   if (typeof renderBackupStatus === 'function') renderBackupStatus();
   if (typeof renderPremiumEntry === 'function') renderPremiumEntry();
@@ -134,7 +133,8 @@ Tracker.closeSettings = function() {
   if (!overlay) return;
   overlay.classList.remove('active');
   overlay.setAttribute('aria-hidden', 'true');
-  document.body.classList.remove('modal-open');
+  if (typeof unlockBodyScroll === 'function') unlockBodyScroll();
+  else document.body.classList.remove('modal-open');
   document.body.classList.remove('settings-open');
 };
 
@@ -148,7 +148,8 @@ Tracker.openPrivacyPolicy = function() {
   if (!overlay) return;
   overlay.classList.add('active');
   overlay.setAttribute('aria-hidden', 'false');
-  document.body.classList.add('modal-open');
+  if (typeof lockBodyScroll === 'function') lockBodyScroll();
+  else document.body.classList.add('modal-open');
 };
 
 Tracker.closePrivacyPolicy = function() {
@@ -158,7 +159,8 @@ Tracker.closePrivacyPolicy = function() {
   overlay.setAttribute('aria-hidden', 'true');
   if (!el('appSettingsOverlay')?.classList.contains('active')
     && !el('tenDrinksGuideModal')?.classList.contains('open')) {
-    document.body.classList.remove('modal-open');
+    if (typeof unlockBodyScroll === 'function') unlockBodyScroll();
+    else document.body.classList.remove('modal-open');
   }
 };
 
@@ -166,7 +168,8 @@ Tracker.openTenDrinksGuide = function() {
   const m = el('tenDrinksGuideModal');
   if (m) {
     m.classList.add('open');
-    document.body.classList.add('modal-open');
+    if (typeof lockBodyScroll === 'function') lockBodyScroll();
+    else document.body.classList.add('modal-open');
   }
 };
 
@@ -174,6 +177,7 @@ Tracker.closeTenDrinksGuide = function() {
   const m = el('tenDrinksGuideModal');
   if (m) {
     m.classList.remove('open');
-    document.body.classList.remove('modal-open');
+    if (typeof unlockBodyScroll === 'function') unlockBodyScroll();
+    else document.body.classList.remove('modal-open');
   }
 };

@@ -3,11 +3,156 @@
 
 // Export / import / delete local progress (load after journey.js — attaches to Tracker)
 
-const BACKUP_FORMAT = 'sober-journey-backup';
+const BACKUP_FORMAT = '10drinks-backup';
+const LEGACY_BACKUP_FORMAT = 'sober-journey-backup';
 const BACKUP_VERSION = 1;
 const LAST_BACKUP_KEY = 'sj_lastBackupAt';
 
 let pendingImportBackup = null;
+let pendingExportPayload = null;
+
+function isShareCancelled(err) {
+  if (!err) return false;
+  if (err.name === 'AbortError') return true;
+  const msg = String(err.message || err.errorMessage || err);
+  return /cancel/i.test(msg);
+}
+
+function isNativeCapacitor() {
+  try {
+    return !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function'
+      && window.Capacitor.isNativePlatform());
+  } catch (e) {
+    return false;
+  }
+}
+
+function isAndroidNative() {
+  try {
+    const Cap = window.Capacitor;
+    return isNativeCapacitor() && Cap.getPlatform && Cap.getPlatform() === 'android';
+  } catch (e) {
+    return false;
+  }
+}
+
+function getCapacitorPlugin(name) {
+  const Cap = window.Capacitor;
+  if (!Cap) return null;
+  if (Cap.Plugins && Cap.Plugins[name]) return Cap.Plugins[name];
+  if (typeof Cap.registerPlugin === 'function') {
+    try {
+      return Cap.registerPlugin(name);
+    } catch (e) {
+      return null;
+    }
+  }
+  return null;
+}
+
+function getTenDrinksBackupExportPlugin() {
+  return getCapacitorPlugin('TenDrinksBackupExport');
+}
+
+function openExportChoiceModal(payload) {
+  pendingExportPayload = payload;
+  const modal = el('exportChoiceModal');
+  if (!modal) return;
+  if (typeof openAppModal === 'function') openAppModal(modal);
+  else modal.classList.add('active');
+}
+
+function closeExportChoiceModal() {
+  pendingExportPayload = null;
+  const modal = el('exportChoiceModal');
+  if (!modal) return;
+  modal.classList.remove('active');
+  if (typeof syncModalOpenBodyClass === 'function') syncModalOpenBodyClass();
+}
+
+function finishBackupExport(iso) {
+  recordLastBackupAt(iso);
+  renderBackupStatus();
+}
+
+function runAndroidNativeExport(mode) {
+  const payload = pendingExportPayload;
+  if (!payload) return;
+  closeExportChoiceModal();
+
+  const Export = getTenDrinksBackupExportPlugin();
+  if (!Export) {
+    downloadBackupFile(payload.json, payload.filename);
+    finishBackupExport(payload.exportedAt);
+    showToast('Export saved.');
+    return;
+  }
+
+  const opts = {
+    content: payload.json,
+    filename: payload.filename,
+    mimeType: 'application/json',
+  };
+  const call = mode === 'downloads' ? Export.saveToDownloads(opts) : Export.saveAs(opts);
+
+  Promise.resolve(call).then((result) => {
+    finishBackupExport(payload.exportedAt);
+    const savedName = (result && result.filename) || payload.filename;
+    if (mode === 'downloads') {
+      showToast(`Saved to Downloads: ${savedName}`);
+    } else {
+      showToast(`Backup saved: ${savedName}`);
+    }
+  }).catch((err) => {
+    if (isShareCancelled(err)) return;
+    console.error('[10Drinks] native export failed:', err);
+    downloadBackupFile(payload.json, payload.filename);
+    finishBackupExport(payload.exportedAt);
+    showToast('Could not use folder picker — file downloaded instead.');
+  });
+}
+
+function shareWebBackupFile(json, filename, exportedAt) {
+  const file = new File([json], filename, { type: 'application/json' });
+
+  if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+    navigator.share({ files: [file], title: '10Drinks export' })
+      .then(() => {
+        finishBackupExport(exportedAt);
+        showToast('Export ready — save to Files or Drive.');
+      })
+      .catch((e) => {
+        if (isShareCancelled(e)) return;
+        downloadBackupFile(json, filename);
+        finishBackupExport(exportedAt);
+        showToast('Export saved.');
+      });
+    return;
+  }
+
+  downloadBackupFile(json, filename);
+  finishBackupExport(exportedAt);
+  showToast('Export saved.');
+}
+
+function bindExportChoiceUi() {
+  const modal = el('exportChoiceModal');
+  if (!modal || modal.dataset.bound) return;
+  modal.dataset.bound = '1';
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeExportChoiceModal();
+  });
+  modal.querySelectorAll('[data-export-action]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const action = btn.getAttribute('data-export-action');
+      if (action === 'cancel') closeExportChoiceModal();
+      else if (action === 'downloads') runAndroidNativeExport('downloads');
+      else if (action === 'folder') runAndroidNativeExport('folder');
+    });
+  });
+}
+
+bindExportChoiceUi();
 
 function buildBackupPayload(data) {
   const state = AuditSession.forPersist(data || Tracker.data || DataManager.load());
@@ -33,7 +178,7 @@ function parseBackupJson(text) {
   let exportedAt = null;
   let onboardingComplete = null;
 
-  if (parsed.format === BACKUP_FORMAT) {
+  if (parsed.format === BACKUP_FORMAT || parsed.format === LEGACY_BACKUP_FORMAT) {
     if (!parsed.state || typeof parsed.state !== 'object') return { ok: false, error: 'missing-state' };
     saved = parsed.state;
     exportedAt = parsed.exportedAt || null;
@@ -103,33 +248,16 @@ Tracker.toggleBackupPanel = function() {
 Tracker.exportBackup = function() {
   const payload = buildBackupPayload(this.data);
   const json = JSON.stringify(payload, null, 2);
-  const filename = `sober-journey-backup-${dateKey(getAppToday(this.data))}.json`;
-  const file = new File([json], filename, { type: 'application/json' });
+  const filename = `10drinks-backup-${dateKey(getAppToday(this.data))}.json`;
   const exportedAt = payload.exportedAt;
+  const exportPayload = { json, filename, exportedAt };
 
-  const finish = () => {
-    recordLastBackupAt(exportedAt);
-    renderBackupStatus();
-  };
-
-  if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-    navigator.share({ files: [file], title: '10Drinks export' })
-      .then(() => {
-        finish();
-        showToast('Export ready — save to Files or iCloud.');
-      })
-      .catch((e) => {
-        if (e && e.name === 'AbortError') return;
-        downloadBackupFile(json, filename);
-        finish();
-        showToast('Export saved to downloads.');
-      });
+  if (isAndroidNative() && getTenDrinksBackupExportPlugin()) {
+    openExportChoiceModal(exportPayload);
     return;
   }
 
-  downloadBackupFile(json, filename);
-  finish();
-  showToast('Export saved to downloads.');
+  shareWebBackupFile(json, filename, exportedAt);
 };
 
 Tracker.importBackup = function() {
@@ -205,6 +333,7 @@ Tracker._deleteAllData = function() {
   if (typeof setForcePremiumLocked === 'function') setForcePremiumLocked(false);
   clearLastBackupAt();
   this.data = DataManager.defaults();
+  AuditSession.clearFields(this.data);
   const resetToday = getAppToday(this.data);
   this.data.lastDayCheck = new Date(
     resetToday.getFullYear(),
@@ -220,7 +349,9 @@ Tracker._deleteAllData = function() {
   this._currentStreaks = [];
   this.pendingAction = null;
   if (typeof UI !== 'undefined' && UI.hideModal) UI.hideModal();
-  document.body.classList.remove('modal-open', 'settings-open');
+  if (typeof forceUnlockBodyScroll === 'function') forceUnlockBodyScroll();
+  else document.body.classList.remove('modal-open');
+  document.body.classList.remove('settings-open');
   DataManager.saveNow(this.data);
   this.switchTab(0);
   refreshStreakUI(this.data);
@@ -228,8 +359,8 @@ Tracker._deleteAllData = function() {
   renderBackupStatus();
   if (typeof renderWelcomeHint === 'function') renderWelcomeHint(this.data);
   if (typeof renderPremiumEntry === 'function') renderPremiumEntry();
-  if (typeof MeterController !== 'undefined' && MeterController.init) {
-    try { MeterController.init(); } catch (e) {}
+  if (typeof MeterController !== 'undefined' && MeterController.clearDisplay) {
+    try { MeterController.clearDisplay(); } catch (e) {}
   }
   showToast('All data deleted.');
   if (typeof Onboarding !== 'undefined' && Onboarding.show) {

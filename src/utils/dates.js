@@ -34,6 +34,49 @@ function inferJourneyStartFromCalendarDay(data) {
   return dateKey(start);
 }
 
+// Keep journey day counter aligned with journeyStartKey and app today (multi-day gaps).
+function syncCalendarDayFromJourneyStart(data) {
+  if (!data) return;
+  const floor = data.journeyStartKey || inferJourneyStartFromCalendarDay(data);
+  if (!floor) return;
+  const start = noonFromDateKey(floor);
+  const today = getAppToday(data);
+  const spanDays = Math.max(0, Math.round((today.getTime() - start.getTime()) / MS_PER_DAY));
+  data.calendarDay = spanDays + 1;
+}
+
+// Older builds could collapse journeyStartKey to “today” and hide missed days — restore span.
+function healJourneyStartForMissedDays(data) {
+  if (!data || data.journeyPendingReset) return false;
+  let changed = false;
+  const cal = Math.max(1, parseInt(data.calendarDay, 10) || 1);
+  const inferredStart = inferJourneyStartFromCalendarDay(data);
+  const todayKey = dateKey(getAppToday(data));
+
+  if (cal > 1) {
+    const start = data.journeyStartKey;
+    if (!start || start > inferredStart) {
+      data.journeyStartKey = inferredStart;
+      changed = true;
+    }
+  }
+
+  // Stale calendarDay=1 but last open was before today — journey still includes those days.
+  const lastKey = data.lastDayCheck ? dateKey(new Date(data.lastDayCheck)) : '';
+  if (lastKey && lastKey < todayKey) {
+    const start = data.journeyStartKey;
+    if (!start || start > lastKey) {
+      data.journeyStartKey = lastKey;
+      changed = true;
+    }
+  }
+
+  if (changed && typeof syncCalendarDayFromJourneyStart === 'function') {
+    syncCalendarDayFromJourneyStart(data);
+  }
+  return changed;
+}
+
 function healOrphanScoredDay(d, dayKey) {
   if (!d || !dayKey) return;
   if (!d.scoredDays) d.scoredDays = {};
@@ -50,6 +93,7 @@ function healAllOrphanScoredDays(d) {
 
 function calendarJourneyFloorKey(d) {
   if (typeof ensureJourneyStartKey === 'function') ensureJourneyStartKey(d);
+  if (typeof healJourneyStartForMissedDays === 'function') healJourneyStartForMissedDays(d);
   return d.journeyStartKey || inferJourneyStartFromCalendarDay(d);
 }
 
@@ -189,14 +233,6 @@ function syncTodaySessionFromLog(d) {
     d.todayStatus = 'failed';
     d.todaySuccessLogged = false;
   }
-}
-
-function journeyDrinkLogKeys(d) {
-  const log = d.dailyLog || {};
-  const startKey = d.journeyStartKey || null;
-  return Object.keys(log)
-    .filter(k => log[k] === 'drinking' && (!startKey || k >= startKey))
-    .sort();
 }
 
 // Shorthand for document.getElementById — saves typing

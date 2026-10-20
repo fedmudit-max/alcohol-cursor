@@ -1,0 +1,12 @@
+{
+  "appId": "com.tendrinks.app",
+  "appName": "10Drinks",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#1e9e3e"
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

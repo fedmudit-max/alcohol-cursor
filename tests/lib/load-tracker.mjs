@@ -64,10 +64,6 @@ export function createTrackerContext() {
     launchConfetti: () => {},
     showToast: () => {},
     refreshStreakUI: () => {},
-    SCIENCE_NODES: [],
-    isScienceMilestoneEarned: () => false,
-    isTrophyEarned: (successCount, trophyDays, celebratedTrophies) =>
-      successCount === trophyDays && !(celebratedTrophies && celebratedTrophies[trophyDays]),
     daysSince(isoString, refDate) {
       const last = new Date(isoString);
       if (Number.isNaN(last.getTime())) return 0;
@@ -85,6 +81,7 @@ export function createTrackerContext() {
     'src/config/app.config.js',
     'src/utils/dates.js',
     'src/constants/milestones.js',
+    'src/constants/science-nodes.js',
     'src/journey/streak.js',
     'src/journey/journey-score.js',
     'src/journey/best-performances.js',
@@ -115,6 +112,9 @@ export function createTrackerContext() {
     this.recalculateStreakFromLog = recalculateStreakFromLog;
     this.reconcileLogsToJourneyScore = reconcileLogsToJourneyScore;
     this.ensureJourneyStartKey = ensureJourneyStartKey;
+    this.syncCalendarDayFromJourneyStart = syncCalendarDayFromJourneyStart;
+    this.canRecordCalendarDay = canRecordCalendarDay;
+    this.getDisplayBestScore = getDisplayBestScore;
   `, ctx);
   return ctx;
 }

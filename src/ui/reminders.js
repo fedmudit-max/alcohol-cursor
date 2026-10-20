@@ -189,9 +189,13 @@ function renderRemindersTab(data) {
   setReminderClockDisabled(!on);
 
   if (statusEl) {
+    const nativeLine =
+      typeof TenDrinksReminderNative !== 'undefined' && TenDrinksReminderNative.statusLine
+        ? TenDrinksReminderNative.statusLine(data)
+        : '';
     if (on) {
       statusEl.hidden = false;
-      statusEl.textContent = `On · ${formatReminderTime12(data.reminders.dailyTime)}`;
+      statusEl.textContent = nativeLine || `On · ${formatReminderTime12(data.reminders.dailyTime)}`;
     } else {
       statusEl.hidden = true;
       statusEl.textContent = '';
@@ -206,9 +210,46 @@ Tracker.setReminderDailyEnabled = function(checked) {
   DataManager.save(d);
   this.data = d;
   renderRemindersTab(d);
-  if (checked) {
-    showToast('Reminder saved — notifications coming in the mobile app.');
+
+  const native =
+    typeof TenDrinksReminderNative !== 'undefined' && TenDrinksReminderNative.applyAlarms;
+  if (!native) {
+    if (checked && typeof showToast === 'function') {
+      showToast('Reminder saved — use the Android app for notifications.');
+    }
+    return;
   }
+
+  if (checked) {
+    TenDrinksReminderNative.applyAlarms({ promptExactAlarm: true, intentOn: true }).then((res) => {
+      if (res && res.scheduled) {
+        if (typeof showToast === 'function') {
+          showToast(`Reminder set for ${formatReminderTime12(d.reminders.dailyTime)}.`);
+        }
+      } else if (res && res.notificationsDenied) {
+        /* turnReminderOffNative already toasted */
+      } else if (res && res.awaitingExact) {
+        if (typeof showToast === 'function') showToast('Allow scheduled alarms, then turn the reminder on again.');
+      } else if (!res || !res.scheduled) {
+        d.reminders.dailyEnabled = false;
+        DataManager.save(d);
+        this.data = d;
+        renderRemindersTab(d);
+      }
+      TenDrinksReminderNative.reconcile();
+    }).catch(() => {
+      d.reminders.dailyEnabled = false;
+      DataManager.save(d);
+      this.data = d;
+      renderRemindersTab(d);
+      if (typeof showToast === 'function') showToast('Could not set the reminder.');
+    });
+    return;
+  }
+
+  TenDrinksReminderNative.applyAlarms().then(() => {
+    if (typeof showToast === 'function') showToast('Daily reminder is off.');
+  }).catch(() => {});
 };
 
 Tracker.setReminderDailyTime = function(value) {
@@ -219,6 +260,18 @@ Tracker.setReminderDailyTime = function(value) {
   DataManager.save(d);
   this.data = d;
   renderRemindersTab(d);
+  if (
+    d.reminders.dailyEnabled &&
+    typeof TenDrinksReminderNative !== 'undefined' &&
+    TenDrinksReminderNative.applyAlarms
+  ) {
+    TenDrinksReminderNative.applyAlarms().then((res) => {
+      if (res && res.scheduled && typeof showToast === 'function') {
+        showToast(`Reminder moved to ${formatReminderTime12(value)}.`);
+      }
+      renderRemindersTab(d);
+    }).catch(() => {});
+  }
 };
 
 function bindReminderSettingsUi() {
