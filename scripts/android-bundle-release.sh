@@ -31,10 +31,17 @@ if [[ -z "$VERSION_CODE" ]]; then
 fi
 echo "Building release AAB: versionCode=${VERSION_CODE} versionName=${VERSION_NAME}"
 
+AAB="${ANDROID}/app/build/outputs/bundle/release/app-release.aab"
+if [[ -f "$AAB" ]]; then
+  echo ""
+  echo "Existing bundle on disk (remove from Play upload queue if this is the same file):"
+  bash "${ROOT}/scripts/verify-aab-version.sh" "$AAB" || true
+  echo ""
+fi
+
 cd "${ANDROID}"
 ./gradlew clean bundleRelease
 
-AAB="${ANDROID}/app/build/outputs/bundle/release/app-release.aab"
 AAB_TAGGED="${ANDROID}/app/build/outputs/bundle/release/app-release-vc${VERSION_CODE}.aab"
 if [[ -f "$AAB" ]]; then
   cp -f "$AAB" "$AAB_TAGGED"
@@ -50,6 +57,8 @@ if [[ -f "$AAB" ]]; then
   else
     echo "Built with versionCode=${VERSION_CODE} (upload the -vc${VERSION_CODE} copy to avoid stale AAB mistakes)."
   fi
+  echo ""
+  bash "${ROOT}/scripts/verify-aab-version.sh" "$AAB_TAGGED" || exit 1
   echo ""
   echo "Upload ONLY this freshly built file (check the date above):"
   echo "  ${AAB_TAGGED}"

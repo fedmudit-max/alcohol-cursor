@@ -12,6 +12,7 @@
     "android:install": "bash scripts/android-install.sh",
     "android:run": "npm run cap:sync && npm run android:install",
     "android:bundle": "npm test && npm run cap:sync && bash scripts/android-bundle-release.sh",
+    "android:verify-aab": "bash scripts/verify-aab-version.sh android/app/build/outputs/bundle/release/app-release.aab",
     "test": "node tests/catchup-check.js && node tests/unlogged-day-model.mjs && node tests/catchup-sequences.mjs && node scripts/storage-sanity.mjs"
   },
   "dependencies": {
