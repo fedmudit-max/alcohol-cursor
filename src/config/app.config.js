@@ -149,7 +149,7 @@ const D3_RETRY_MAX           = 20;   // stop retrying after this many attempts
 const APP_DISPLAY_NAME = '10Drinks';
 
 // Public privacy policy (Google Play, Settings link).
-const PRIVACY_POLICY_URL = 'https://splendid-hamster-833d21.netlify.app/';
+const PRIVACY_POLICY_URL = 'https://10drinksprivacy.netlify.app/';
 
 // Billing mode: 'local-stub' (dev/test via showTestUI) or 'store' (native IAP when wired).
 const PREMIUM_BILLING_MODE = 'local-stub';

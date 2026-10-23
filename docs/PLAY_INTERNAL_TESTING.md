@@ -62,7 +62,7 @@ In `android/app/build.gradle`, bump before each Play upload:
 - **App icon** 512×512 (use `assets/icons/icon-512.png`).
 - **Feature graphic** 1024×500.
 - **Phone screenshots** — at least 2 (capture from device or emulator).
-- **Privacy policy URL:** `https://splendid-hamster-833d21.netlify.app/` (also in `src/config/app.config.js` as `PRIVACY_POLICY_URL`)
+- **Privacy policy URL:** `https://10drinksprivacy.netlify.app/` (also in `src/config/app.config.js` as `PRIVACY_POLICY_URL`)
 
 ## 6. Upload internal build
 
