@@ -85,3 +85,31 @@ Testers install from the Play Store link (not sideloaded APK), usually within mi
 - Fix issues → bump `versionCode` → `npm run android:bundle` → new internal release.
 - When ready: **Closed testing** or **Production** on the same signing key.
 - Enable `showPremiumInApp` / `premiumBilling: 'store'` only after Play Billing is implemented.
+
+## 9. “Version code 5 already used” (stale AAB)
+
+Play reads **versionCode inside the `.aab` file**, not `android/app/build.gradle`.
+
+If you bump `versionCode` in Gradle but **do not run a successful** `bundleRelease`, the old file remains:
+
+`android/app/build/outputs/bundle/release/app-release.aab`
+
+Typical mistake: uploading that path from Finder while its **Modified** date is still an old day (e.g. Oct 20).
+
+**Check before upload:**
+
+```bash
+npm run android:verify-aab
+```
+
+Must show `Inside the AAB (what Play sees): versionCode=<same as build.gradle>`.
+
+**Build the file Play should receive:**
+
+```bash
+npm run android:bundle
+```
+
+Upload only **`app-release-vc<N>.aab`** printed at the end (not a copy from Downloads unless you just built it).
+
+If `npm run android:bundle` fails at Gradle, **no new AAB exists** — fix Gradle in Terminal (Android Studio → same project → Build → Clean Project → Rebuild) until `bundleRelease` succeeds.

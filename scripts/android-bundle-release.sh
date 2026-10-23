@@ -32,15 +32,26 @@ fi
 echo "Building release AAB: versionCode=${VERSION_CODE} versionName=${VERSION_NAME}"
 
 AAB="${ANDROID}/app/build/outputs/bundle/release/app-release.aab"
+RELEASE_DIR="${ANDROID}/app/build/outputs/bundle/release"
 if [[ -f "$AAB" ]]; then
   echo ""
-  echo "Existing bundle on disk (remove from Play upload queue if this is the same file):"
-  bash "${ROOT}/scripts/verify-aab-version.sh" "$AAB" || true
+  if ! bash "${ROOT}/scripts/verify-aab-version.sh" "$AAB"; then
+    STALE="${RELEASE_DIR}/DO-NOT-UPLOAD-stale-$(date +%Y%m%d-%H%M%S).aab"
+    echo "Quarantining stale bundle → $(basename "$STALE")"
+    mv -f "$AAB" "$STALE"
+    echo "(Play was rejecting that file because it still contained an old versionCode.)"
+  fi
   echo ""
 fi
 
 cd "${ANDROID}"
-./gradlew clean bundleRelease
+if ! ./gradlew clean bundleRelease; then
+  echo ""
+  echo "Gradle failed — no new AAB was produced."
+  echo "Fix the Gradle error above, then run: npm run android:bundle"
+  echo "Do not upload any file named app-release.aab unless this command succeeds."
+  exit 1
+fi
 
 AAB_TAGGED="${ANDROID}/app/build/outputs/bundle/release/app-release-vc${VERSION_CODE}.aab"
 if [[ -f "$AAB" ]]; then
