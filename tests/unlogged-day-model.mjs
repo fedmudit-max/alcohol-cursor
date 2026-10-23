@@ -177,6 +177,29 @@ assert('12b — corrupt stored best (failures > 10) does not display', () => {
   }
 });
 
+assert('12c — best score display = better of current vs stored best (laotzu101)', () => {
+  const d = fresh(2026, 8, 1);
+  d.attempt = 2;
+  d.completedJourneys = [{ attempt: 1, score: { success: 25, failures: 10 }, date: '' }];
+  d.currentScore = { success: 11, failures: 10 };
+  d.highestScore = { success: 25, failures: 10 };
+  const behind = ctx.getDisplayBestScore(d);
+  if (behind.success !== 25 || behind.failures !== 10) {
+    throw new Error(`11-10 vs 25-10 should show 25-10 got ${behind.success}-${behind.failures}`);
+  }
+  d.currentScore = { success: 30, failures: 8 };
+  const ahead = ctx.getDisplayBestScore(d);
+  if (ahead.success !== 30 || ahead.failures !== 8) {
+    throw new Error(`30-8 should beat 25-10 got ${ahead.success}-${ahead.failures}`);
+  }
+  d.currentScore = { success: 11, failures: 10 };
+  d.highestScore = { success: 11, failures: 4 };
+  const tieBreak = ctx.getDisplayBestScore(d);
+  if (tieBreak.success !== 11 || tieBreak.failures !== 4) {
+    throw new Error(`same sober days → fewer drinks wins (11-4) got ${tieBreak.success}-${tieBreak.failures}`);
+  }
+});
+
 assert('12 — best score updates from recalculated journey score', () => {
   const d = fresh(2026, 7, 1);
   for (let i = 0; i < 5; i++) {

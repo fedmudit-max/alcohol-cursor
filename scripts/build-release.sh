@@ -29,5 +29,17 @@ rsync -a \
   --exclude 'capacitor.config.json' \
   "${ROOT}/" "${OUT}/"
 
+# index.html may reference src/dev/ for local QA — strip those tags from release tree.
+if [[ -f "${OUT}/index.html" ]]; then
+  python3 - "${OUT}/index.html" <<'PY'
+import re, sys
+path = sys.argv[1]
+text = open(path, encoding='utf-8').read()
+text = re.sub(r'\s*<!--[^>]*src/dev/[^>]*-->\s*', '\n', text)
+text = re.sub(r'\s*<script[^>]+src="src/dev/[^"]+"[^>]*></script>\s*', '\n', text)
+open(path, 'w', encoding='utf-8').write(text)
+PY
+fi
+
 echo "Release build ready: ${OUT}"
 echo "Deploy the contents of dist/ (not the repo root) to GitHub Pages or Capacitor www."

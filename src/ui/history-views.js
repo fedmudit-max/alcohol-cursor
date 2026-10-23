@@ -24,7 +24,7 @@ function renderLifetimeStats(data) {
 // Best Scores panel (top journeys only)
 function renderBestPerformanceList(containerId, board, valueSuffix) {
   const root = el(containerId);
-  if (!root || typeof buildBestPerformancesViewModel !== 'function') return;
+  if (!root || !board || !board.slots) return;
   const slots = board.slots || [];
   let html = '';
   for (let i = 0; i < slots.length; i++) {
@@ -49,8 +49,9 @@ function renderBestPerformanceList(containerId, board, valueSuffix) {
 
 function renderBestPerformances(data) {
   const card = el('bestPerformancesCard');
-  if (!card || typeof buildBestJourneysBoard !== 'function') return;
+  if (!card) return;
   card.style.display = 'block';
+  if (typeof buildBestJourneysBoard !== 'function') return;
   data = data || Tracker.data || DataManager.load();
   const board = buildBestJourneysBoard(data);
   renderBestPerformanceList('bestJourneysList', board, 'days');

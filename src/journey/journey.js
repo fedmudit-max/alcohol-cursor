@@ -88,8 +88,9 @@ const Tracker = {
     } else if (typeof ensureTrialStarted === 'function') {
       ensureTrialStarted(this.data);
     }
+    if (typeof reconcileStubPremiumWithTrial === 'function') reconcileStubPremiumWithTrial();
     if (typeof Tracker !== 'undefined') {
-      Tracker._lastPremiumAccess = typeof hasPremiumAccess === 'function' && hasPremiumAccess();
+      Tracker._lastPremiumAccess = typeof hasPremiumAccess === 'function' ? hasPremiumAccess() : true;
     }
     DataManager._rebuildScoredDays(this.data);
     if (reconcileLogsToJourneyScore(this.data)) {
@@ -113,52 +114,6 @@ const Tracker = {
     }
   },
 
-
-  // --- AUTO ADVANCE ---
-  // batchMode=true: skip save/render/celebrations (called from _catchUp loop — saves once after all days)
-  autoAdvanceDay(batchMode = false) {
-    if (!CONFIG.showTestUI) return;
-    const d = this.data;
-    if (!d.dailyLog) d.dailyLog = {};
-    if (d.journeyPendingReset) {
-      const appToday = getAppToday(d);
-      const nextDay  = new Date(appToday.getFullYear(), appToday.getMonth(), appToday.getDate() + 1, 12, 0, 0);
-      if (CONFIG.showTestUI) d.simulatedToday = nextDay.toISOString();
-      this._startNew();
-      if (!batchMode) {
-        DataManager.saveNow(d);
-        refreshStreakUI(d);
-        UI.renderAll(d);
-        if (CONFIG.showTestUI) {
-          showToast(`Journey ${d.attempt} · Day 1 · ${dateKey(getAppToday(d))}`);
-        }
-      }
-      return;
-    }
-    if (d.currentScore.failures >= JOURNEY_MAX_FAILURES) { this._endJourney(); return; }
-
-    const appToday = getAppToday(d);
-    const nextDay  = new Date(appToday.getFullYear(), appToday.getMonth(), appToday.getDate() + 1, 12, 0, 0);
-    d.simulatedToday = nextDay.toISOString();
-    d.lastDayCheck   = nextDay.toISOString();
-    d.calendarDay++;
-    d.todayStatus = 'none';
-    d.todaySuccessLogged = false;
-    clearDrinkDayFrozenStreak(d);
-
-    DataManager._rebuildScoredDays(d);
-    recalculateStreakFromLog(d);
-    if (!batchMode) {
-      DataManager.saveNow(d);
-      refreshStreakUI(d);
-      UI.renderAll(d);
-      if (CONFIG.showTestUI) {
-        showToast(`Test day: ${dateKey(nextDay)} — log sober or drink below`);
-      }
-      // Previous simulated day is now "yesterday" — ask if it was never logged
-      promptYesterdayIfNeeded(d, 300);
-    }
-  },
 
   // --- USER ACTIONS ---
 
@@ -443,6 +398,9 @@ const Tracker = {
       isTrialEntitlementEnforced() &&
       !hasPremiumAccess()
     ) {
+      if (typeof renderPremiumLocks === 'function') {
+        renderPremiumLocks(this.data || (typeof DataManager !== 'undefined' ? DataManager.load() : null));
+      }
       if (typeof isPremiumSubscribeOffered === 'function' && isPremiumSubscribeOffered()) {
         this.openPremium();
       } else if (typeof showToast === 'function') {
@@ -579,13 +537,15 @@ const Tracker = {
 
   _startNew() {
     const d = this.data;
-    if (!CONFIG.showTestUI) delete d.simulatedToday;
+    if (typeof isSimulatedDayEnabled === 'function' && !isSimulatedDayEnabled()) delete d.simulatedToday;
     let appToday = getAppToday(d);
     const todayKey = dateKey(appToday);
     // Prior journey ended with a drink today — new journey starts next calendar day
     if (d.dailyLog && d.dailyLog[todayKey] === 'drinking') {
       appToday = new Date(appToday.getFullYear(), appToday.getMonth(), appToday.getDate() + 1, 12, 0, 0);
-      if (CONFIG.showTestUI) d.simulatedToday = appToday.toISOString();
+      if (typeof isSimulatedDayEnabled === 'function' && isSimulatedDayEnabled()) {
+        d.simulatedToday = appToday.toISOString();
+      }
     }
     d.attempt++;
     d.scoredDays = {};

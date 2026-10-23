@@ -2,10 +2,8 @@
 'use strict';
 
 /**
- * Dev-only: bottom "Next Day (journey)" bar — simulates the next calendar day in-app.
- * Not loaded in production index.html — add before main.js when testing locally:
- *   <script src="src/dev/next-day-test.js"></script>
- * Optional: also load trial-test-bar.js for trial clock controls.
+ * Dev-only: bottom bar with **Next calendar day** only.
+ * Logic: calendar-day-advance.js (not loaded in release dist/).
  */
 const ENABLE_NEXT_DAY_TEST_BAR = true;
 
@@ -13,9 +11,23 @@ const ENABLE_NEXT_DAY_TEST_BAR = true;
   if (!ENABLE_NEXT_DAY_TEST_BAR) return;
 
   if (typeof CONFIG === 'object' && CONFIG) {
-    CONFIG.showTestUI = true;
     CONFIG.showInternalTestBar = true;
     if (CONFIG.buildTag === 'production') CONFIG.buildTag = 'dev';
+  }
+
+  function trialHintForBar() {
+    if (typeof trialDaysLeft !== 'function' || typeof isTrialActive !== 'function') return '';
+    if (!isTrialActive()) return ' · Trial ended — locks on';
+    const left = trialDaysLeft();
+    if (left <= 1) return ' · Trial: last day';
+    return ` · Trial: ${left}d left (app calendar)`;
+  }
+
+  function ensureAdvanceHook() {
+    if (typeof installCalendarDayAdvance === 'function') {
+      return installCalendarDayAdvance();
+    }
+    return !!(typeof Tracker !== 'undefined' && Tracker.autoAdvanceDay);
   }
 
   const TEST_BAR_STYLES = `
@@ -38,48 +50,41 @@ body.test-ui-active .scroll-view {
 body.test-ui-active .toast.show {
   bottom: calc(88px + env(safe-area-inset-bottom));
 }
-body.test-ui-active.trial-test-ui-active .scroll-view {
-  padding-bottom: calc(158px + env(safe-area-inset-bottom));
-}
-body.test-ui-active.trial-test-ui-active .toast.show {
-  bottom: calc(158px + env(safe-area-inset-bottom));
-}
 #testBuildTag {
   font-size: 10px;
   color: rgba(255, 255, 255, 0.35);
   text-align: center;
   margin-bottom: 6px;
 }
-#testBtns .test-bar-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 8px;
-}
 #testBtns button {
+  width: 100%;
   border: none;
   border-radius: 8px;
-  padding: 10px 6px;
-  font-size: 11px;
+  padding: 12px 8px;
+  font-size: 13px;
   font-weight: 700;
   color: white;
   cursor: pointer;
   font-family: inherit;
-  line-height: 1.2;
+  background: #007aff;
 }
-#testBtns .test-btn-next { background: #007aff; }
 `;
 
-  function onNextDayClick(btn) {
+  function onNextCalendarDayClick(btn) {
     if (btn.disabled) return;
     btn.disabled = true;
-    if (typeof Tracker !== 'undefined' && Tracker.autoAdvanceDay) {
-      Tracker.autoAdvanceDay();
+    if (!ensureAdvanceHook()) {
+      if (typeof showToast === 'function') showToast('Calendar advance helper not loaded.');
+      btn.disabled = false;
+      return;
     }
+    Tracker.autoAdvanceDay();
     setTimeout(() => { btn.disabled = false; }, 600);
   }
 
   function mountNextDayTestBar() {
     if (document.getElementById('testBtns')) return;
+    ensureAdvanceHook();
 
     const style = document.createElement('style');
     style.id = 'nextDayTestBarStyles';
@@ -93,22 +98,17 @@ body.test-ui-active.trial-test-ui-active .toast.show {
     const tag = document.createElement('div');
     tag.id = 'testBuildTag';
 
-    const grid = document.createElement('div');
-    grid.className = 'test-bar-grid';
+    const nextBtn = document.createElement('button');
+    nextBtn.type = 'button';
+    nextBtn.textContent = 'Next calendar day';
+    nextBtn.addEventListener('click', () => onNextCalendarDayClick(nextBtn));
 
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'test-btn-next';
-    btn.textContent = 'Next Day (journey)';
-    btn.addEventListener('click', () => onNextDayClick(btn));
-
-    grid.appendChild(btn);
     root.appendChild(tag);
-    root.appendChild(grid);
+    root.appendChild(nextBtn);
     document.body.appendChild(root);
   }
 
-  window.syncNextDayTestBar = function (active) {
+  window.syncNextDayTestBar = function syncNextDayTestBar(active) {
     if (!ENABLE_NEXT_DAY_TEST_BAR) {
       document.body.classList.remove('test-ui-active');
       return;
@@ -116,10 +116,23 @@ body.test-ui-active.trial-test-ui-active .toast.show {
     mountNextDayTestBar();
     const tb = el('testBtns');
     if (!tb) return;
-    const on = !!(active || ENABLE_NEXT_DAY_TEST_BAR);
+    const on = !!(active || CONFIG.showInternalTestBar || ENABLE_NEXT_DAY_TEST_BAR);
     document.body.classList.toggle('test-ui-active', on);
     tb.style.display = on ? 'block' : 'none';
     const tag = el('testBuildTag');
-    if (tag) tag.textContent = on ? ('Build: ' + (CONFIG.buildTag || 'dev')) : '';
+    if (tag) {
+      tag.textContent = on
+        ? ('Build: ' + (CONFIG.buildTag || 'dev') + trialHintForBar())
+        : '';
+    }
   };
+
+  function showBarWhenReady() {
+    syncNextDayTestBar(true);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', showBarWhenReady);
+  } else {
+    showBarWhenReady();
+  }
 })();

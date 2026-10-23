@@ -140,7 +140,7 @@ const DataManager = {
       return this.defaults();
     }
     const def = this.defaults();
-    if (!CONFIG.showTestUI) delete data.simulatedToday;
+    if (typeof isSimulatedDayEnabled === 'function' && !isSimulatedDayEnabled()) delete data.simulatedToday;
     // Ensure all keys exist
     for (const k in def) {
       if (!(k in data)) data[k] = def[k];

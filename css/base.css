@@ -989,8 +989,43 @@ button.cal-cell:active { transform:scale(0.96); }
   margin-top:4px; font-size:12px; font-weight:700; color:#1e7a34;
   background:rgba(52,199,89,0.14); border-radius:999px; padding:7px 14px;
 }
+.premium-lock-overlay--compact {
+  flex-direction: row;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 12px;
+  min-height: 44px;
+}
+.premium-lock-overlay--compact .lock-icon { font-size: 15px; }
+.premium-lock-overlay--compact .lock-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(60, 60, 67, 0.72);
+}
+#lifetimeStatsBody.feature-locked {
+  min-height: 72px;
+  position: relative;
+}
+#lifetimeStatsBody .premium-lock-overlay--compact {
+  position: absolute;
+  inset: 0;
+  min-height: 72px;
+}
+#monthGridCard.feature-locked,
+#riskMeterCard.feature-locked,
+#journeyChartCard.feature-locked,
+#bestPerformancesCard.feature-locked {
+  min-height: 52px;
+}
 .feature-locked { position:relative; }
 .feature-locked > *:not(.premium-lock-overlay) { pointer-events:none; user-select:none; }
+.premium-lock-overlay { pointer-events:auto; }
+/* Collapsible cards: header always receives taps (body may be premium-locked). */
+.panel-toggle-header {
+  position:relative; z-index:5; pointer-events:auto !important;
+}
+.panel-body { display:none; }
+.panel-body.panel-open { display:block !important; }
 .milestone-row.milestone-locked {
   justify-content:center; border-radius:10px;
   background:rgba(60,60,67,0.04); margin:2px 0;
@@ -1006,8 +1041,22 @@ button.cal-cell:active { transform:scale(0.96); }
   content:'✦'; position:absolute; right:8px; top:50%; transform:translateY(-50%);
   font-size:11px; color:#b88900;
 }
+.seg-btn.seg-locked {
+  opacity:0.45;
+  color:rgba(60,60,67,0.45);
+  font-weight:500;
+}
+.seg-btn.seg-locked.active {
+  color:rgba(60,60,67,0.45);
+  font-weight:500;
+  border-bottom-color:transparent;
+}
 .seg-btn.seg-locked::after {
-  content:'✦'; font-size:9px; margin-left:4px; color:#b88900; vertical-align:super;
+  content:'🔒'; font-size:10px; margin-left:5px; vertical-align:baseline;
+  opacity:0.85;
+}
+.tab-content.feature-locked {
+  min-height:132px;
 }
 .stage-label.stage-premium-locked { opacity:1; }
 .stage-label.stage-premium-locked::after { content:' ✦'; color:#b88900; font-size:11px; }

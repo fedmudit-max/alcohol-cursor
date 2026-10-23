@@ -145,12 +145,16 @@ ctx.CONFIG.showTestUI = true;
 runScript('src/premium/premium.js', ctx);
 const {
   reconcileTrialClock,
+  reconcileStubPremiumWithTrial,
   isTrialActive,
   isBestScoreLocked,
+  isBestScoreCardLocked,
+  isCalendarLocked,
+  hasPremiumAccess,
   getTrialEndTimestamp,
-  getAppTrialSpanDays,
 } = ctx;
 const TRIAL_STORE_KEY = 'sj_trialStartedAt';
+const PREMIUM_KEY = 'sj_premium';
 
 ok('wall-clock trial expired → isTrialActive false', () => {
   Object.keys(store).forEach((k) => delete store[k]);
@@ -166,17 +170,47 @@ ok('wall-clock trial active → isTrialActive true', () => {
   if (!isTrialActive()) throw new Error('trial should be active');
 });
 
-ok('Best Score unlocked on journey 2 after trial ended', () => {
+ok('Best Score tile open on journey 2 even after trial ended', () => {
   const past = new Date(Date.now() - ((16) * 86400000));
   store[TRIAL_STORE_KEY] = past.toISOString();
   ctx.Tracker.data = { attempt: 2 };
-  if (isBestScoreLocked(ctx.Tracker.data)) throw new Error('best score should stay open on J2');
+  if (isBestScoreCardLocked(ctx.Tracker.data)) throw new Error('best score tile should stay open on J2');
 });
 
-ok('Best Score locked from journey 3 even if trial still active', () => {
+ok('Best Score tile locked from journey 3 even if trial still active', () => {
   store[TRIAL_STORE_KEY] = new Date().toISOString();
   ctx.Tracker.data = { attempt: 3 };
-  if (!isBestScoreLocked(ctx.Tracker.data)) throw new Error('best score should lock on J3');
+  if (!isBestScoreCardLocked(ctx.Tracker.data)) throw new Error('best score tile should lock on J3');
+});
+
+ok('Calendar open on journey 2 with trial active', () => {
+  store[TRIAL_STORE_KEY] = new Date().toISOString();
+  ctx.Tracker.data = { attempt: 2 };
+  if (isCalendarLocked(ctx.Tracker.data)) throw new Error('calendar should stay open on J2 during trial');
+});
+
+ok('Calendar locked from journey 3 even if trial still active', () => {
+  store[TRIAL_STORE_KEY] = new Date().toISOString();
+  ctx.Tracker.data = { attempt: 3 };
+  if (!isCalendarLocked(ctx.Tracker.data)) throw new Error('calendar should lock on J3');
+});
+
+ok('History / Best Scores tier unlocked on journey 3', () => {
+  store[TRIAL_STORE_KEY] = new Date().toISOString();
+  ctx.Tracker.data = { attempt: 3 };
+  if (isBestScoreLocked(ctx.Tracker.data)) throw new Error('should stay open on J3');
+});
+
+ok('History / Best Scores tier locked from journey 4 even if trial still active', () => {
+  store[TRIAL_STORE_KEY] = new Date().toISOString();
+  ctx.Tracker.data = { attempt: 4 };
+  if (!isBestScoreLocked(ctx.Tracker.data)) throw new Error('should lock on J4');
+});
+
+ok('History / Best Scores tier locked when journey 3 ended (pending reset)', () => {
+  store[TRIAL_STORE_KEY] = new Date().toISOString();
+  ctx.Tracker.data = { attempt: 3, journeyPendingReset: true };
+  if (!isBestScoreLocked(ctx.Tracker.data)) throw new Error('should lock after J3 ends');
 });
 
 ok('trial ends after 15 calendar days from start', () => {
@@ -188,36 +222,52 @@ ok('trial ends after 15 calendar days from start', () => {
   if (day16 <= endMs) throw new Error('day 16 should be after trial end');
 });
 
-ok('reconcileTrialClock anchors to earliest dailyLog when trial stamp is newer', () => {
+ok('reconcileTrialClock does not pull trial start from journey logs', () => {
   Object.keys(store).forEach((k) => delete store[k]);
+  const stamp = new Date().toISOString();
   store[DM.KEY] = JSON.stringify({
     attempt: 1,
     journeyStartKey: '2026-01-01',
+    calendarDay: 20,
     dailyLog: { '2026-01-01': 'sober', '2026-01-16': 'sober' },
     trialStartedAt: null,
   });
-  store[TRIAL_STORE_KEY] = new Date(2026, 0, 10, 12, 0, 0).toISOString();
+  store[TRIAL_STORE_KEY] = stamp;
   const data = DM.load();
   reconcileTrialClock(data);
-  const anchored = new Date(store[TRIAL_STORE_KEY]).getTime();
-  const expected = new Date(2026, 0, 1, 12, 0, 0).getTime();
-  if (Math.abs(anchored - expected) > 60000) throw new Error('trial should anchor to first log day');
-  if (isTrialActive()) throw new Error('16+ days of logs should mean expired trial');
+  if (store[TRIAL_STORE_KEY] !== stamp) throw new Error('trial start should stay at first app open, not log span');
+  if (!isTrialActive()) throw new Error('trial should stay active regardless of journey day');
 });
 
-ok('QA simulated app day > 15 ends trial when internal test bar enabled', () => {
+ok('journey day 20 does not end trial — only wall-clock 15 days since install', () => {
+  store[TRIAL_STORE_KEY] = new Date().toISOString();
+  ctx.Tracker.data = { attempt: 1, calendarDay: 20 };
+  if (!isTrialActive()) throw new Error('trial should not use journey day counter');
+});
+
+ok('simulated app calendar past day 15 ends trial (Next calendar day QA)', () => {
+  ctx.CONFIG.showTestUI = false;
   ctx.CONFIG.showInternalTestBar = true;
   const start = new Date(2026, 0, 1, 12, 0, 0);
   store[TRIAL_STORE_KEY] = start.toISOString();
   ctx.Tracker.data = {
     attempt: 1,
-    journeyStartKey: '2026-01-01',
-    simulatedToday: new Date(2026, 0, 17, 12, 0, 0).toISOString(),
-    dailyLog: {},
-    trialStartedAt: start.toISOString(),
+    calendarDay: 16,
+    simulatedToday: new Date(2026, 0, 16, 12, 0, 0).toISOString(),
   };
-  if (getAppTrialSpanDays(ctx.Tracker.data) <= 15) throw new Error('expected app span 17');
-  if (isTrialActive()) throw new Error('simulated day 17 should end trial in QA mode');
+  if (isTrialActive(ctx.Tracker.data)) {
+    throw new Error('trial should end when simulated calendar passes 15 days from install');
+  }
+});
+
+ok('internal test bar alone does not grant Premium after trial ends', () => {
+  ctx.CONFIG.showTestUI = false;
+  ctx.CONFIG.showInternalTestBar = true;
+  const past = new Date(Date.now() - ((16) * 86400000));
+  store[TRIAL_STORE_KEY] = past.toISOString();
+  store[PREMIUM_KEY] = JSON.stringify({ active: true, source: 'local-stub' });
+  if (typeof reconcileStubPremiumWithTrial === 'function') reconcileStubPremiumWithTrial();
+  if (hasPremiumAccess()) throw new Error('expired trial should lock without showTestUI');
 });
 
 console.log(failed ? `\n${failed} check(s) failed.\n` : '\nAll checks passed.\n');

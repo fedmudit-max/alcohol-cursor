@@ -16,8 +16,7 @@ Current app config for store builds (see `src/config/app.config.js`):
 - Premium paywall/subscribe UI is **hidden** (`showPremiumInApp` / `showPremiumSubscribe: false`) until Play Billing is wired.
 - **Trial locks are enforced** (`enforceTrialEntitlement: true`) — Premium features lock after the 15-day free trial.
 - **QA bars are not in `index.html` by default.** For local/device testing, add before `main.js`:
-  - `src/dev/next-day-test.js` — **Next Day (journey)**
-  - `src/dev/trial-test-bar.js` — +1 trial day, Expire trial, Fresh trial  
+  - `src/dev/calendar-day-advance.js` + `src/dev/next-day-test.js` — **Next calendar day** (trial QA bar optional, not in default `index.html`)
   Release `dist/` excludes `src/dev/` (see `scripts/build-release.sh`).
 - Medical disclaimer is in Settings under **How 10Drinks builds will-power**.
 

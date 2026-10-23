@@ -125,58 +125,18 @@ function getTrialEndTimestamp(start, policyDays) {
   return d.getTime();
 }
 
-/** Current journey day (resets when a new journey starts). Dev / status display only. */
-function getJourneyCalendarDayForEntitlement(data) {
-  try {
-    let d = data;
-    if (!d && typeof Tracker !== 'undefined' && Tracker.data) d = Tracker.data;
-    if (!d && typeof DataManager !== 'undefined') d = DataManager.load();
-    if (!d) return 1;
-    if (typeof syncCalendarDayFromJourneyStart === 'function') {
-      syncCalendarDayFromJourneyStart(d);
-    }
-    return Math.max(1, parseInt(d.calendarDay, 10) || 1);
-  } catch (e) {
-    return 1;
-  }
-}
-
-function inferEarliestUsageDate(data) {
-  if (!data) return null;
-  const keys = [];
-  const log = data.dailyLog || {};
-  for (const k of Object.keys(log)) {
-    if (/^\d{4}-\d{2}-\d{2}$/.test(k)) keys.push(k);
-  }
-  if (data.journeyStartKey && /^\d{4}-\d{2}-\d{2}$/.test(data.journeyStartKey)) {
-    keys.push(data.journeyStartKey);
-  }
-  for (const j of data.completedJourneys || []) {
-    if (!j || !j.date) continue;
-    const d = new Date(j.date);
-    if (!Number.isNaN(d.getTime()) && typeof dateKey === 'function') keys.push(dateKey(d));
-  }
-  if (!keys.length) return null;
-  keys.sort();
-  return typeof noonFromDateKey === 'function' ? noonFromDateKey(keys[0]) : null;
-}
-
-/** Keep sj_trialStartedAt + data.trialStartedAt in sync; anchor to earliest real usage. */
+/** First app open only — not journey day, not dailyLog span. */
 function reconcileTrialClock(data) {
   try {
     migrateTrialPolicyIfNeeded();
     const lsStart = getTrialStartedAt();
     const dataStart = data && data.trialStartedAt ? new Date(data.trialStartedAt) : null;
-    const inferred = inferEarliestUsageDate(data);
     let anchorMs = null;
-    const pick = (d) => {
-      if (!d || Number.isNaN(d.getTime())) return;
-      const t = d.getTime();
-      if (anchorMs == null || t < anchorMs) anchorMs = t;
-    };
-    pick(lsStart);
-    pick(dataStart);
-    pick(inferred);
+    if (lsStart && !Number.isNaN(lsStart.getTime())) anchorMs = lsStart.getTime();
+    if (dataStart && !Number.isNaN(dataStart.getTime())) {
+      const t = dataStart.getTime();
+      anchorMs = anchorMs == null ? t : Math.min(anchorMs, t);
+    }
     if (anchorMs == null) anchorMs = Date.now();
     const iso = new Date(anchorMs).toISOString();
     setTrialStartedAtISO(iso);
@@ -192,22 +152,6 @@ function ensureTrialStarted(data) {
   reconcileTrialClock(data || (typeof Tracker !== 'undefined' && Tracker.data) || null);
 }
 
-/** App calendar days since trial start (respects simulatedToday in QA). */
-function getAppTrialSpanDays(data) {
-  const start = getTrialStartedAt();
-  if (!start || typeof getAppToday !== 'function') return 1;
-  let d = data;
-  if (!d && typeof Tracker !== 'undefined' && Tracker.data) d = Tracker.data;
-  const today = getAppToday(d || {});
-  const s = new Date(start.getFullYear(), start.getMonth(), start.getDate(), 12, 0, 0);
-  const t = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12, 0, 0);
-  return Math.max(1, Math.round((t.getTime() - s.getTime()) / MS_PER_DAY) + 1);
-}
-
-function usesSimulatedTrialSpan() {
-  return CONFIG.showTestUI === true && CONFIG.showInternalTestBar === true;
-}
-
 function getTrialStartedAt() {
   try {
     const raw = localStorage.getItem(TRIAL_KEY);
@@ -219,33 +163,96 @@ function getTrialStartedAt() {
   }
 }
 
-function isTrialActive() {
+/** End of current app calendar day (real or simulated) — trial ends after 15 such days. */
+function getEntitlementNowMs(data) {
+  try {
+    if (typeof getAppToday === 'function') {
+      let d = data;
+      if (!d && typeof Tracker !== 'undefined' && Tracker.data) d = Tracker.data;
+      const appToday = getAppToday(d || {});
+      return new Date(
+        appToday.getFullYear(),
+        appToday.getMonth(),
+        appToday.getDate(),
+        23,
+        59,
+        59,
+        999
+      ).getTime();
+    }
+  } catch (e) {}
+  return Date.now();
+}
+
+function isTrialGatedPremiumLocked(data) {
+  if (typeof isTrialEntitlementEnforced !== 'function' || !isTrialEntitlementEnforced()) return false;
+  if (typeof hasPremiumAccess !== 'function') return false;
+  return !hasPremiumAccess(data);
+}
+
+function isTrialActive(data) {
   if (isPremiumActive()) return false;
   const start = getTrialStartedAt();
   if (!start) return false;
-  if (Date.now() > getTrialEndTimestamp(start)) return false;
-  if (usesSimulatedTrialSpan()) {
-    let d = typeof Tracker !== 'undefined' && Tracker.data ? Tracker.data : null;
-    if (getAppTrialSpanDays(d) > TRIAL_DAYS) return false;
-  }
-  return true;
+  let d = data;
+  if (!d && typeof Tracker !== 'undefined' && Tracker.data) d = Tracker.data;
+  return getEntitlementNowMs(d) <= getTrialEndTimestamp(start);
 }
 
-/** Best Score, Best Scores, History, Lifetime — free on J1–2; lock from J3 without Premium (not trial-gated). */
-function isBestScoreLocked(data) {
-  if (!isTrialEntitlementEnforced()) return false;
-  if (isForcePremiumLocked()) return true;
-  if (isPremiumActive()) return false;
+function journeyAttemptForPremiumLock(data) {
   let d = data;
   if (!d && typeof Tracker !== 'undefined' && Tracker.data) d = Tracker.data;
   if (!d && typeof DataManager !== 'undefined') {
     try { d = DataManager.load(); } catch (e) { d = null; }
   }
-  const fromAttempt = typeof BEST_SCORE_LOCK_FROM_ATTEMPT === 'number'
+  return Math.max(1, parseInt(d && d.attempt, 10) || 1);
+}
+
+function isJourneyAttemptPremiumLocked(data, fromAttempt) {
+  if (!isTrialEntitlementEnforced()) return false;
+  if (isForcePremiumLocked()) return true;
+  if (isPremiumActive()) return false;
+  const from = typeof fromAttempt === 'number' ? fromAttempt : 3;
+  return journeyAttemptForPremiumLock(data) >= from;
+}
+
+/** Dashboard Best Score tile — from BEST_SCORE_CARD_LOCK_FROM_ATTEMPT (J3). */
+function isBestScoreCardLocked(data) {
+  const from = typeof BEST_SCORE_CARD_LOCK_FROM_ATTEMPT === 'number'
+    ? BEST_SCORE_CARD_LOCK_FROM_ATTEMPT
+    : 3;
+  return isJourneyAttemptPremiumLocked(data, from);
+}
+
+/** History, Best Scores, Lifetime — from journey 4, or when journey 3 has ended (pending reset). */
+function isBestScoreLocked(data) {
+  if (!isTrialEntitlementEnforced()) return false;
+  if (isForcePremiumLocked()) return true;
+  if (isPremiumActive()) return false;
+  const from = typeof BEST_SCORE_LOCK_FROM_ATTEMPT === 'number'
     ? BEST_SCORE_LOCK_FROM_ATTEMPT
     : 3;
-  const attempt = Math.max(1, parseInt(d && d.attempt, 10) || 1);
-  return attempt >= fromAttempt;
+  let d = data;
+  if (!d && typeof Tracker !== 'undefined' && Tracker.data) d = Tracker.data;
+  if (!d && typeof DataManager !== 'undefined') {
+    try { d = DataManager.load(); } catch (e) { d = null; }
+  }
+  const attempt = journeyAttemptForPremiumLock(d);
+  if (attempt >= from) return true;
+  if (attempt === from - 1 && d && d.journeyPendingReset) return true;
+  return false;
+}
+
+/** Calendar: J3+ tier lock, or trial ended on J1–2. */
+function isCalendarLocked(data) {
+  if (!isTrialEntitlementEnforced()) return false;
+  if (isForcePremiumLocked()) return true;
+  if (isPremiumActive()) return false;
+  const fromCal = typeof CALENDAR_LOCK_FROM_ATTEMPT === 'number'
+    ? CALENDAR_LOCK_FROM_ATTEMPT
+    : 3;
+  if (isJourneyAttemptPremiumLocked(data, fromCal)) return true;
+  return typeof hasPremiumAccess === 'function' && !hasPremiumAccess(data);
 }
 
 const FORCE_PREMIUM_LOCKED_KEY = 'sj_forcePremiumLocked';
@@ -262,10 +269,10 @@ function setForcePremiumLocked(locked) {
   } catch (e) {}
 }
 
-function hasPremiumAccess() {
+function hasPremiumAccess(data) {
   if (!isTrialEntitlementEnforced()) return !isForcePremiumLocked();
   if (isForcePremiumLocked()) return false;
-  return isPremiumActive() || isTrialActive();
+  return isPremiumActive() || isTrialActive(data);
 }
 
 function setTrialStartedAtISO(iso) {
@@ -323,16 +330,28 @@ function updatePremiumLockTestBtn() {
     : 'Showing default UI — tap for locked Premium UI';
 }
 
-function trialDaysLeft() {
+function trialDaysLeft(data) {
   const start = getTrialStartedAt();
   if (!start) return TRIAL_DAYS;
   const ends = getTrialEndTimestamp(start);
-  return Math.max(0, Math.ceil((ends - Date.now()) / MS_PER_DAY));
+  let d = data;
+  if (!d && typeof Tracker !== 'undefined' && Tracker.data) d = Tracker.data;
+  return Math.max(0, Math.ceil((ends - getEntitlementNowMs(d)) / MS_PER_DAY));
+}
+
+function reconcileStubPremiumWithTrial() {
+  if (!isTrialEntitlementEnforced()) return;
+  const rec = getPremiumRecord();
+  if (!rec || !rec.active) return;
+  if (rec.source === 'local-stub' && !canApplyLocalPremiumUnlock()) {
+    clearPremiumRecord();
+  }
 }
 
 /** Re-render when wall-clock trial crosses expired (app open or resume). */
 function refreshEntitlementIfChanged(data) {
   if (!isTrialEntitlementEnforced()) return;
+  reconcileStubPremiumWithTrial();
   const d = data || (typeof Tracker !== 'undefined' && Tracker.data) || null;
   if (!d) return;
   const access = hasPremiumAccess();
@@ -359,10 +378,11 @@ function clearPremiumRecord() {
   try { localStorage.removeItem(PREMIUM_KEY); } catch (e) {}
 }
 
-function makePremiumLockOverlay(title, sub) {
+function makePremiumLockOverlay(title, sub, options) {
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'premium-lock-overlay';
+  if (options && options.compact) btn.classList.add('premium-lock-overlay--compact');
   if (isPremiumSubscribeOffered()) {
     btn.onclick = () => Tracker.openPremium();
   } else {
@@ -371,6 +391,11 @@ function makePremiumLockOverlay(title, sub) {
         showToast('Your free trial has ended. Premium subscriptions are coming soon.');
       }
     };
+  }
+  if (options && options.compact) {
+    btn.setAttribute('aria-label', title ? `${title} — locked` : 'Locked');
+    btn.innerHTML = '<span class="lock-icon" aria-hidden="true">🔒</span><span class="lock-title">Locked</span>';
+    return btn;
   }
   const cta = isPremiumSubscribeOffered() ? 'Unlock with Premium' : 'Free trial ended';
   btn.innerHTML = `<span class="lock-icon">🔒</span>
@@ -391,16 +416,75 @@ function lockTabPanel(tabEl, locked, title, sub) {
   }
 }
 
-function setFeatureLocked(cardEl, locked, title, sub) {
+function clearPremiumLockUi(rootEl) {
+  if (!rootEl) return;
+  rootEl.classList.remove('feature-locked');
+  rootEl.querySelectorAll('.premium-lock-overlay').forEach((node) => node.remove());
+}
+
+function setFeatureLocked(cardEl, locked, title, sub, options) {
   if (!cardEl) return;
-  cardEl.classList.toggle('feature-locked', !!locked);
-  const existing = cardEl.querySelector('.premium-lock-overlay');
   if (!locked) {
-    if (existing) existing.remove();
+    clearPremiumLockUi(cardEl);
     return;
   }
-  if (existing) return;
-  cardEl.appendChild(makePremiumLockOverlay(title, sub));
+  clearPremiumLockUi(cardEl);
+  cardEl.classList.add('feature-locked');
+  cardEl.appendChild(makePremiumLockOverlay(title, sub, options));
+}
+
+/** Collapsible cards: lock only the body so Show/Hide stays tappable when unlocked. */
+function setCollapsibleFeatureLocked(cardEl, bodyEl, locked, title, sub, options) {
+  if (!cardEl || !bodyEl) {
+    setFeatureLocked(cardEl, locked, title, sub, options);
+    return;
+  }
+  clearPremiumLockUi(cardEl);
+  clearPremiumLockUi(bodyEl);
+  if (!locked) return;
+  bodyEl.classList.add('feature-locked');
+  bodyEl.appendChild(makePremiumLockOverlay(title, sub, options));
+}
+
+const JOURNEY_TIER_COLLAPSIBLES = [
+  ['lifetimeStatsCard', 'lifetimeStatsBody'],
+];
+
+function clearJourneyTierCollapsibleLocks() {
+  JOURNEY_TIER_COLLAPSIBLES.forEach(([cardId, bodyId]) => {
+    clearPremiumLockUi(el(cardId));
+    clearPremiumLockUi(el(bodyId));
+  });
+}
+
+function collapseCollapsiblePanel(bodyId, btnId, headerId) {
+  const body = el(bodyId);
+  if (body) {
+    body.classList.remove('panel-open');
+    body.style.display = 'none';
+  }
+  const btn = el(btnId);
+  if (btn) btn.textContent = 'Show \u25be';
+  const header = el(headerId);
+  if (header) header.setAttribute('aria-expanded', 'false');
+}
+
+function applyCompactCardLock(cardId, bodyId, btnId, headerId, locked, ariaTitle) {
+  const card = el(cardId);
+  const body = el(bodyId);
+  if (!card) return;
+  if (locked) {
+    collapseCollapsiblePanel(bodyId, btnId, headerId);
+    if (body) clearPremiumLockUi(body);
+    setFeatureLocked(card, true, ariaTitle, '', { compact: true });
+    return;
+  }
+  clearPremiumLockUi(card);
+  setCollapsibleFeatureLocked(card, body, false);
+}
+
+function applyTrialGatedCardLock(cardId, bodyId, btnId, headerId, locked, title, _sub) {
+  applyCompactCardLock(cardId, bodyId, btnId, headerId, locked, title);
 }
 
 function unlockAllPremiumFeatures() {
@@ -409,6 +493,9 @@ function unlockAllPremiumFeatures() {
     'didYouKnowCard', 'riskMeterCard', 'reductionTargetCard',
   ];
   ids.forEach((id) => setFeatureLocked(el(id), false));
+  clearPremiumLockUi(el('monthGridBody'));
+  clearPremiumLockUi(el('riskMeterBody'));
+  clearJourneyTierCollapsibleLocks();
   const segBtns = document.querySelectorAll('.seg-btn');
   segBtns.forEach((btn) => btn.classList.remove('seg-locked'));
   lockTabPanel(el('streakTabContent'), false);
@@ -421,7 +508,7 @@ function renderPremiumLocks(data) {
     unlockAllPremiumFeatures();
     return;
   }
-  const unlocked = hasPremiumAccess();
+  const unlocked = hasPremiumAccess(data);
 
   const segBtns = document.querySelectorAll('.seg-btn');
   segBtns.forEach((btn, i) => {
@@ -449,31 +536,55 @@ function renderPremiumLocks(data) {
 
   setFeatureLocked(
     el('bestScoreCard'),
-    isBestScoreLocked(data),
+    isBestScoreCardLocked(data),
     'Best Score',
     'Your best journey score unlocks with Premium from Journey 3 onward.'
   );
-  setFeatureLocked(el('monthGridCard'), !unlocked, 'Calendar', 'Log and review days on the calendar after your free trial with Premium.');
-  setFeatureLocked(
-    el('journeyChartCard'),
-    isBestScoreLocked(data),
-    'History',
-    'Compare past journeys with Premium from Journey 3 onward.'
+  applyTrialGatedCardLock(
+    'monthGridCard',
+    'monthGridBody',
+    'monthGridToggleBtn',
+    'monthGridPanelToggle',
+    isCalendarLocked(data),
+    'Calendar',
+    'Log and review days on the calendar with Premium from Journey 3 onward.'
   );
-  setFeatureLocked(
-    el('bestPerformancesCard'),
-    isBestScoreLocked(data),
-    'Best Scores',
-    'Top journey scores unlock with Premium from Journey 3 onward.'
+  const journeyTierLocked = isBestScoreLocked(data);
+  applyCompactCardLock(
+    'journeyChartCard',
+    'journeyChartBody',
+    'journeyChartToggleBtn',
+    'journeyChartPanelToggle',
+    journeyTierLocked,
+    'History'
   );
-  setFeatureLocked(
+  applyCompactCardLock(
+    'bestPerformancesCard',
+    'bestPerformancesBody',
+    'bestPerformancesToggleBtn',
+    'bestPerformancesPanelToggle',
+    journeyTierLocked,
+    'Best Scores'
+  );
+  if (!journeyTierLocked) clearJourneyTierCollapsibleLocks();
+  setCollapsibleFeatureLocked(
     el('lifetimeStatsCard'),
-    isBestScoreLocked(data),
-    'Lifetime stats',
-    'Career totals unlock with Premium from Journey 3 onward.'
+    el('lifetimeStatsBody'),
+    journeyTierLocked,
+    'Lifetime',
+    '',
+    journeyTierLocked ? { compact: true } : null
   );
   setFeatureLocked(el('didYouKnowCard'), !unlocked, 'Knowledge cards', 'Extra insights are part of Premium.');
-  setFeatureLocked(el('riskMeterCard'), !unlocked, 'Risk meter', 'AUDIT-C meter and re-tests are Premium after trial.');
+  applyTrialGatedCardLock(
+    'riskMeterCard',
+    'riskMeterBody',
+    'riskMeterToggleBtn',
+    'riskMeterToggle',
+    !unlocked,
+    'Risk meter',
+    'AUDIT-C meter and re-tests are Premium after trial.'
+  );
 
   setFeatureLocked(el('reductionTargetCard'), !unlocked, 'Reduction goal', 'Reduction goal unlocks with Premium.');
 }

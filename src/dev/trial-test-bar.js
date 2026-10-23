@@ -9,6 +9,19 @@
  */
 const ENABLE_TRIAL_TEST_BAR = true;
 
+function devJourneyDashboardDay(data) {
+  try {
+    let d = data;
+    if (!d && typeof Tracker !== 'undefined' && Tracker.data) d = Tracker.data;
+    if (!d && typeof DataManager !== 'undefined') d = DataManager.load();
+    if (!d) return 1;
+    if (typeof syncCalendarDayFromJourneyStart === 'function') syncCalendarDayFromJourneyStart(d);
+    return Math.max(1, parseInt(d.calendarDay, 10) || 1);
+  } catch (e) {
+    return 1;
+  }
+}
+
 (function () {
   if (!ENABLE_TRIAL_TEST_BAR) return;
 
@@ -85,28 +98,21 @@ body.test-ui-active.trial-test-ui-active .toast.show {
   function trialStatusLine() {
     if (typeof trialDaysLeft !== 'function') return 'Trial test bar';
     const left = trialDaysLeft();
-    const jDay = typeof getJourneyCalendarDayForEntitlement === 'function'
-      ? getJourneyCalendarDayForEntitlement()
-      : null;
+    const jDay = devJourneyDashboardDay();
     const attempt = typeof Tracker !== 'undefined' && Tracker.data
       ? (Tracker.data.attempt | 0)
       : 0;
-    const appSpan = typeof getAppTrialSpanDays === 'function' && Tracker.data
-      ? getAppTrialSpanDays(Tracker.data)
-      : null;
     const bestLocked = typeof isBestScoreLocked === 'function' && Tracker.data
       ? isBestScoreLocked(Tracker.data)
       : false;
     const mode = typeof getEntitlementTestMode === 'function' ? getEntitlementTestMode() : '';
-    const jPart = jDay != null ? ` · Journey day ${jDay}` : '';
+    const jPart = jDay != null ? ` · Journey day ${jDay} (not trial clock)` : '';
     const aPart = attempt > 0 ? ` · J${attempt}` : '';
-    const spanPart = appSpan != null ? ` · App day ${appSpan}/${TRIAL_DAYS}` : '';
-    const trialEnded = left <= 0 || mode === 'free'
-      || (appSpan != null && appSpan > TRIAL_DAYS);
+    const trialEnded = left <= 0 || mode === 'free';
     if (trialEnded) {
-      return `Trial ended · Premium locked${spanPart}${aPart}${bestLocked ? ' · J3+ locked' : ''}${jPart}`;
+      return `Trial ended (15d since install)${aPart}${bestLocked ? ' · History tier locked' : ''}${jPart}`;
     }
-    return `Trial · ${left}d wall${spanPart}${aPart}${bestLocked ? ' · J3+ locked' : ''}${jPart}`;
+    return `Trial · ${left}d since install${aPart}${bestLocked ? ' · History tier locked' : ''}${jPart}`;
   }
 
   function advanceTrialOneDay() {

@@ -68,7 +68,7 @@ function pickBetterScore(candidate, best) {
     : { success: best.success | 0, failures: best.failures | 0 };
 }
 
-// Best Score card — journey 1 mirrors current; later journeys show better of live score vs stored best (laotzu-style).
+// Best Score card — laotzu101: J1 mirrors current; J2+ shows better of live score vs stored best journey.
 function getDisplayBestScore(data) {
   ensureScoreNumbers(data);
   const cur = { success: data.currentScore.success | 0, failures: data.currentScore.failures | 0 };
@@ -79,6 +79,7 @@ function getDisplayBestScore(data) {
   return pickBetterScore(cur, stored);
 }
 
+/** Permanent best (highestScore) — laotzu101: J1 tracks live; J2+ commits only when journey ends (10 drinks). */
 function applyBestScore(data, cur) {
   if (!isValidJourneyScore(cur)) return;
   if (!data.highestScore || typeof data.highestScore !== 'object') {
@@ -88,6 +89,7 @@ function applyBestScore(data, cur) {
     data.highestScore = { success: cur.success | 0, failures: cur.failures | 0 };
     return;
   }
+  if ((cur.failures | 0) < JOURNEY_MAX_FAILURES) return;
   if (!isValidJourneyScore(data.highestScore)) {
     data.highestScore = recomputeBestFromValidSources(data);
   }
@@ -120,10 +122,14 @@ const MAX_COMPLETED_JOURNEYS_PREMIUM = 100; // premium journey history cap
 const PREMIUM_KEY = 'sj_premium';
 const TRIAL_KEY = 'sj_trialStartedAt';
 const TRIAL_POLICY_KEY = 'sj_trialPolicyDays'; // last shipped TRIAL_DAYS (for length bumps)
+/** Wall-clock days from first app open (not journey “Day” on the dashboard). */
 const TRIAL_DAYS = 15;
 const LEGACY_TRIAL_DAYS = 14;
-/** Dashboard Best Score tile: free on journeys 1–2; locks from this attempt without Premium. */
-const BEST_SCORE_LOCK_FROM_ATTEMPT = 3;
+/** Dashboard Best Score tile + calendar: lock from this journey # without Premium (trial still counts as access on J1–2 only). */
+const BEST_SCORE_CARD_LOCK_FROM_ATTEMPT = 3;
+const CALENDAR_LOCK_FROM_ATTEMPT = 3;
+/** History, Best Scores, Lifetime — lock from this journey without Premium. */
+const BEST_SCORE_LOCK_FROM_ATTEMPT = 4;
 const FREE_JOURNEY_MILESTONE_DAYS = 50;
 const PREMIUM_PLANS = {
   monthly: { id: 'monthly', label: 'Monthly', days: 31 },
@@ -175,6 +181,11 @@ const CONFIG = {
   showPremiumInSettings: false,
   privacyPolicyUrl: PRIVACY_POLICY_URL,
 };
+
+/** QA bars (Next Day / 3-Day Gap) — separate from trial entitlement / local Premium stub. */
+function isSimulatedDayEnabled() {
+  return CONFIG.showTestUI === true || CONFIG.showInternalTestBar === true;
+}
 
 // ═══════════════════════════════════════════════════════════════
 // HELPERS

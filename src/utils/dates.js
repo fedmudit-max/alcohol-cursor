@@ -119,6 +119,7 @@ function calendarHistoryAnchorKey(data) {
 // Shared rules for calendar tap + actually writing the log
 function canRecordCalendarDay(data, dayKey, appToday) {
   if (!data || !dayKey || data.journeyPendingReset) return false;
+  if (typeof isCalendarLocked === 'function' && isCalendarLocked(data)) return false;
   const todayKey = dateKey(appToday);
   if (dayKey > todayKey) return false;
   // Same rule as main buttons: answer yesterday before logging today
@@ -138,7 +139,7 @@ function canRecordCalendarDay(data, dayKey, appToday) {
 
 // Test "Next Day" advances simulatedToday; logging/streak use this instead of real clock
 function getAppToday(data) {
-  if (CONFIG.showTestUI && data && data.simulatedToday) {
+  if (typeof isSimulatedDayEnabled === 'function' && isSimulatedDayEnabled() && data && data.simulatedToday) {
     const t = new Date(data.simulatedToday);
     if (!isNaN(t.getTime())) {
       return new Date(t.getFullYear(), t.getMonth(), t.getDate(), 12, 0, 0);
@@ -187,7 +188,7 @@ function syncSessionCheckpoint(d) {
   const appToday = getAppToday(d);
   const noon = new Date(appToday.getFullYear(), appToday.getMonth(), appToday.getDate(), 12, 0, 0);
   d.lastDayCheck = noon.toISOString();
-  if (CONFIG.showTestUI) {
+  if (typeof isSimulatedDayEnabled === 'function' && isSimulatedDayEnabled()) {
     d.simulatedToday = noon.toISOString();
   } else {
     delete d.simulatedToday;

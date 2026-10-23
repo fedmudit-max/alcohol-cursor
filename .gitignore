@@ -5,6 +5,8 @@ __MACOSX/
 *.backup.html
 index.monolith.backup.html
 10drinks-review-gpt.zip
+10drinks-review.zip
+.idea/
 /dist/
 /node_modules/
 /alcohol-backend-testing

@@ -11,7 +11,7 @@ const UI = {
   renderPrimary(data) {
     el('calendarDay').textContent = data.calendarDay;
     el('currentScore').innerHTML  = formatScoreHTML(data.currentScore);
-    const bestScoreLocked = typeof isBestScoreLocked === 'function' && isBestScoreLocked(data);
+    const bestScoreLocked = typeof isBestScoreCardLocked === 'function' && isBestScoreCardLocked(data);
     el('bestScore').textContent = bestScoreLocked
       ? '—'
       : formatScoreText(getDisplayBestScore(data));
@@ -25,13 +25,14 @@ const UI = {
         bestExplainEl.style.display = 'none';
       } else {
         const beatingBest = isBeatingBestScore(data);
-        const showTarget = !beatingBest && !data.journeyPendingReset && data.attempt > 1 && target > 0;
+        const showTarget = !beatingBest && !data.journeyPendingReset && data.attempt > 1;
         if (beatingBest) {
           bestExplainEl.textContent = 'New Best! Keep Going!';
           bestExplainEl.classList.add('is-new-best');
           bestExplainEl.style.display = '';
         } else if (showTarget) {
-          bestExplainEl.textContent = `Beat ${target} to win`;
+          const dayWord = target === 1 ? 'sober day' : 'sober days';
+          bestExplainEl.textContent = `Beat ${target} ${dayWord} to win`;
           bestExplainEl.classList.remove('is-new-best');
           bestExplainEl.style.display = '';
         } else {
@@ -421,7 +422,7 @@ function renderWelcomeHint(data) {
 }
 
 function applyTestUIChrome() {
-  const active = !!CONFIG.showTestUI;
+  const active = !!(CONFIG.showTestUI || CONFIG.showInternalTestBar);
   if (typeof syncNextDayTestBar === 'function') {
     syncNextDayTestBar(active);
   } else {

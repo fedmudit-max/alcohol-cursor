@@ -75,7 +75,7 @@ function promptYesterdayIfNeeded(data, delayMs = 400) {
 
 // Dev-only catch-up trace (visible when CONFIG.showTestUI is true)
 function catchUpLog(label, detail) {
-  if (!CONFIG.showTestUI) return;
+  if (typeof isSimulatedDayEnabled !== 'function' || !isSimulatedDayEnabled()) return;
   console.log('[10Drinks catch-up]', label, detail || '');
 }
 
@@ -145,7 +145,9 @@ Tracker._catchUp = function() {
   const askYesterday = shouldAskYesterday(this.data);
 
   this.data.lastDayCheck = new Date(appToday.getFullYear(), appToday.getMonth(), appToday.getDate(), 12, 0, 0).toISOString();
-  if (!CONFIG.showTestUI) delete this.data.simulatedToday;
+  if (typeof isSimulatedDayEnabled === 'function' && !isSimulatedDayEnabled()) {
+    delete this.data.simulatedToday;
+  }
 
   DataManager._rebuildScoredDays(this.data);
 
@@ -299,7 +301,7 @@ window.SJ_rewindCatchUpWindow = function(d, gapDays) {
   d.todayStatus = 'none';
   d.todaySuccessLogged = false;
   d.journeyPendingReset = false;
-  if (CONFIG.showTestUI) {
+  if (typeof isSimulatedDayEnabled === 'function' && isSimulatedDayEnabled()) {
     d.simulatedToday = new Date(appToday.getFullYear(), appToday.getMonth(), appToday.getDate(), 12, 0, 0).toISOString();
   }
   DataManager._rebuildScoredDays(d);

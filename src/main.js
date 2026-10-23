@@ -24,6 +24,7 @@ function boot() {
   try {
     if (typeof healStuckBodyScroll === 'function') healStuckBodyScroll();
     Tracker.init();
+    if (typeof bindCollapsiblePanelToggles === 'function') bindCollapsiblePanelToggles();
     bindMonthGridCalendarClicks();
     if (typeof healStuckBodyScroll === 'function') healStuckBodyScroll();
   } catch (err) {

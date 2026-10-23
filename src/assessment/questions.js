@@ -6,6 +6,15 @@ const AuditOnboarding = {
   step: 1,
 
   show() {
+    if (typeof isTrialEntitlementEnforced === 'function' && isTrialEntitlementEnforced()
+      && typeof hasPremiumAccess === 'function' && !hasPremiumAccess()) {
+      if (typeof Tracker !== 'undefined' && typeof Tracker.openPremium === 'function') {
+        Tracker.openPremium();
+      } else if (typeof showToast === 'function') {
+        showToast('Your free trial has ended. Premium unlocks the risk meter and re-tests.');
+      }
+      return;
+    }
     this.answers = [null, null, null];
     this.step = 1;
     this._showStep(1);

@@ -67,7 +67,7 @@
     <div id="welcomeHint2" class="card" style="display:none;margin-top:8px;animation:fadeInUp 0.35s ease both;">
       <div style="padding:14px 16px;">
         <div style="font-size:14px;font-weight:700;color:#1c1c1e;margin-bottom:6px;">🎯 Your first Journey</div>
-        <div style="font-size:13px;color:rgba(60,60,67,0.65);line-height:1.55;margin-bottom:12px;">This will be your first Journey, so it will also be your best Journey. Once you complete it, your next goal is to beat this score in your second Journey.</div>
+        <div style="font-size:13px;color:rgba(60,60,67,0.65);line-height:1.55;margin-bottom:12px;">This will be your first Journey, so it will also be your best Journey. Once you complete it, your next goal is to beat this score in your second Journey.<br><br><strong>Your trajectory matters more than any single day.</strong><br><br>Alcohol addiction is difficult to overcome, but not impossible. Your first score might be just <strong>5 sober days against 10 drinking days</strong>. Later, you may reach <strong>12</strong>. Don't give up.<br><br>Once you reach <strong>20 sober days against 10 drinking days</strong>, you may find that you need less willpower to keep progressing further.</div>
         <button type="button" onclick="dismissWelcomeHint2()" style="width:100%;padding:10px;background:rgba(52,199,89,0.1);border:1.5px solid rgba(52,199,89,0.25);border-radius:10px;font-size:13px;font-weight:600;color:#248a3d;cursor:pointer;font-family:inherit;">Got it</button>
       </div>
     </div>
@@ -146,11 +146,11 @@
 
   <!-- MONTHLY GRID -->
   <div class="card" id="monthGridCard" data-premium-feature="monthGrid" style="animation:fadeInUp 0.4s ease 0.22s both;margin-top:12px;">
-    <button onclick="SoberTracker.toggleMonthGrid()" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;min-height:44px;">
+    <button type="button" id="monthGridPanelToggle" class="panel-toggle-header" aria-expanded="false" aria-controls="monthGridBody" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;min-height:44px;">
       <div style="font-size:13px;font-weight:700;color:#1c1c1e;">📅 Calendar</div>
       <span id="monthGridToggleBtn" style="font-size:12px;font-weight:500;color:rgba(60,60,67,0.4);">Show ▾</span>
     </button>
-    <div id="monthGridBody" style="display:none;padding:0 16px 16px;">
+    <div id="monthGridBody" class="panel-body" style="display:none;padding:0 16px 16px;">
       <div class="cal-nav-header">
         <button type="button" class="month-nav-btn" onclick="SoberTracker.calendarPrev()" id="calPrevBtn" aria-label="Previous month">‹</button>
         <div style="text-align:center;">
@@ -171,27 +171,27 @@
     </div>
   </div>
 
-  <!-- BEST SCORES — top-3 journey sober-day totals -->
-  <div class="card" id="bestPerformancesCard" data-premium-feature="journeyChart" style="animation:fadeInUp 0.4s ease 0.22s both;margin-top:12px;">
-    <button type="button" id="bestPerformancesPanelToggle" onclick="SoberTracker.toggleBestPerformances()" aria-expanded="false" aria-controls="bestPerformancesBody" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;min-height:44px;">
+  <!-- BEST SCORES (Personal Best journeys) — same collapsible pattern as Lifetime -->
+  <div class="card collapsible-journey-panel" id="bestPerformancesCard" data-premium-feature="bestScores" style="display:none;animation:fadeInUp 0.4s ease 0.22s both;margin-top:12px;">
+    <button type="button" id="bestPerformancesPanelToggle" class="panel-toggle-header" aria-expanded="false" aria-controls="bestPerformancesBody" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;min-height:44px;">
       <div style="font-size:13px;font-weight:700;color:#1c1c1e;">🏅 Best Scores</div>
       <span id="bestPerformancesToggleBtn" style="font-size:12px;font-weight:500;color:rgba(60,60,67,0.4);">Show ▾</span>
     </button>
-    <div id="bestPerformancesBody" style="display:none;padding:0 16px 16px;">
+    <div id="bestPerformancesBody" class="panel-body" style="display:none;padding:0 16px 16px;">
       <div id="bestJourneysList" class="best-perf-list" role="list" aria-label="Top journey scores"></div>
     </div>
   </div>
 
   <!-- METER CARD -->
   <div class="card" id="riskMeterCard" data-premium-feature="meter" style="animation:fadeInUp 0.4s ease 0.25s both;margin-top:12px;">
-    <button type="button" id="riskMeterToggle" class="risk-meter-toggle" onclick="SoberTracker.toggleRiskMeter()" aria-expanded="false" aria-controls="riskMeterBody">
+    <button type="button" id="riskMeterToggle" class="risk-meter-toggle panel-toggle-header" aria-expanded="false" aria-controls="riskMeterBody">
       <span class="risk-meter-toggle-text">
         <span class="risk-meter-toggle-title">Drinking Risk Meter</span>
         <span class="risk-meter-toggle-teaser" id="riskMeterTeaser"></span>
       </span>
       <span id="riskMeterToggleBtn" class="risk-meter-toggle-chevron">Show ▾</span>
     </button>
-    <div id="riskMeterBody" class="risk-meter-body" style="display:none;">
+    <div id="riskMeterBody" class="risk-meter-body panel-body" style="display:none;">
       <div id="meterOffline" style="display:none;text-align:center;padding:20px 0;font-size:13px;color:rgba(60,60,67,0.4);">⚠️ Risk meter unavailable offline.<br>Connect to load it.</div>
       <svg id="meterSvg" role="img" aria-label="Drinking Risk Meter — AUDIT-C score gauge" width="100%" viewBox="-60 0 400 178" style="max-width:400px;display:block;margin:0 auto;overflow:visible;"></svg>
       <p class="meter-screening-disclaimer" id="meterScreeningDisclaimer">AUDIT-C is a screening tool, not a diagnosis. A high score means professional assessment is recommended.</p>
@@ -214,14 +214,14 @@
 
   <!-- JOURNEY HISTORY CHART (shown from Journey 2+) -->
   <div class="card" id="journeyChartCard" data-premium-feature="journeyChart" style="animation:fadeInUp 0.4s ease 0.35s both;margin-top:12px;">
-    <button onclick="SoberTracker.toggleJourneyChart()" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;min-height:44px;">
+    <button type="button" id="journeyChartPanelToggle" class="panel-toggle-header" aria-expanded="false" aria-controls="journeyChartBody" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;min-height:44px;">
       <div>
         <div style="font-size:13px;font-weight:700;color:#1c1c1e;">📈 History</div>
         <div id="journeyChartSubLabel" style="display:none;font-size:10px;color:rgba(60,60,67,0.35);margin-top:2px;letter-spacing:0.3px;">Sober days per journey</div>
       </div>
       <span id="journeyChartToggleBtn" style="font-size:12px;font-weight:500;color:rgba(60,60,67,0.4);">Show ▾</span>
     </button>
-    <div id="journeyChartBody" style="display:none;padding:0 16px 16px;">
+    <div id="journeyChartBody" class="panel-body" style="display:none;padding:0 16px 16px;">
       <div class="journey-chart-frame">
         <div style="display:flex;align-items:stretch;">
           <svg id="journeyYAxis" aria-hidden="true" width="34" height="140" style="flex-shrink:0;"></svg>
@@ -241,12 +241,12 @@
   </div>
 
   <!-- LIFETIME STATS — journey # (attempt), all-time sober & drink days (grow every log) -->
-  <div class="card" id="lifetimeStatsCard" data-premium-feature="lifetime" style="display:none;animation:fadeInUp 0.4s ease 0.4s both;margin-top:12px;">
-    <button onclick="SoberTracker.toggleLifetimeStats()" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;min-height:44px;">
+  <div class="card collapsible-journey-panel" id="lifetimeStatsCard" data-premium-feature="lifetime" style="display:none;animation:fadeInUp 0.4s ease 0.4s both;margin-top:12px;">
+    <button type="button" id="lifetimeStatsPanelToggle" class="panel-toggle-header" aria-expanded="false" aria-controls="lifetimeStatsBody" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;min-height:44px;">
       <div style="font-size:13px;font-weight:700;color:#1c1c1e;">📊 Lifetime</div>
       <span id="lifetimeStatsToggleBtn" style="font-size:12px;font-weight:500;color:rgba(60,60,67,0.4);">Show ▾</span>
     </button>
-    <div id="lifetimeStatsBody" style="display:none;padding:0 16px 16px;">
+    <div id="lifetimeStatsBody" class="panel-body" style="display:none;padding:0 16px 16px;">
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;">
         <div style="text-align:center;padding:0 8px;">
           <div style="font-size:22px;font-weight:800;color:#1c1c1e;" id="ltJourneys">—</div>
@@ -808,7 +808,9 @@
 <script src="src/assessment/questions.js"></script>
 <script src="src/constants/dyk.js"></script>
 <script src="src/capacitor/native.bundle.js" defer></script>
-<!-- Optional QA bars (not shipped): add before main.js — see src/dev/next-day-test.js & trial-test-bar.js -->
+<!-- Dev QA (src/dev/ omitted from release dist/) — see src/dev/README.md -->
+<script src="src/dev/calendar-day-advance.js"></script>
+<script src="src/dev/next-day-test.js"></script>
 <script src="src/main.js"></script>
 
 </body>
