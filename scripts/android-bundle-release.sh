@@ -22,14 +22,38 @@ if [[ ! -f "$PROPS" ]]; then
   exit 1
 fi
 
+GRADLE="${ANDROID}/app/build.gradle"
+VERSION_CODE="$(sed -n 's/^[[:space:]]*versionCode[[:space:]]*\([0-9]*\).*/\1/p' "$GRADLE" | head -1)"
+VERSION_NAME="$(sed -n 's/^[[:space:]]*versionName[[:space:]]*"\([^"]*\)".*/\1/p' "$GRADLE" | head -1)"
+if [[ -z "$VERSION_CODE" ]]; then
+  echo "Could not read versionCode from ${GRADLE}"
+  exit 1
+fi
+echo "Building release AAB: versionCode=${VERSION_CODE} versionName=${VERSION_NAME}"
+
 cd "${ANDROID}"
-./gradlew bundleRelease
+./gradlew clean bundleRelease
 
 AAB="${ANDROID}/app/build/outputs/bundle/release/app-release.aab"
+AAB_TAGGED="${ANDROID}/app/build/outputs/bundle/release/app-release-vc${VERSION_CODE}.aab"
 if [[ -f "$AAB" ]]; then
-  ls -lh "$AAB"
+  cp -f "$AAB" "$AAB_TAGGED"
+  ls -lh "$AAB" "$AAB_TAGGED"
+  META="$(find "${ANDROID}/app/build/intermediates" -name 'AndroidManifest.xml' 2>/dev/null | grep release | head -1 || true)"
+  if [[ -n "$META" && -f "$META" ]]; then
+    BUILT_CODE="$(sed -n 's/.*android:versionCode="\([0-9]*\)".*/\1/p' "$META" | head -1)"
+    if [[ -n "$BUILT_CODE" && "$BUILT_CODE" != "$VERSION_CODE" ]]; then
+      echo "ERROR: Built manifest versionCode=${BUILT_CODE} != build.gradle ${VERSION_CODE}"
+      exit 1
+    fi
+    echo "Verified manifest versionCode=${BUILT_CODE}"
+  else
+    echo "Built with versionCode=${VERSION_CODE} (upload the -vc${VERSION_CODE} copy to avoid stale AAB mistakes)."
+  fi
   echo ""
-  echo "Upload this file in Play Console → Testing → Internal testing → Create new release."
+  echo "Upload ONLY this freshly built file (check the date above):"
+  echo "  ${AAB_TAGGED}"
+  echo "Play Console → Testing → your track → Create new release."
 else
   echo "Expected AAB not found at ${AAB}"
   exit 1
