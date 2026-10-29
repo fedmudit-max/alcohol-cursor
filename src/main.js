@@ -2,7 +2,7 @@
 'use strict';
 function boot() {
   applyDevChrome();
-  dismissAppSplash();
+  if (typeof window.__splashShownAt !== 'number') window.__splashShownAt = Date.now();
 
   // Flush pending debounced saves only — never write stale Tracker.data over localStorage edits
   window.addEventListener('pagehide', () => DataManager.flush());

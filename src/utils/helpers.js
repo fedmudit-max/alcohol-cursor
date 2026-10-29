@@ -184,11 +184,22 @@ function bindMonthGridCalendarClicks() {
 }
 
 // Hide boot splash and switch page background off brand green (safe to call multiple times)
+const SPLASH_MIN_VISIBLE_MS = 650;
+
 function dismissAppSplash() {
-  const splash = el('splash');
-  if (splash) splash.classList.add('hidden');
-  document.body.classList.add('loaded');
-  document.documentElement.classList.add('loaded');
+  const hide = () => {
+    const splash = el('splash');
+    if (splash) {
+      splash.classList.add('hidden');
+      splash.setAttribute('aria-hidden', 'true');
+    }
+    document.body.classList.add('loaded');
+    document.documentElement.classList.add('loaded');
+  };
+  const shownAt = typeof window.__splashShownAt === 'number' ? window.__splashShownAt : Date.now();
+  const wait = Math.max(0, SPLASH_MIN_VISIBLE_MS - (Date.now() - shownAt));
+  if (wait === 0) hide();
+  else setTimeout(hide, wait);
 }
 
 // ═══════════════════════════════════════════════════════════════

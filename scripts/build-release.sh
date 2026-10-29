@@ -3,6 +3,9 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${ROOT}/dist"
+if [[ -f "${ROOT}/assets/icons/logo-master.jpg" ]]; then
+  python3 "${ROOT}/scripts/generate-brand-icons.py" 2>/dev/null || true
+fi
 rm -rf "$OUT"
 mkdir -p "$OUT"
 

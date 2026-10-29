@@ -270,10 +270,21 @@ html.loaded, body.loaded { background: var(--bg); }
 .splash {
   position:fixed; inset:0; background:#1e9e3e;
   display:flex; flex-direction:column; justify-content:center; align-items:center; gap:16px;
-  z-index:9999; animation:splashHide 0.3s ease 0.3s forwards;
+  z-index:9999;
   pointer-events:auto;
+  transition:opacity 0.35s ease, visibility 0.35s ease;
 }
-.splash.hidden { opacity:0; visibility:hidden; pointer-events:none; animation:none; }
+.splash-logo {
+  width:min(68vw, 280px); height:auto; max-height:42vh;
+  border-radius:22px; display:block; object-fit:contain;
+  box-shadow:0 12px 40px rgba(0,0,0,0.18);
+}
+.splash.hidden { opacity:0; visibility:hidden; pointer-events:none; }
+.ob-brand-logo {
+  display:block; width:140px; height:auto; margin:0 auto 22px;
+  border-radius:18px; object-fit:contain;
+  box-shadow:0 8px 28px rgba(0,0,0,0.12);
+}
 @keyframes splashHide { to { opacity:0; visibility:hidden; pointer-events:none; } }
 @keyframes fadeInUp   { from{opacity:0;transform:translateY(12px);} to{opacity:1;transform:translateY(0);} }
 @keyframes bounce     { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-14px);} }
@@ -294,7 +305,7 @@ html.loaded, body.loaded { background: var(--bg); }
   min-height:var(--app-top-bar-row);
 }
 .app-top-bar-logo {
-  width:30px; height:30px; border-radius:7px; flex-shrink:0; display:block; object-fit:cover;
+  width:30px; height:30px; border-radius:7px; flex-shrink:0; display:block; object-fit:contain;
 }
 .app-top-bar-title {
   font-size:17px; font-weight:600; line-height:var(--app-top-bar-row);
@@ -475,7 +486,7 @@ body.settings-open .app-top-bar-settings {
 .settings-row-icon-green { background:rgba(52,199,89,0.14); color:var(--green); }
 .settings-row-icon-blue { background:rgba(0,122,255,0.12); color:#007aff; }
 .settings-row-icon-muted { background:rgba(0,0,0,0.06); color:var(--label2); font-size:11px; }
-.settings-row-app-logo { display:block; padding:0; object-fit:cover; background:transparent; }
+.settings-row-app-logo { display:block; padding:0; object-fit:contain; background:transparent; }
 .settings-row-icon-danger { background:rgba(255,59,48,0.12); color:#ff3b30; }
 .settings-row-text { flex:1; min-width:0; }
 .settings-row-title {
