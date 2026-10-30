@@ -174,17 +174,6 @@
     </div>
   </div>
 
-  <!-- BEST SCORES (Personal Best journeys) — same collapsible pattern as Lifetime -->
-  <div class="card collapsible-journey-panel" id="bestPerformancesCard" data-premium-feature="bestScores" style="display:none;animation:fadeInUp 0.4s ease 0.22s both;margin-top:12px;">
-    <button type="button" id="bestPerformancesPanelToggle" class="panel-toggle-header" aria-expanded="false" aria-controls="bestPerformancesBody" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;min-height:44px;">
-      <div style="font-size:13px;font-weight:700;color:#1c1c1e;">🏅 Best Scores</div>
-      <span id="bestPerformancesToggleBtn" style="font-size:12px;font-weight:500;color:rgba(60,60,67,0.4);">Show ▾</span>
-    </button>
-    <div id="bestPerformancesBody" class="panel-body" style="display:none;padding:0 16px 16px;">
-      <div id="bestJourneysList" class="best-perf-list" role="list" aria-label="Top journey scores"></div>
-    </div>
-  </div>
-
   <!-- METER CARD -->
   <div class="card" id="riskMeterCard" data-premium-feature="meter" style="animation:fadeInUp 0.4s ease 0.25s both;margin-top:12px;">
     <button type="button" id="riskMeterToggle" class="risk-meter-toggle panel-toggle-header" aria-expanded="false" aria-controls="riskMeterBody">
@@ -202,6 +191,17 @@
       <div style="text-align:center;margin-top:12px;">
         <button onclick="AuditOnboarding.show()" id="assessBtn" style="background:#007aff;border:none;border-radius:22px;padding:12px 28px;min-height:44px;font-size:13px;font-weight:600;color:white;cursor:pointer;font-family:inherit;">Take Test</button>
       </div>
+    </div>
+  </div>
+
+  <!-- BEST SCORES (Personal Best journeys) — same collapsible pattern as Lifetime -->
+  <div class="card collapsible-journey-panel" id="bestPerformancesCard" data-premium-feature="bestScores" style="display:none;animation:fadeInUp 0.4s ease 0.28s both;margin-top:12px;">
+    <button type="button" id="bestPerformancesPanelToggle" class="panel-toggle-header" aria-expanded="false" aria-controls="bestPerformancesBody" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;min-height:44px;">
+      <div style="font-size:13px;font-weight:700;color:#1c1c1e;">🏅 Best Scores</div>
+      <span id="bestPerformancesToggleBtn" style="font-size:12px;font-weight:500;color:rgba(60,60,67,0.4);">Show ▾</span>
+    </button>
+    <div id="bestPerformancesBody" class="panel-body" style="display:none;padding:0 16px 16px;">
+      <div id="bestJourneysList" class="best-perf-list" role="list" aria-label="Top journey scores"></div>
     </div>
   </div>
 
