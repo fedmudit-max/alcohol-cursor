@@ -130,7 +130,7 @@ Streak and Journey
 Streak is continuous sober days
 Journey is sober days until user consumes 10 drinking days.
 
-**Science** is a tab (body recovery timeline on streak basis). **Streak** and **Milestone** are separate tabs.
+**Science** is a tab (body recovery timeline on streak basis). **Streak** and **Journey** are separate tabs.
 
 **Missed days (current behavior):** If a user forgets to log on the 2nd, 3rd and 4th and today is the 5th, the missed days remain **unlogged**. The user can tap each unlogged day on the **Calendar** and choose **Mark Sober** or **I Drank**. **Yesterday** may also be prompted separately when they return. **Unlogged days never automatically affect the journey score or streak** — only explicit log entries (today’s buttons, yesterday modal, or calendar backfill) update score and streak.
 

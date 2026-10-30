@@ -37,7 +37,7 @@ function markStreakOwnedScienceCelebrated(data, day) {
 const JOURNEY_TROPHIES = [
   { days:10,  el:'jm-10',  label:'10 Days — First Win',          c:{ emoji:'⚡', title:'First Win!',          msg:"10 sober days. Your first real milestone. Sober days now equal your drinking days. You are no longer losing." }},
   { days:15,  el:'jm-15',  label:'15 Days — Holding Ground',     c:{ emoji:'🌿', title:'Holding Ground!',     msg:"15 sober days. Sober days now outnumber drinking days. For the first time — you are ahead. The tide has turned." }},
-  { days:20,  el:'jm-20',  label:'20 Days — 20 Sober Days',      c:{ emoji:'🌟', title:'20 Sober Days',      msg:"20 sober days. You've built substantially more alcohol-free time. Keep building on the progress you've made." }},
+  { days:20,  el:'jm-20',  label:'20 Days — Steady Progress',    c:{ emoji:'🌟', title:'Steady Progress!',   msg:"20 sober days. You've built substantially more alcohol-free time. Keep building on the progress you've made." }},
   { days:30,  el:'jm-30',  label:'30 Days — Momentum',           c:{ emoji:'💪', title:'Momentum!',           msg:"30 sober days. You've built a strong run of alcohol-free time. Keep building on the progress you've made." }},
   { days:40,  el:'jm-40',  label:'40 Days — Building Habit',     c:{ emoji:'🎯', title:'Building Habit!',     msg:"40 sober days. You've built a substantial amount of alcohol-free time. Keep building on the progress you've made." }},
   { days:50,  el:'jm-50',  label:'50 Days — Half Century',       c:{ emoji:'🌱', title:'Half Century!',       msg:"50 sober days. You've built a sustained pattern of alcohol-free days. Keep going." }},

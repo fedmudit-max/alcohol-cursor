@@ -31,8 +31,8 @@ const UI = {
           bestExplainEl.classList.add('is-new-best');
           bestExplainEl.style.display = '';
         } else if (showTarget) {
-          const dayWord = target === 1 ? 'sober day' : 'sober days';
-          bestExplainEl.textContent = `Beat ${target} ${dayWord} to win`;
+          bestExplainEl.textContent =
+            `Beat ${target} sober ${target === 1 ? 'day' : 'days'} to win`;
           bestExplainEl.classList.remove('is-new-best');
           bestExplainEl.style.display = '';
         } else {
