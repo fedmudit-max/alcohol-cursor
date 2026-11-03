@@ -11,8 +11,8 @@
 <script src="src/dev/next-day-test.js"></script>
 ```
 
-Advances one in-app calendar day (`simulatedToday`, `calendarDay`). The 15-day trial counts **app calendar days** while this bar is loaded.
+Advances one in-app calendar day (`simulatedToday`, `calendarDay`). Does not change the install trial clock (`sj_trialStartedAt`).
 
-## Optional: trial clock QA
+## Optional: trial clock QA (full bar)
 
-**File:** `trial-test-bar.js` — not loaded by default. Add manually if you need +1 trial day / expire trial / fresh trial.
+**File:** `trial-test-bar.js` — Next Day + Expire trial + Fresh trial. Same setup as above; do not load both bars unless you want two controls.

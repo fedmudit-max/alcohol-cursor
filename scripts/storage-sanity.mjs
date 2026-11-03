@@ -138,6 +138,33 @@ ok('simulatedToday stripped when showTestUI false', () => {
   if (d.simulatedToday) throw new Error('simulatedToday should be removed in production config');
 });
 
+ok('calendarDaysSinceLocalDate — same local day is 0', () => {
+  const a = new Date(2026, 5, 15, 23, 59, 0);
+  const b = new Date(2026, 5, 15, 0, 1, 0);
+  if (ctx.calendarDaysSinceLocalDate(a, b) !== 0) throw new Error('same calendar day');
+});
+
+ok('calendarDaysSinceLocalDate — counts civil days (not ms/86400000)', () => {
+  const start = new Date(2024, 2, 9, 12, 0, 0);
+  const next = new Date(2024, 2, 10, 12, 0, 0);
+  if (ctx.calendarDaysSinceLocalDate(start, next) !== 1) throw new Error('Mar 9 → Mar 10 should be 1 day');
+  const span = new Date(2026, 0, 1);
+  const day16 = new Date(2026, 0, 16);
+  if (ctx.calendarDaysSinceLocalDate(span, day16) !== 15) throw new Error('Jan 1 → Jan 16 should be 15 days');
+});
+
+ok('syncCalendarDayFromJourneyStart — journey day from calendar span', () => {
+  vm.runInContext('CONFIG.showTestUI = true', ctx);
+  const data = DM.defaults();
+  data.journeyStartKey = '2024-03-09';
+  data.simulatedToday = new Date(2024, 2, 23, 12, 0, 0).toISOString();
+  ctx.syncCalendarDayFromJourneyStart(data);
+  if (data.calendarDay !== 15) {
+    throw new Error(`Mar 9–Mar 23 should be journey day 15, got ${data.calendarDay}`);
+  }
+  vm.runInContext('CONFIG.showTestUI = false', ctx);
+});
+
 console.log('\nTrial entitlement\n');
 
 ctx.Tracker = { data: null };
@@ -151,6 +178,8 @@ const {
   isBestScoreCardLocked,
   isCalendarLocked,
   hasPremiumAccess,
+  isPremiumActive,
+  trialDaysLeft,
   getTrialEndTimestamp,
 } = ctx;
 const TRIAL_STORE_KEY = 'sj_trialStartedAt';
@@ -177,10 +206,10 @@ ok('Best Score tile open on journey 2 even after trial ended', () => {
   if (isBestScoreCardLocked(ctx.Tracker.data)) throw new Error('best score tile should stay open on J2');
 });
 
-ok('Best Score tile locked from journey 3 even if trial still active', () => {
+ok('Best Score tile unlocked on journey 3 with active trial', () => {
   store[TRIAL_STORE_KEY] = new Date().toISOString();
   ctx.Tracker.data = { attempt: 3 };
-  if (!isBestScoreCardLocked(ctx.Tracker.data)) throw new Error('best score tile should lock on J3');
+  if (isBestScoreCardLocked(ctx.Tracker.data)) throw new Error('best score tile should unlock on J3 during active trial');
 });
 
 ok('Calendar open on journey 2 with trial active', () => {
@@ -189,10 +218,10 @@ ok('Calendar open on journey 2 with trial active', () => {
   if (isCalendarLocked(ctx.Tracker.data)) throw new Error('calendar should stay open on J2 during trial');
 });
 
-ok('Calendar locked from journey 3 even if trial still active', () => {
+ok('Calendar unlocked on journey 3 with active trial', () => {
   store[TRIAL_STORE_KEY] = new Date().toISOString();
   ctx.Tracker.data = { attempt: 3 };
-  if (!isCalendarLocked(ctx.Tracker.data)) throw new Error('calendar should lock on J3');
+  if (isCalendarLocked(ctx.Tracker.data)) throw new Error('calendar should unlock on J3 during active trial');
 });
 
 ok('History / Best Scores tier unlocked on journey 3', () => {
@@ -201,16 +230,24 @@ ok('History / Best Scores tier unlocked on journey 3', () => {
   if (isBestScoreLocked(ctx.Tracker.data)) throw new Error('should stay open on J3');
 });
 
-ok('History / Best Scores tier locked from journey 4 even if trial still active', () => {
+ok('History / Best Scores tier unlocked on journey 4 with active trial', () => {
   store[TRIAL_STORE_KEY] = new Date().toISOString();
   ctx.Tracker.data = { attempt: 4 };
-  if (!isBestScoreLocked(ctx.Tracker.data)) throw new Error('should lock on J4');
+  if (isBestScoreLocked(ctx.Tracker.data)) throw new Error('history tier should unlock on J4 during active trial');
 });
 
-ok('History / Best Scores tier locked when journey 3 ended (pending reset)', () => {
-  store[TRIAL_STORE_KEY] = new Date().toISOString();
+ok('History / Best Scores tier locked from journey 4 when trial expired', () => {
+  const past = new Date(Date.now() - ((16) * 86400000));
+  store[TRIAL_STORE_KEY] = past.toISOString();
+  ctx.Tracker.data = { attempt: 4 };
+  if (!isBestScoreLocked(ctx.Tracker.data)) throw new Error('should lock on J4 without premium access');
+});
+
+ok('History / Best Scores tier locked when journey 3 ended (pending reset) and trial expired', () => {
+  const past = new Date(Date.now() - ((16) * 86400000));
+  store[TRIAL_STORE_KEY] = past.toISOString();
   ctx.Tracker.data = { attempt: 3, journeyPendingReset: true };
-  if (!isBestScoreLocked(ctx.Tracker.data)) throw new Error('should lock after J3 ends');
+  if (!isBestScoreLocked(ctx.Tracker.data)) throw new Error('should lock after J3 ends without premium access');
 });
 
 ok('trial ends after 15 calendar days from start', () => {
@@ -220,6 +257,13 @@ ok('trial ends after 15 calendar days from start', () => {
   const endMs = getTrialEndTimestamp(start);
   const day16 = new Date(2026, 0, 16, 12, 0, 0).getTime();
   if (day16 <= endMs) throw new Error('day 16 should be after trial end');
+});
+
+ok('trialDaysLeft — 0 when trial expired', () => {
+  const past = new Date(Date.now() - (16 * 86400000));
+  store[TRIAL_STORE_KEY] = past.toISOString();
+  ctx.Tracker.data = DM.load();
+  if (trialDaysLeft(ctx.Tracker.data) !== 0) throw new Error('expired trial should show 0 days left');
 });
 
 ok('reconcileTrialClock does not pull trial start from journey logs', () => {
@@ -245,18 +289,27 @@ ok('journey day 20 does not end trial — only wall-clock 15 days since install'
   if (!isTrialActive()) throw new Error('trial should not use journey day counter');
 });
 
-ok('simulated app calendar past day 15 ends trial (Next calendar day QA)', () => {
+ok('trial expiry uses device calendar — simulatedToday does not end active trial', () => {
   ctx.CONFIG.showTestUI = false;
   ctx.CONFIG.showInternalTestBar = true;
-  const start = new Date(2026, 0, 1, 12, 0, 0);
-  store[TRIAL_STORE_KEY] = start.toISOString();
+  store[TRIAL_STORE_KEY] = new Date().toISOString();
   ctx.Tracker.data = {
     attempt: 1,
-    calendarDay: 16,
-    simulatedToday: new Date(2026, 0, 16, 12, 0, 0).toISOString(),
+    calendarDay: 99,
+    simulatedToday: new Date(2030, 0, 1, 12, 0, 0).toISOString(),
+  };
+  if (!isTrialActive(ctx.Tracker.data)) {
+    throw new Error('simulatedToday must not expire wall-clock trial');
+  }
+  const past = new Date(Date.now() - (16 * 86400000));
+  store[TRIAL_STORE_KEY] = past.toISOString();
+  ctx.Tracker.data = {
+    attempt: 1,
+    calendarDay: 1,
+    simulatedToday: new Date().toISOString(),
   };
   if (isTrialActive(ctx.Tracker.data)) {
-    throw new Error('trial should end when simulated calendar passes 15 days from install');
+    throw new Error('expired wall-clock trial must stay expired regardless of simulatedToday');
   }
 });
 
@@ -268,6 +321,42 @@ ok('internal test bar alone does not grant Premium after trial ends', () => {
   store[PREMIUM_KEY] = JSON.stringify({ active: true, source: 'local-stub' });
   if (typeof reconcileStubPremiumWithTrial === 'function') reconcileStubPremiumWithTrial();
   if (hasPremiumAccess()) throw new Error('expired trial should lock without showTestUI');
+});
+
+ok('local-stub premium requires valid future expiresAt (dev)', () => {
+  vm.runInContext('CONFIG.showTestUI = true', ctx);
+  store[TRIAL_STORE_KEY] = new Date(Date.now() - (16 * 86400000)).toISOString();
+  const future = new Date(Date.now() + (5 * 86400000)).toISOString();
+  store[PREMIUM_KEY] = JSON.stringify({
+    active: true,
+    source: 'local-stub',
+    expiresAt: future,
+  });
+  if (!isPremiumActive()) throw new Error('valid stub expiry should grant premium in dev');
+});
+
+ok('local-stub premium rejected without expiresAt', () => {
+  vm.runInContext('CONFIG.showTestUI = true', ctx);
+  store[PREMIUM_KEY] = JSON.stringify({ active: true, source: 'local-stub' });
+  if (isPremiumActive()) throw new Error('missing expiresAt must not grant premium');
+});
+
+ok('local-stub premium rejected for empty or invalid expiresAt', () => {
+  vm.runInContext('CONFIG.showTestUI = true', ctx);
+  store[PREMIUM_KEY] = JSON.stringify({ active: true, source: 'local-stub', expiresAt: '' });
+  if (isPremiumActive()) throw new Error('empty expiresAt must not grant premium');
+  store[PREMIUM_KEY] = JSON.stringify({ active: true, source: 'local-stub', expiresAt: 'not-a-date' });
+  if (isPremiumActive()) throw new Error('invalid expiresAt must not grant premium');
+});
+
+ok('local-stub premium rejected when expiresAt is in the past', () => {
+  vm.runInContext('CONFIG.showTestUI = true', ctx);
+  store[PREMIUM_KEY] = JSON.stringify({
+    active: true,
+    source: 'local-stub',
+    expiresAt: new Date(Date.now() - 86400000).toISOString(),
+  });
+  if (isPremiumActive()) throw new Error('expired stub must not grant premium');
 });
 
 console.log(failed ? `\n${failed} check(s) failed.\n` : '\nAll checks passed.\n');

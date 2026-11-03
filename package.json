@@ -14,7 +14,7 @@
     "android:bundle": "npm test && npm run cap:sync && bash scripts/android-bundle-release.sh",
     "android:verify-aab": "bash scripts/verify-aab-version.sh android/app/build/outputs/bundle/release/app-release.aab",
     "generate:icons": "python3 scripts/generate-brand-icons.py",
-    "test": "node tests/catchup-check.js && node tests/unlogged-day-model.mjs && node tests/catchup-sequences.mjs && node scripts/storage-sanity.mjs"
+    "test": "node tests/catchup-check.js && node tests/unlogged-day-model.mjs && node tests/catchup-sequences.mjs && node tests/backup-import-export.mjs && node scripts/storage-sanity.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^7.2.0",

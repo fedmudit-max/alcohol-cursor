@@ -4,6 +4,14 @@ function dateKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
 }
 
+/** Whole local calendar days from `from`’s date to `to`’s date (0 = same day). DST-safe. */
+function calendarDaysSinceLocalDate(from, to) {
+  if (!from || !to) return 0;
+  const fromMs = Date.UTC(from.getFullYear(), from.getMonth(), from.getDate());
+  const toMs = Date.UTC(to.getFullYear(), to.getMonth(), to.getDate());
+  return Math.floor((toMs - fromMs) / 86400000);
+}
+
 function noonFromDateKey(key) {
   const [y, m, d] = key.split('-').map(Number);
   return new Date(y, m - 1, d, 12, 0, 0);
@@ -41,7 +49,7 @@ function syncCalendarDayFromJourneyStart(data) {
   if (!floor) return;
   const start = noonFromDateKey(floor);
   const today = getAppToday(data);
-  const spanDays = Math.max(0, Math.round((today.getTime() - start.getTime()) / MS_PER_DAY));
+  const spanDays = Math.max(0, calendarDaysSinceLocalDate(start, today));
   data.calendarDay = spanDays + 1;
 }
 

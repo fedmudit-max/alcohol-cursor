@@ -9,6 +9,15 @@
  */
 const ENABLE_TRIAL_TEST_BAR = true;
 
+/** Fail closed: never mount in production, even if this script is included by mistake. */
+function isTrialTestBarAllowed() {
+  if (!ENABLE_TRIAL_TEST_BAR) return false;
+  if (typeof CONFIG !== 'object' || !CONFIG) return false;
+  if (CONFIG.isProduction === true) return false;
+  if (CONFIG.isProduction !== false) return false;
+  return true;
+}
+
 function devJourneyDashboardDay(data) {
   try {
     let d = data;
@@ -23,14 +32,11 @@ function devJourneyDashboardDay(data) {
 }
 
 (function () {
-  if (!ENABLE_TRIAL_TEST_BAR) return;
+  if (!isTrialTestBarAllowed()) return;
 
-  if (typeof CONFIG === 'object' && CONFIG) {
-    CONFIG.showTestUI = true;
-    CONFIG.showInternalTestBar = true;
-    CONFIG.enforceTrialEntitlement = true;
-    if (CONFIG.buildTag === 'production') CONFIG.buildTag = 'dev-trial';
-  }
+  CONFIG.showTestUI = true;
+  CONFIG.showInternalTestBar = true;
+  CONFIG.enforceTrialEntitlement = true;
 
   const BAR_STYLES = `
 #trialTestBtns {
@@ -86,6 +92,45 @@ body.test-ui-active.trial-test-ui-active .toast.show {
 #trialTestBtns .trial-btn-reset { background: #34c759; }
 `;
 
+  /** Clears dev-only overrides; entitlement then follows TRIAL_KEY + real calendar (see getEntitlementTestMode). */
+  function clearDevEntitlementOverrides() {
+    if (typeof setForcePremiumLocked === 'function') setForcePremiumLocked(false);
+    if (typeof clearPremiumRecord === 'function') clearPremiumRecord();
+  }
+
+  function persistTrialStartISO(iso) {
+    if (typeof setTrialStartedAtISO === 'function') {
+      setTrialStartedAtISO(iso);
+    } else {
+      try {
+        localStorage.setItem(TRIAL_KEY, iso);
+      } catch (e) {}
+      if (typeof Tracker !== 'undefined' && Tracker.data) {
+        Tracker.data.trialStartedAt = iso;
+      }
+    }
+    if (typeof Tracker !== 'undefined' && Tracker.data && typeof DataManager !== 'undefined') {
+      DataManager.saveNow(Tracker.data);
+    }
+  }
+
+  function readValidTrialStartDate() {
+    let raw = null;
+    try {
+      raw = localStorage.getItem(TRIAL_KEY);
+    } catch (e) {}
+    let start = raw ? new Date(raw) : null;
+    if (!start || Number.isNaN(start.getTime())) {
+      if (typeof ensureTrialStarted === 'function') ensureTrialStarted();
+      try {
+        raw = localStorage.getItem(TRIAL_KEY);
+      } catch (e) {}
+      start = raw ? new Date(raw) : new Date();
+      if (Number.isNaN(start.getTime())) start = new Date();
+    }
+    return start;
+  }
+
   function refreshEntitlementUi() {
     if (typeof updatePremiumLockTestBtn === 'function') updatePremiumLockTestBtn();
     if (typeof renderPremiumEntry === 'function') renderPremiumEntry();
@@ -105,32 +150,22 @@ body.test-ui-active.trial-test-ui-active .toast.show {
     const bestLocked = typeof isBestScoreLocked === 'function' && Tracker.data
       ? isBestScoreLocked(Tracker.data)
       : false;
-    const mode = typeof getEntitlementTestMode === 'function' ? getEntitlementTestMode() : '';
     const jPart = jDay != null ? ` · Journey day ${jDay} (not trial clock)` : '';
     const aPart = attempt > 0 ? ` · J${attempt}` : '';
-    const trialEnded = left <= 0 || mode === 'free';
+    const trialEnded = left <= 0;
     if (trialEnded) {
-      return `Trial ended (15d since install)${aPart}${bestLocked ? ' · History tier locked' : ''}${jPart}`;
+      const days = typeof TRIAL_DAYS === 'number' ? TRIAL_DAYS : 15;
+      return `Trial ended (${days}-day trial)${aPart}${bestLocked ? ' · History tier locked' : ''}${jPart}`;
     }
-    return `Trial · ${left}d since install${aPart}${bestLocked ? ' · History tier locked' : ''}${jPart}`;
+    return `Trial · ${left}d remaining${aPart}${bestLocked ? ' · History tier locked' : ''}${jPart}`;
   }
 
   function advanceTrialOneDay() {
     try {
-      if (typeof ensureTrialStarted === 'function') ensureTrialStarted();
-      let raw = localStorage.getItem(TRIAL_KEY);
-      let start = raw ? new Date(raw) : new Date();
-      if (Number.isNaN(start.getTime())) start = new Date();
-      start.setTime(start.getTime() - MS_PER_DAY);
-      localStorage.setItem(TRIAL_KEY, start.toISOString());
-      if (typeof Tracker !== 'undefined' && Tracker.data) {
-        Tracker.data.trialStartedAt = start.toISOString();
-        if (typeof DataManager !== 'undefined') DataManager.saveNow(Tracker.data);
-      }
-      if (typeof TRIAL_POLICY_KEY !== 'undefined') {
-        localStorage.setItem(TRIAL_POLICY_KEY, String(TRIAL_DAYS));
-      }
-      if (typeof clearPremiumRecord === 'function') clearPremiumRecord();
+      clearDevEntitlementOverrides();
+      const start = readValidTrialStartDate();
+      start.setDate(start.getDate() - 1);
+      persistTrialStartISO(start.toISOString());
     } catch (e) {
       console.warn('[trial-test-bar] advance failed', e);
     }
@@ -140,30 +175,30 @@ body.test-ui-active.trial-test-ui-active .toast.show {
   }
 
   function expireTrialNow() {
-    if (typeof Tracker !== 'undefined' && Tracker.setEntitlementTest) {
-      Tracker.setEntitlementTest('free');
-    } else {
-      try {
-        const past = new Date(Date.now() - ((TRIAL_DAYS + 1) * MS_PER_DAY));
-        localStorage.setItem(TRIAL_KEY, past.toISOString());
-      } catch (e) {}
-      refreshEntitlementUi();
+    try {
+      clearDevEntitlementOverrides();
+      const days = typeof TRIAL_DAYS === 'number' ? TRIAL_DAYS : 15;
+      const past = new Date();
+      past.setDate(past.getDate() - (days + 1));
+      persistTrialStartISO(past.toISOString());
+    } catch (e) {
+      console.warn('[trial-test-bar] expire failed', e);
     }
+    refreshEntitlementUi();
     updateTag();
+    if (typeof showToast === 'function') showToast(trialStatusLine());
   }
 
   function resetTrialNow() {
-    if (typeof Tracker !== 'undefined' && Tracker.setEntitlementTest) {
-      Tracker.setEntitlementTest('trial');
-    } else {
-      try {
-        localStorage.setItem(TRIAL_KEY, new Date().toISOString());
-        localStorage.setItem(TRIAL_POLICY_KEY, String(TRIAL_DAYS));
-        if (typeof clearPremiumRecord === 'function') clearPremiumRecord();
-      } catch (e) {}
-      refreshEntitlementUi();
+    try {
+      clearDevEntitlementOverrides();
+      persistTrialStartISO(new Date().toISOString());
+    } catch (e) {
+      console.warn('[trial-test-bar] reset failed', e);
     }
+    refreshEntitlementUi();
     updateTag();
+    if (typeof showToast === 'function') showToast(trialStatusLine());
   }
 
   function updateTag() {
@@ -191,7 +226,7 @@ body.test-ui-active.trial-test-ui-active .toast.show {
     const btnAdvance = document.createElement('button');
     btnAdvance.type = 'button';
     btnAdvance.className = 'trial-btn-advance';
-    btnAdvance.textContent = '+1 Day (trial)';
+    btnAdvance.textContent = 'Next Day';
     btnAdvance.addEventListener('click', () => advanceTrialOneDay());
 
     const btnExpire = document.createElement('button');
@@ -216,7 +251,7 @@ body.test-ui-active.trial-test-ui-active .toast.show {
   }
 
   window.syncTrialTestBar = function (active) {
-    if (!ENABLE_TRIAL_TEST_BAR) {
+    if (!isTrialTestBarAllowed()) {
       document.body.classList.remove('trial-test-ui-active');
       return;
     }

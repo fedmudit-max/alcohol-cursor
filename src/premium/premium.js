@@ -19,11 +19,15 @@ function canApplyLocalPremiumUnlock() {
 }
 
 function premiumRecordGrantsAccess(rec) {
-  if (!rec || !rec.active) return false;
-  if (rec.source === 'local-stub' && isLocalStubBilling() && !canApplyLocalPremiumUnlock()) {
-    return false;
+  if (!rec || rec.active !== true) return false;
+
+  // Local test purchases are never valid in production.
+  if (rec.source === 'local-stub') {
+    return canApplyLocalPremiumUnlock();
   }
-  return true;
+
+  // No other purchase source is trusted until store verification exists.
+  return false;
 }
 
 function premiumDaysLeftLabel() {
@@ -86,36 +90,21 @@ function getPremiumRecord() {
   }
 }
 
+/** Fail-closed: trusted premium records must carry a valid, unexpired expiresAt. */
+function premiumRecordHasValidExpiry(rec) {
+  if (!rec || rec.expiresAt == null || rec.expiresAt === '') return false;
+  const exp = new Date(rec.expiresAt).getTime();
+  if (Number.isNaN(exp)) return false;
+  return Date.now() <= exp;
+}
+
 function isPremiumActive() {
   const rec = getPremiumRecord();
   if (!premiumRecordGrantsAccess(rec)) return false;
-  if (rec.expiresAt) {
-    const exp = new Date(rec.expiresAt).getTime();
-    if (!Number.isNaN(exp) && Date.now() > exp) return false;
-  }
-  return true;
+  return premiumRecordHasValidExpiry(rec);
 }
 
-function migrateTrialPolicyIfNeeded() {
-  try {
-    let stored = parseInt(localStorage.getItem(TRIAL_POLICY_KEY), 10);
-    if (Number.isNaN(stored)) {
-      if (localStorage.getItem(TRIAL_KEY)) stored = LEGACY_TRIAL_DAYS;
-      else {
-        localStorage.setItem(TRIAL_POLICY_KEY, String(TRIAL_DAYS));
-        return;
-      }
-    }
-    if (TRIAL_DAYS > stored) {
-      localStorage.setItem(`sj_trialPolicyBumpFrom_${stored}`, '1');
-      localStorage.setItem(TRIAL_POLICY_KEY, String(TRIAL_DAYS));
-    } else if (stored !== TRIAL_DAYS) {
-      localStorage.setItem(TRIAL_POLICY_KEY, String(TRIAL_DAYS));
-    }
-  } catch (e) {}
-}
-
-/** Last instant of trial day N (start day = day 1). Optional policyDays for migration. */
+/** Last instant of trial day N (start day = day 1). Optional policyDays override (defaults to TRIAL_DAYS). */
 function getTrialEndTimestamp(start, policyDays) {
   const days = policyDays || TRIAL_DAYS;
   const d = new Date(start.getTime());
@@ -128,20 +117,19 @@ function getTrialEndTimestamp(start, policyDays) {
 /** First app open only — not journey day, not dailyLog span. */
 function reconcileTrialClock(data) {
   try {
-    migrateTrialPolicyIfNeeded();
     const lsStart = getTrialStartedAt();
     const dataStart = data && data.trialStartedAt ? new Date(data.trialStartedAt) : null;
     let anchorMs = null;
-    if (lsStart && !Number.isNaN(lsStart.getTime())) anchorMs = lsStart.getTime();
-    if (dataStart && !Number.isNaN(dataStart.getTime())) {
-      const t = dataStart.getTime();
-      anchorMs = anchorMs == null ? t : Math.min(anchorMs, t);
+    if (lsStart && !Number.isNaN(lsStart.getTime())) {
+      anchorMs = lsStart.getTime();
+    } else if (dataStart && !Number.isNaN(dataStart.getTime())) {
+      anchorMs = dataStart.getTime();
+    } else {
+      anchorMs = Date.now();
     }
-    if (anchorMs == null) anchorMs = Date.now();
     const iso = new Date(anchorMs).toISOString();
     setTrialStartedAtISO(iso);
     if (data) data.trialStartedAt = iso;
-    localStorage.setItem(TRIAL_POLICY_KEY, String(TRIAL_DAYS));
     return iso;
   } catch (e) {
     return null;
@@ -163,23 +151,19 @@ function getTrialStartedAt() {
   }
 }
 
-/** End of current app calendar day (real or simulated) — trial ends after 15 such days. */
+/** End of current device calendar day — trial is 15 wall-clock days from first open. */
 function getEntitlementNowMs(data) {
   try {
-    if (typeof getAppToday === 'function') {
-      let d = data;
-      if (!d && typeof Tracker !== 'undefined' && Tracker.data) d = Tracker.data;
-      const appToday = getAppToday(d || {});
-      return new Date(
-        appToday.getFullYear(),
-        appToday.getMonth(),
-        appToday.getDate(),
-        23,
-        59,
-        59,
-        999
-      ).getTime();
-    }
+    const n = new Date();
+    return new Date(
+      n.getFullYear(),
+      n.getMonth(),
+      n.getDate(),
+      23,
+      59,
+      59,
+      999
+    ).getTime();
   } catch (e) {}
   return Date.now();
 }
@@ -211,7 +195,7 @@ function journeyAttemptForPremiumLock(data) {
 function isJourneyAttemptPremiumLocked(data, fromAttempt) {
   if (!isTrialEntitlementEnforced()) return false;
   if (isForcePremiumLocked()) return true;
-  if (isPremiumActive()) return false;
+  if (hasPremiumAccess(data)) return false;
   const from = typeof fromAttempt === 'number' ? fromAttempt : 3;
   return journeyAttemptForPremiumLock(data) >= from;
 }
@@ -228,7 +212,7 @@ function isBestScoreCardLocked(data) {
 function isBestScoreLocked(data) {
   if (!isTrialEntitlementEnforced()) return false;
   if (isForcePremiumLocked()) return true;
-  if (isPremiumActive()) return false;
+  if (hasPremiumAccess(data)) return false;
   const from = typeof BEST_SCORE_LOCK_FROM_ATTEMPT === 'number'
     ? BEST_SCORE_LOCK_FROM_ATTEMPT
     : 3;
@@ -333,10 +317,12 @@ function updatePremiumLockTestBtn() {
 function trialDaysLeft(data) {
   const start = getTrialStartedAt();
   if (!start) return TRIAL_DAYS;
-  const ends = getTrialEndTimestamp(start);
   let d = data;
   if (!d && typeof Tracker !== 'undefined' && Tracker.data) d = Tracker.data;
-  return Math.max(0, Math.ceil((ends - getEntitlementNowMs(d)) / MS_PER_DAY));
+  if (typeof isTrialActive === 'function' && !isTrialActive(d)) return 0;
+  const elapsedDays = calendarDaysSinceLocalDate(start, new Date());
+  const left = TRIAL_DAYS - elapsedDays;
+  return Math.max(0, Math.min(TRIAL_DAYS, left));
 }
 
 function reconcileStubPremiumWithTrial() {
@@ -354,7 +340,7 @@ function refreshEntitlementIfChanged(data) {
   reconcileStubPremiumWithTrial();
   const d = data || (typeof Tracker !== 'undefined' && Tracker.data) || null;
   if (!d) return;
-  const access = hasPremiumAccess();
+  const access = hasPremiumAccess(d);
   if (typeof Tracker !== 'undefined') {
     if (Tracker._lastPremiumAccess === access) return;
     Tracker._lastPremiumAccess = access;
@@ -737,7 +723,7 @@ function renderPremiumCheckoutSheet() {
     titleEl.textContent = 'You’re Premium';
     if (subEl) {
       subEl.hidden = false;
-      subEl.textContent = 'Full access is on. Subscriptions will use App Store / Play Billing when published; for now this device keeps your unlock.';
+      subEl.textContent = 'Full Premium access is active on this device.';
     }
     if (priceBlock) priceBlock.hidden = true;
     if (laterBtn) laterBtn.textContent = 'Close';

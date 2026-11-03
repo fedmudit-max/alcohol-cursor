@@ -121,14 +121,22 @@ const MAX_COMPLETED_JOURNEYS = 20;   // free journey history cap
 const MAX_COMPLETED_JOURNEYS_PREMIUM = 100; // premium journey history cap
 const PREMIUM_KEY = 'sj_premium';
 const TRIAL_KEY = 'sj_trialStartedAt';
-const TRIAL_POLICY_KEY = 'sj_trialPolicyDays'; // last shipped TRIAL_DAYS (for length bumps)
 /** Wall-clock days from first app open (not journey “Day” on the dashboard). */
 const TRIAL_DAYS = 15;
-const LEGACY_TRIAL_DAYS = 14;
-/** Dashboard Best Score tile + calendar: lock from this journey # without Premium (trial still counts as access on J1–2 only). */
+/**
+ * MVP trial eligibility (local only — no server trial clock):
+ * • Restart / days away: keep TRIAL_KEY; expiry follows device calendar.
+ * • Export: trialStartedAt in backup state mirrors TRIAL_KEY.
+ * • Import on device with valid local trial: keep local anchor (backup.js).
+ * • Import on new device: use backup’s trialStartedAt (init bootstrap trial on same day is ignored).
+ * • Delete All Data: clear trial and start a new TRIAL_DAYS window (backup.js).
+ * • Premium: Google Play entitlement when store billing is wired (sj_premium).
+ * Uninstall/reinstall may wipe storage; treated as acceptable under this policy.
+ */
+/** Dashboard Best Score tile + calendar: lock from this journey # unless hasPremiumAccess (paid or active trial). */
 const BEST_SCORE_CARD_LOCK_FROM_ATTEMPT = 3;
 const CALENDAR_LOCK_FROM_ATTEMPT = 3;
-/** History, Best Scores, Lifetime — lock from this journey without Premium. */
+/** History, Best Scores, Lifetime — lock from this journey unless hasPremiumAccess. */
 const BEST_SCORE_LOCK_FROM_ATTEMPT = 4;
 const FREE_JOURNEY_MILESTONE_DAYS = 50;
 const PREMIUM_PLANS = {
