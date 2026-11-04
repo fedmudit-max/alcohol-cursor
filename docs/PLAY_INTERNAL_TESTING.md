@@ -2,6 +2,8 @@
 
 Use this checklist for the first **Internal testing** release of **10Drinks** (`com.tendrinks.app`).
 
+For Play Console + RevenueCat + on-device billing steps, see [PRE_REGISTRATION_CHECKLIST.md](PRE_REGISTRATION_CHECKLIST.md).
+
 ## 1. Preconditions (repo)
 
 ```bash
@@ -9,11 +11,21 @@ npm test
 npm run android:bundle
 ```
 
-`android:bundle` runs tests, builds web assets, syncs Capacitor, then produces a **signed** AAB.
+`android:bundle` runs tests, builds web assets, syncs Capacitor, **`verify-android-assets.sh`** (packaged web must match `dist/`), **`preflight-release.sh --trial`**, then produces a **signed** AAB.
+
+After `cap:sync` only, you can run `npm run android:verify-assets` to confirm **`src/` → `dist/` → `android/.../assets/public/`** are in sync (not just dist vs Android).
+
+For **subscription / RevenueCat** internal tests (after editing `app.config.js` for store mode):
+
+```bash
+npm run android:bundle:store
+```
+
+That runs **`preflight-release.sh --store`** (checks `store` billing, `goog_` key set, `showPremiumInApp` / `showPremiumSubscribe` / `showPremiumInSettings`, `REVENUECAT_ENTITLEMENT_ID = 'premium'` — key is never printed).
 
 Current app config for store builds (see `src/config/app.config.js`):
 
-- Premium paywall/subscribe UI is **hidden** (`showPremiumInApp` / `showPremiumSubscribe: false`) until Play Billing is wired.
+- Premium paywall/subscribe UI is **hidden** (`showPremiumInApp` / `showPremiumSubscribe: false`) until RevenueCat + store mode are enabled.
 - **Trial locks are enforced** (`enforceTrialEntitlement: true`) — Premium features lock after the 15-day free trial.
 - **QA bars are not in `index.html` by default.** For local/device testing, add before `main.js`:
   - `src/dev/calendar-day-advance.js` + `src/dev/next-day-test.js` — **Next calendar day** (trial QA bar optional, not in default `index.html`)
@@ -67,7 +79,10 @@ In `android/app/build.gradle`, bump before each Play upload:
 ## 6. Upload internal build
 
 1. **Testing** → **Internal testing** → **Create new release**.
-2. Upload `android/app/build/outputs/bundle/release/app-release.aab`.
+2. Upload **only** the versioned bundle from the build output (not an old file from Downloads):
+   - Trial track: `app-release-vc<versionCode>-trial.aab` (`npm run android:bundle`)
+   - Store / billing test: `app-release-vc<versionCode>-store.aab` (`npm run android:bundle:store`)
+   (Gradle also writes `app-release.aab`; prefer the `-vc-<profile>` copy — `android-bundle-release.sh` verifies it.)
 3. Add release notes → **Review release** → **Start rollout to Internal testing**.
 4. **Testers** → create an email list → add testers → share the **opt-in link**.
 
@@ -84,7 +99,7 @@ Testers install from the Play Store link (not sideloaded APK), usually within mi
 
 - Fix issues → bump `versionCode` → `npm run android:bundle` → new internal release.
 - When ready: **Closed testing** or **Production** on the same signing key.
-- Enable `showPremiumInApp` / `premiumBilling: 'store'` only after Play Billing is implemented.
+- Enable billing: see [REVENUECAT.md](REVENUECAT.md), then `npm run android:bundle:store` (preflight enforces store config).
 
 ## 9. “Version code 5 already used” (stale AAB)
 

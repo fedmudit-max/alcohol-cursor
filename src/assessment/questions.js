@@ -6,8 +6,7 @@ const AuditOnboarding = {
   step: 1,
 
   show() {
-    if (typeof isTrialEntitlementEnforced === 'function' && isTrialEntitlementEnforced()
-      && typeof hasPremiumAccess === 'function' && !hasPremiumAccess()) {
+    if (typeof isAuditSafetyGuidanceLocked === 'function' && isAuditSafetyGuidanceLocked()) {
       if (typeof Tracker !== 'undefined' && typeof Tracker.openPremium === 'function') {
         Tracker.openPremium();
       } else if (typeof showToast === 'function') {

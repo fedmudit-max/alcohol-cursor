@@ -121,16 +121,17 @@ const MAX_COMPLETED_JOURNEYS = 20;   // free journey history cap
 const MAX_COMPLETED_JOURNEYS_PREMIUM = 100; // premium journey history cap
 const PREMIUM_KEY = 'sj_premium';
 const TRIAL_KEY = 'sj_trialStartedAt';
-/** Wall-clock days from first app open (not journey “Day” on the dashboard). */
+/** Trial length: TRIAL_DAYS × 24 hours from first app open (trialStartedAt instant). */
 const TRIAL_DAYS = 15;
 /**
  * MVP trial eligibility (local only — no server trial clock):
- * • Restart / days away: keep TRIAL_KEY; expiry follows device calendar.
+ * • Restart / days away: keep TRIAL_KEY; expiry at start + TRIAL_DAYS×24h.
  * • Export: trialStartedAt in backup state mirrors TRIAL_KEY.
- * • Import on device with valid local trial: keep local anchor (backup.js).
- * • Import on new device: use backup’s trialStartedAt (init bootstrap trial on same day is ignored).
- * • Delete All Data: clear trial and start a new TRIAL_DAYS window (backup.js).
- * • Premium: Google Play entitlement when store billing is wired (sj_premium).
+ * • Import: trial anchor = earliest of backup / local / in-data (never extends trial; future dates rejected).
+ * • Import on new device: mid-trial backup keeps remaining time from that anchor.
+ * • Delete All Data: clear trial and start a new TRIAL_DAYS×24h window (backup.js).
+ * • Premium: RevenueCat entitlement on Android when store billing is enabled (sj_premium).
+ * • AUDIT-C meter/re-test and reduction/withdrawal safety guidance stay unlocked after trial.
  * Uninstall/reinstall may wipe storage; treated as acceptable under this policy.
  */
 /** Dashboard Best Score tile + calendar: lock from this journey # unless hasPremiumAccess (paid or active trial). */
@@ -143,6 +144,29 @@ const PREMIUM_PLANS = {
   monthly: { id: 'monthly', label: 'Monthly', days: 31 },
   yearly:  { id: 'yearly',  label: 'Yearly',  days: 366 },
 };
+/**
+ * Google Play subscription IDs as RevenueCat exposes them (subscription_id:base_plan_id).
+ * Play Console: one subscription "ten_drinks_premium" with base plans monthly + yearly.
+ */
+/** Google Play subscription product id (one product, multiple base plans). */
+const PLAY_SUBSCRIPTION_ID = 'ten_drinks_premium';
+/** Offering / package product identifiers (subscription_id:base_plan_id). */
+const PLAY_BILLING_PRODUCT_IDS = {
+  monthly: 'ten_drinks_premium:monthly',
+  yearly: 'ten_drinks_premium:yearly',
+};
+/** RevenueCat entitlement identifier (Dashboard → Entitlements). */
+const REVENUECAT_ENTITLEMENT_ID = 'premium';
+/**
+ * Optional RevenueCat offering package identifiers (Dashboard → Offerings → current).
+ * Fallback: packageType MONTHLY / ANNUAL on the current offering.
+ */
+const REVENUECAT_PACKAGE_IDENTIFIERS = {
+  monthly: 'monthly',
+  yearly: 'annual',
+};
+/** Public Android SDK key from RevenueCat → Project → API keys (starts with goog_). */
+const REVENUECAT_ANDROID_API_KEY = '';
 const MS_PER_DAY             = 86400000; // milliseconds in one day
 const CONFETTI_DURATION_MS   = 4000; // how long confetti stays on screen
 const TOAST_DURATION_MS      = 3200; // how long toast message shows
@@ -173,6 +197,9 @@ const CONFIG = {
   showOnboarding: true,
   buildTag:       'production',
   premiumBilling: PREMIUM_BILLING_MODE,
+  /** Native Android store billing via RevenueCat (requires goog_ API key). */
+  revenueCatAndroidApiKey: REVENUECAT_ANDROID_API_KEY,
+  revenueCatEntitlementId: REVENUECAT_ENTITLEMENT_ID,
   /**
    * When true, Premium features lock after the free trial unless the user has Premium.
    * Independent of paywall/subscribe UI (use showPremiumInApp for that).

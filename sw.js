@@ -38,6 +38,7 @@ function precacheUrls() {
     scopeUrl('src/ui/renderAll.js'),
     scopeUrl('src/ui/reminders.js'),
     scopeUrl('src/ui/panels.js'),
+    scopeUrl('src/premium/offering-catalog.js'),
     scopeUrl('src/premium/pricing.js'),
     scopeUrl('src/premium/premium.js'),
     scopeUrl('src/onboarding/onboarding.js'),

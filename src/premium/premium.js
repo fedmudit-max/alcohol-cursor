@@ -5,12 +5,193 @@
 // ═══════════════════════════════════════════════════════════════
 let selectedPremiumPlan = 'yearly';
 
+/** Prevents overlapping RevenueCat purchase / restore calls. */
+let rcBillingOpInFlight = false;
+
+/** Subscription truth from RevenueCat only — never read localStorage for store billing. */
+let rcPremiumState = {
+  active: false,
+  entitlementId: null,
+  expiresAt: null,
+  productId: null,
+  plan: null,
+  verification: null,
+  requestDateMs: null,
+  lastSyncAt: null,
+};
+
+function clearRcPremiumState() {
+  rcPremiumState = {
+    active: false,
+    entitlementId: null,
+    expiresAt: null,
+    productId: null,
+    plan: null,
+    verification: null,
+    requestDateMs: null,
+    lastSyncAt: null,
+  };
+}
+
+function rcCustomerInfoRequestDateMs(customerInfo) {
+  if (!customerInfo || customerInfo.requestDate == null || customerInfo.requestDate === '') {
+    return null;
+  }
+  const t = new Date(customerInfo.requestDate).getTime();
+  return Number.isNaN(t) ? null : t;
+}
+
+/** Ignore stale async getCustomerInfo responses (older than last applied snapshot). */
+function rcShouldApplyCustomerInfo(customerInfo) {
+  const incoming = rcCustomerInfoRequestDateMs(customerInfo);
+  if (incoming == null) return false;
+  const last = rcPremiumState.requestDateMs;
+  if (last == null) return true;
+  return incoming >= last;
+}
+
+function rcVerificationFailed(verification) {
+  return verification === 'FAILED';
+}
+
+function rcVerificationAcceptable(verification) {
+  return verification === 'VERIFIED' || verification === 'VERIFIED_ON_DEVICE';
+}
+
+/** Dated, structurally valid CustomerInfo — required before grant or revoke. */
+function rcIsAuthoritativeCustomerInfo(customerInfo) {
+  if (!customerInfo || typeof customerInfo !== 'object') return false;
+  const entitlements = customerInfo.entitlements;
+  if (!entitlements || typeof entitlements !== 'object') return false;
+  if (!Object.prototype.hasOwnProperty.call(entitlements, 'active')) return false;
+  const active = entitlements.active;
+  if (typeof active !== 'object' || active === null || Array.isArray(active)) return false;
+  return rcCustomerInfoRequestDateMs(customerInfo) != null;
+}
+
+function premiumActiveFromRevenueCat() {
+  if (!isStoreBillingConfigured()) return false;
+  if (!rcPremiumState.active) return false;
+  if (!rcVerificationAcceptable(rcPremiumState.verification)) return false;
+  const entId = revenueCatEntitlementId();
+  if (rcPremiumState.entitlementId !== entId) return false;
+  if (rcPremiumState.expiresAt == null || rcPremiumState.expiresAt === '') return false;
+  const exp = new Date(rcPremiumState.expiresAt).getTime();
+  if (Number.isNaN(exp)) return false;
+  return Date.now() <= exp;
+}
+
 function isLocalStubBilling() {
   return (CONFIG.premiumBilling || 'local-stub') === 'local-stub';
 }
 
 function isStoreBillingConfigured() {
   return CONFIG.premiumBilling === 'store';
+}
+
+function isRevenueCatStoreBilling() {
+  if (!isStoreBillingConfigured()) return false;
+  const key = CONFIG.revenueCatAndroidApiKey;
+  if (typeof key !== 'string' || !key.trim()) return false;
+  return typeof RevenueCatBilling !== 'undefined' && RevenueCatBilling.isAvailable();
+}
+
+function revenueCatEntitlementId() {
+  if (CONFIG && CONFIG.revenueCatEntitlementId) return CONFIG.revenueCatEntitlementId;
+  if (typeof REVENUECAT_ENTITLEMENT_ID === 'string') return REVENUECAT_ENTITLEMENT_ID;
+  return 'premium';
+}
+
+function planIdFromStoreProductId(productId) {
+  if (!productId || typeof PLAY_BILLING_PRODUCT_IDS !== 'object') return null;
+  for (const key of Object.keys(PLAY_BILLING_PRODUCT_IDS)) {
+    if (key !== 'monthly' && key !== 'yearly') continue;
+    if (PLAY_BILLING_PRODUCT_IDS[key] === productId) return key;
+  }
+  return null;
+}
+
+/**
+ * Map RevenueCat entitlement fields to app plan (monthly | yearly).
+ * Offerings use composite ids; CustomerInfo on Android may use subscription id + productPlanIdentifier.
+ */
+function planFromEntitlement(ent) {
+  if (!ent || typeof ent !== 'object') return null;
+  const productId = ent.productIdentifier || null;
+  const fromComposite = planIdFromStoreProductId(productId);
+  if (fromComposite) return fromComposite;
+
+  const basePlanId = ent.productPlanIdentifier;
+  if (typeof basePlanId !== 'string' || !basePlanId) return null;
+  if (basePlanId !== 'monthly' && basePlanId !== 'yearly') return null;
+  const subId = typeof PLAY_SUBSCRIPTION_ID === 'string' ? PLAY_SUBSCRIPTION_ID : '';
+  if (!subId || productId !== subId) return null;
+  return basePlanId;
+}
+
+/**
+ * Apply RevenueCat CustomerInfo to in-memory entitlement (authoritative for store billing).
+ * Does not persist subscription state to localStorage.
+ */
+function applyRevenueCatCustomerInfo(customerInfo) {
+  if (!rcIsAuthoritativeCustomerInfo(customerInfo)) {
+    return premiumActiveFromRevenueCat();
+  }
+  if (!rcShouldApplyCustomerInfo(customerInfo)) {
+    return premiumActiveFromRevenueCat();
+  }
+  const requestDateMs = rcCustomerInfoRequestDateMs(customerInfo);
+  const verification = customerInfo.entitlements.verification ?? null;
+  const entId = revenueCatEntitlementId();
+  const active = customerInfo.entitlements.active;
+  const ent = active[entId];
+
+  if (rcVerificationFailed(verification)) {
+    clearRcPremiumState();
+    rcPremiumState.requestDateMs = requestDateMs;
+    clearPremiumLocalStorage();
+    return false;
+  }
+
+  if (!ent) {
+    if (rcVerificationAcceptable(verification)) {
+      clearRcPremiumState();
+      rcPremiumState.requestDateMs = requestDateMs;
+      clearPremiumLocalStorage();
+      return false;
+    }
+    return premiumActiveFromRevenueCat();
+  }
+
+  if (!rcVerificationAcceptable(verification)) {
+    return premiumActiveFromRevenueCat();
+  }
+
+  const productId = ent.productIdentifier || null;
+  const plan = planFromEntitlement(ent);
+  if (!plan) {
+    return premiumActiveFromRevenueCat();
+  }
+  if (ent.expirationDate == null || ent.expirationDate === '') {
+    return premiumActiveFromRevenueCat();
+  }
+  const expMs = new Date(ent.expirationDate).getTime();
+  if (Number.isNaN(expMs)) {
+    return premiumActiveFromRevenueCat();
+  }
+
+  rcPremiumState = {
+    active: true,
+    entitlementId: entId,
+    expiresAt: ent.expirationDate,
+    productId,
+    plan,
+    verification,
+    requestDateMs,
+    lastSyncAt: new Date().toISOString(),
+  };
+  clearPremiumLocalStorage();
+  return premiumActiveFromRevenueCat();
 }
 
 /** True only in dev when test UI is on — never for public production web. */
@@ -26,7 +207,6 @@ function premiumRecordGrantsAccess(rec) {
     return canApplyLocalPremiumUnlock();
   }
 
-  // No other purchase source is trusted until store verification exists.
   return false;
 }
 
@@ -52,6 +232,64 @@ function isPremiumSubscribeOffered() {
   return isPremiumInAppVisible() && CONFIG.showPremiumSubscribe === true;
 }
 
+function premiumStorePlanPurchasable(planId) {
+  if (!isRevenueCatStoreBilling()) return true;
+  if (typeof RevenueCatBilling === 'undefined') return false;
+  return RevenueCatBilling.hasPlan(planId || 'yearly');
+}
+
+function syncPremiumStoreCheckoutState() {
+  if (!isPremiumSubscribeOffered() || isPremiumActive()) return;
+  const buyBtn = el('premiumCtaBtn');
+  const subEl = el('premiumSheetSubtitle');
+  const checkoutBlocked = !canApplyLocalPremiumUnlock() && !isStoreBillingConfigured();
+  if (!isRevenueCatStoreBilling()) return;
+  const ready = typeof RevenueCatBilling !== 'undefined' && RevenueCatBilling.isCatalogReady();
+  const selected = selectedPremiumPlan || 'yearly';
+  const planReady = ready && premiumStorePlanPurchasable(selected);
+  if (buyBtn && !checkoutBlocked) {
+    buyBtn.disabled = !planReady;
+    if (!planReady && !ready) {
+      buyBtn.textContent = 'Loading prices…';
+    }
+  }
+  if (subEl && !checkoutBlocked) {
+    if (!ready) {
+      subEl.hidden = false;
+      subEl.textContent = 'Loading subscription prices from Google Play…';
+    } else if (!RevenueCatBilling.hasPlan('monthly') || !RevenueCatBilling.hasPlan('yearly')) {
+      subEl.hidden = false;
+      subEl.textContent = 'Subscriptions are temporarily unavailable. Try again later.';
+    } else if (subEl.textContent && /Loading subscription|temporarily unavailable/i.test(subEl.textContent)) {
+      subEl.hidden = true;
+      subEl.textContent = '';
+    }
+  }
+}
+
+function refreshPremiumStoreCatalog(done) {
+  if (!isRevenueCatStoreBilling()) {
+    if (typeof renderPremiumPlanPrices === 'function') renderPremiumPlanPrices();
+    syncPremiumSubscribeCta();
+    syncPremiumStoreCheckoutState();
+    if (typeof done === 'function') done();
+    return;
+  }
+  RevenueCatBilling.loadOfferings()
+    .then(() => {
+      if (typeof renderPremiumPlanPrices === 'function') renderPremiumPlanPrices();
+      syncPremiumSubscribeCta();
+      syncPremiumStoreCheckoutState();
+      if (typeof done === 'function') done();
+    })
+    .catch(() => {
+      if (typeof renderPremiumPlanPrices === 'function') renderPremiumPlanPrices();
+      syncPremiumSubscribeCta();
+      syncPremiumStoreCheckoutState();
+      if (typeof done === 'function') done();
+    });
+}
+
 function syncPremiumSubscribeCta() {
   const buyBtn = el('premiumCtaBtn');
   if (!isPremiumSubscribeOffered()) {
@@ -66,7 +304,12 @@ function syncPremiumSubscribeCta() {
     buyBtn.disabled = true;
     return;
   }
-  buyBtn.disabled = false;
+  if (isRevenueCatStoreBilling()) {
+    const plan = PREMIUM_PLANS[selectedPremiumPlan] || PREMIUM_PLANS.yearly;
+    buyBtn.disabled = !premiumStorePlanPurchasable(plan.id);
+  } else {
+    buyBtn.disabled = false;
+  }
   const plan = PREMIUM_PLANS[selectedPremiumPlan] || PREMIUM_PLANS.yearly;
   const q = typeof getPremiumPlanQuotes === 'function' ? getPremiumPlanQuotes() : null;
   if (q) {
@@ -92,26 +335,26 @@ function getPremiumRecord() {
 
 /** Fail-closed: trusted premium records must carry a valid, unexpired expiresAt. */
 function premiumRecordHasValidExpiry(rec) {
-  if (!rec || rec.expiresAt == null || rec.expiresAt === '') return false;
+  if (!rec) return false;
+  if (rec.expiresAt == null || rec.expiresAt === '') return false;
   const exp = new Date(rec.expiresAt).getTime();
   if (Number.isNaN(exp)) return false;
   return Date.now() <= exp;
 }
 
 function isPremiumActive() {
+  if (isStoreBillingConfigured()) {
+    return premiumActiveFromRevenueCat();
+  }
   const rec = getPremiumRecord();
   if (!premiumRecordGrantsAccess(rec)) return false;
   return premiumRecordHasValidExpiry(rec);
 }
 
-/** Last instant of trial day N (start day = day 1). Optional policyDays override (defaults to TRIAL_DAYS). */
+/** Trial expires at start + (policyDays × 24h). Active while now < returned ms. */
 function getTrialEndTimestamp(start, policyDays) {
   const days = policyDays || TRIAL_DAYS;
-  const d = new Date(start.getTime());
-  d.setHours(12, 0, 0, 0);
-  d.setDate(d.getDate() + (days - 1));
-  d.setHours(23, 59, 59, 999);
-  return d.getTime();
+  return start.getTime() + days * MS_PER_DAY;
 }
 
 /** First app open only — not journey day, not dailyLog span. */
@@ -151,36 +394,22 @@ function getTrialStartedAt() {
   }
 }
 
-/** End of current device calendar day — trial is 15 wall-clock days from first open. */
-function getEntitlementNowMs(data) {
-  try {
-    const n = new Date();
-    return new Date(
-      n.getFullYear(),
-      n.getMonth(),
-      n.getDate(),
-      23,
-      59,
-      59,
-      999
-    ).getTime();
-  } catch (e) {}
-  return Date.now();
-}
-
 function isTrialGatedPremiumLocked(data) {
   if (typeof isTrialEntitlementEnforced !== 'function' || !isTrialEntitlementEnforced()) return false;
   if (typeof hasPremiumAccess !== 'function') return false;
   return !hasPremiumAccess(data);
 }
 
+/** AUDIT-C screening, re-test, and reduction/withdrawal safety copy — never paywalled. */
+function isAuditSafetyGuidanceLocked() {
+  return false;
+}
+
 function isTrialActive(data) {
   if (isPremiumActive()) return false;
   const start = getTrialStartedAt();
   if (!start) return false;
-  let d = data;
-  if (!d && typeof Tracker !== 'undefined' && Tracker.data) d = Tracker.data;
-  return getEntitlementNowMs(d) <= getTrialEndTimestamp(start);
+  return Date.now() < getTrialEndTimestamp(start);
 }
 
 function journeyAttemptForPremiumLock(data) {
@@ -278,8 +507,7 @@ function applyEntitlementTestState(mode) {
     return;
   }
   if (mode === 'free') {
-    // Trial started > TRIAL_DAYS ago → expired free tier
-    const past = new Date(Date.now() - ((TRIAL_DAYS + 1) * MS_PER_DAY));
+    const past = new Date(Date.now() - (TRIAL_DAYS * MS_PER_DAY + 3600000));
     setTrialStartedAtISO(past.toISOString());
   }
 }
@@ -303,15 +531,6 @@ function updatePremiumLockTestBtn() {
     freeBtn.classList.toggle('is-active', mode === 'free');
     freeBtn.title = 'A1: trial expired — Calendar / Journeys / Lifetime / Knowledge locked, status Upgrade';
   }
-  // Legacy single-button preview (optional; may be removed from HTML)
-  const btn = el('testPremiumLockBtn');
-  if (!btn) return;
-  const locked = isForcePremiumLocked();
-  btn.textContent = locked ? '✓ Default' : '🔒 Locked';
-  btn.classList.toggle('is-locked-preview', locked);
-  btn.title = locked
-    ? 'Showing locked UI — tap for default (unlocked) UI'
-    : 'Showing default UI — tap for locked Premium UI';
 }
 
 function trialDaysLeft(data) {
@@ -320,9 +539,10 @@ function trialDaysLeft(data) {
   let d = data;
   if (!d && typeof Tracker !== 'undefined' && Tracker.data) d = Tracker.data;
   if (typeof isTrialActive === 'function' && !isTrialActive(d)) return 0;
-  const elapsedDays = calendarDaysSinceLocalDate(start, new Date());
-  const left = TRIAL_DAYS - elapsedDays;
-  return Math.max(0, Math.min(TRIAL_DAYS, left));
+  const remainingMs = getTrialEndTimestamp(start) - Date.now();
+  if (remainingMs <= 0) return 0;
+  const days = Math.ceil(remainingMs / MS_PER_DAY);
+  return Math.max(1, Math.min(TRIAL_DAYS, days));
 }
 
 function reconcileStubPremiumWithTrial() {
@@ -352,6 +572,22 @@ function journeyHistoryCap() {
   return hasPremiumAccess() ? MAX_COMPLETED_JOURNEYS_PREMIUM : MAX_COMPLETED_JOURNEYS;
 }
 
+/** UI/history cap only — never mutate persisted completedJourneys. */
+function completedJourneysForDisplay(data) {
+  const all = (data && data.completedJourneys) || [];
+  const cap = journeyHistoryCap();
+  if (all.length <= cap) return all;
+  return all.slice(-cap);
+}
+
+/** UI cap for archived streak segments — full history stays in pastJourneyStreaks. */
+function pastJourneyStreaksForDisplay(data) {
+  const all = (data && data.pastJourneyStreaks) || [];
+  const cap = journeyHistoryCap();
+  if (all.length <= cap) return all;
+  return all.slice(-cap);
+}
+
 function isJourneyMilestonePremiumLocked(days) {
   return !hasPremiumAccess() && (days | 0) > FREE_JOURNEY_MILESTONE_DAYS;
 }
@@ -360,8 +596,35 @@ function savePremiumRecord(rec) {
   try { localStorage.setItem(PREMIUM_KEY, JSON.stringify(rec)); } catch (e) {}
 }
 
-function clearPremiumRecord() {
+function bootstrapStoreEntitlement() {
+  if (!isRevenueCatStoreBilling()) return;
+  RevenueCatBilling.loadOfferings().catch(() => {});
+  RevenueCatBilling.syncEntitlement()
+    .then((customerInfo) => {
+      applyRevenueCatCustomerInfo(customerInfo);
+      if (typeof refreshEntitlementIfChanged === 'function') {
+        refreshEntitlementIfChanged(typeof Tracker !== 'undefined' ? Tracker.data : null);
+      }
+    })
+    .catch((err) => {
+      console.warn('[10Drinks] RevenueCat sync skipped:', err && (err.message || err));
+    });
+}
+
+function clearPremiumLocalStorage() {
   try { localStorage.removeItem(PREMIUM_KEY); } catch (e) {}
+}
+
+function clearPremiumRecord() {
+  clearRcPremiumState();
+  clearPremiumLocalStorage();
+}
+
+/** Import / delete all: drop local premium mirror; same RC user — re-fetch Play entitlement. */
+function clearPremiumMirrorAndResyncStore() {
+  clearPremiumLocalStorage();
+  clearRcPremiumState();
+  bootstrapStoreEntitlement();
 }
 
 function makePremiumLockOverlay(title, sub, options) {
@@ -562,17 +825,10 @@ function renderPremiumLocks(data) {
     journeyTierLocked ? { compact: true } : null
   );
   setFeatureLocked(el('didYouKnowCard'), !unlocked, 'Knowledge cards', 'Extra insights are part of Premium.');
-  applyTrialGatedCardLock(
-    'riskMeterCard',
-    'riskMeterBody',
-    'riskMeterToggleBtn',
-    'riskMeterToggle',
-    !unlocked,
-    'Risk meter',
-    'AUDIT-C meter and re-tests are Premium after trial.'
-  );
-
-  setFeatureLocked(el('reductionTargetCard'), !unlocked, 'Reduction goal', 'Reduction goal unlocks with Premium.');
+  clearPremiumLockUi(el('riskMeterCard'));
+  clearPremiumLockUi(el('riskMeterBody'));
+  setCollapsibleFeatureLocked(el('riskMeterCard'), el('riskMeterBody'), false);
+  setFeatureLocked(el('reductionTargetCard'), false);
 }
 
 function renderPremiumPanelContent() {
@@ -699,15 +955,6 @@ Tracker.setEntitlementTest = function(mode) {
   }
 };
 
-Tracker.togglePremiumLockPreview = function() {
-  if (!CONFIG.showTestUI) return;
-  const next = !isForcePremiumLocked();
-  setForcePremiumLocked(next);
-  updatePremiumLockTestBtn();
-  if (this.data) UI.renderAll(this.data);
-  showToast(next ? 'UI: Locked preview' : 'UI: Default (unlocked)');
-};
-
 function renderPremiumCheckoutSheet() {
   const titleEl = el('premiumSheetTitle');
   const subEl = el('premiumSheetSubtitle');
@@ -759,9 +1006,9 @@ function renderPremiumCheckoutSheet() {
     if (laterBtn) laterBtn.textContent = isTrialActive() ? 'Not now' : 'Continue with basic logging';
     if (buyBtn) buyBtn.hidden = false;
     if (restoreBtn) restoreBtn.hidden = false;
-    if (typeof renderPremiumPlanPrices === 'function') renderPremiumPlanPrices();
-    Tracker.selectPremiumPlan(selectedPremiumPlan || 'yearly');
-    syncPremiumSubscribeCta();
+    refreshPremiumStoreCatalog(() => {
+      Tracker.selectPremiumPlan(selectedPremiumPlan || 'yearly');
+    });
   }
 }
 
@@ -813,6 +1060,7 @@ Tracker.selectPremiumPlan = function(planId) {
     btn.classList.toggle('is-selected', btn.dataset.plan === planId);
   });
   syncPremiumSubscribeCta();
+  syncPremiumStoreCheckoutState();
 };
 
 Tracker.subscribePremium = function() {
@@ -826,7 +1074,48 @@ Tracker.subscribePremium = function() {
     return;
   }
   if (isStoreBillingConfigured()) {
-    showToast('Store billing is not wired yet. Use dev test UI for local-stub trials.');
+    if (!isRevenueCatStoreBilling()) {
+      showToast('Install from Google Play to subscribe.');
+      return;
+    }
+    const plan = PREMIUM_PLANS[selectedPremiumPlan] || PREMIUM_PLANS.yearly;
+    if (!premiumStorePlanPurchasable(plan.id)) {
+      showToast('Subscription prices are not available yet. Try again in a moment.');
+      refreshPremiumStoreCatalog();
+      return;
+    }
+    if (rcBillingOpInFlight) return;
+    rcBillingOpInFlight = true;
+    RevenueCatBilling.purchasePlan(plan.id)
+      .then((customerInfo) => {
+        if (!applyRevenueCatCustomerInfo(customerInfo)) {
+          showToast('Purchase completed but Premium is not active yet.');
+          return;
+        }
+        renderPremiumEntry();
+        if (Tracker.data) UI.renderAll(Tracker.data);
+        Tracker.closePremium();
+        showToast('Premium is active. Thank you!');
+      })
+      .catch((err) => {
+        const code = err && (err.code || err.errorCode);
+        if (code === '1' || code === 1 || code === 'PURCHASE_CANCELLED') return;
+        if (code === '20' || code === 20 || code === 'PAYMENT_PENDING_ERROR') {
+          showToast('Payment is pending with Google. Premium unlocks when it completes.');
+          return;
+        }
+        const msg = String(err && (err.message || err.userCancelled || err) || '');
+        if (/cancel|user/i.test(msg)) return;
+        if (/pending/i.test(msg)) {
+          showToast('Payment is pending with Google. Premium unlocks when it completes.');
+          return;
+        }
+        showToast('Purchase did not complete. Try again or use Restore purchase.');
+        console.warn('[10Drinks] RevenueCat purchase failed:', err);
+      })
+      .finally(() => {
+        rcBillingOpInFlight = false;
+      });
     return;
   }
   const plan = PREMIUM_PLANS[selectedPremiumPlan] || PREMIUM_PLANS.yearly;
@@ -847,6 +1136,33 @@ Tracker.subscribePremium = function() {
 
 Tracker.restorePremium = function() {
   if (!isPremiumSubscribeOffered()) return;
+  if (isStoreBillingConfigured()) {
+    if (!isRevenueCatStoreBilling()) {
+      showToast('Install from Google Play to restore purchases.');
+      return;
+    }
+    if (rcBillingOpInFlight) return;
+    rcBillingOpInFlight = true;
+    RevenueCatBilling.restorePurchases()
+      .then((customerInfo) => {
+        if (!applyRevenueCatCustomerInfo(customerInfo)) {
+          showToast('No active subscription found for this Google account.');
+          return;
+        }
+        renderPremiumEntry();
+        if (Tracker.data) UI.renderAll(Tracker.data);
+        Tracker.closePremium();
+        showToast('Premium restored on this device.');
+      })
+      .catch((err) => {
+        showToast('Could not restore purchases. Try again on Google Play.');
+        console.warn('[10Drinks] RevenueCat restore failed:', err);
+      })
+      .finally(() => {
+        rcBillingOpInFlight = false;
+      });
+    return;
+  }
   if (isPremiumActive()) {
     renderPremiumEntry();
     showToast('Premium restored on this device.');

@@ -286,7 +286,10 @@ function renderJourneyChart(data) {
   const inner = el('journeyChartInner');
   if (!yAxis || !inner) return;
 
-  const completed = (data.completedJourneys || []).filter(j => j && j.score && typeof j.score.success === 'number');
+  const journeyRows = typeof completedJourneysForDisplay === 'function'
+    ? completedJourneysForDisplay(data)
+    : (data.completedJourneys || []);
+  const completed = journeyRows.filter(j => j && j.score && typeof j.score.success === 'number');
   const card = el('journeyChartCard');
   if (card) card.style.display = 'block';
 

@@ -18,42 +18,19 @@ function isShareCancelled(err) {
   return /cancel/i.test(msg);
 }
 
-function trialAnchorIsSameCalendarDay(anchorDate, refDate) {
-  if (!anchorDate || Number.isNaN(anchorDate.getTime())) return false;
-  const ref = refDate || new Date();
-  const a = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), anchorDate.getDate(), 12, 0, 0);
-  const b = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate(), 12, 0, 0);
-  return a.getTime() === b.getTime();
-}
-
-/** Journey storage still at defaults — no meaningful progress on this device yet. */
-function isPristineDeviceJourney(data) {
-  if (!data) return true;
-  const log = data.dailyLog || {};
-  if (Object.keys(log).length > 0) return false;
-  if ((data.attempt | 0) > 1) return false;
-  if ((data.completedJourneys || []).length > 0) return false;
-  if ((data.totalSuccessfulDays | 0) > 0) return false;
-  if ((data.totalFailures | 0) > 0) return false;
-  return true;
-}
-
-/** Trial stamped by Tracker.init() before first import — not an established device anchor. */
-function isBootstrapTrialOnly(data, trialDate) {
-  if (!trialDate || Number.isNaN(trialDate.getTime())) return false;
-  if (!isPristineDeviceJourney(data)) return false;
-  return trialAnchorIsSameCalendarDay(trialDate);
-}
-
-/** Existing device: keep local trial unless it is only today's bootstrap from init(). */
-function deviceTrialAnchorShouldWin(data, localTrialDate, existingDataTrialDate) {
-  if (localTrialDate && !Number.isNaN(localTrialDate.getTime())) {
-    if (!isBootstrapTrialOnly(data, localTrialDate)) return true;
+/**
+ * Import may shorten trial, never extend: earliest anchor among backup, local, and in-data
+ * trials (each instant capped at now so future dates cannot grant extra time).
+ */
+function resolveImportTrialStartIso(backupTrialDate, localTrialDate, existingDataTrialDate) {
+  const nowMs = Date.now();
+  const msValues = [backupTrialDate, localTrialDate, existingDataTrialDate]
+    .filter((d) => d && !Number.isNaN(d.getTime()))
+    .map((d) => Math.min(d.getTime(), nowMs));
+  if (!msValues.length) {
+    return new Date(Math.min(backupTrialDate.getTime(), nowMs)).toISOString();
   }
-  if (existingDataTrialDate && !Number.isNaN(existingDataTrialDate.getTime())) {
-    if (!isBootstrapTrialOnly(data, existingDataTrialDate)) return true;
-  }
-  return false;
+  return new Date(Math.min(...msValues)).toISOString();
 }
 
 function isNativeCapacitor() {
@@ -353,6 +330,10 @@ Tracker._restoreImportBackup = function(backup) {
     showToast('This backup is missing a valid trial date and cannot be restored.');
     return;
   }
+  if (backupTrialDate.getTime() > Date.now()) {
+    showToast('This backup has an invalid trial date and cannot be restored.');
+    return;
+  }
 
   DataManager.flush();
 
@@ -368,14 +349,11 @@ Tracker._restoreImportBackup = function(backup) {
     ? new Date(preImportData.trialStartedAt)
     : null;
 
-  let trialStartToUse = backupTrialDate.toISOString();
-  if (deviceTrialAnchorShouldWin(preImportData, localTrialDate, existingDataTrialDate)) {
-    if (localTrialDate && !Number.isNaN(localTrialDate.getTime())) {
-      trialStartToUse = localTrialDate.toISOString();
-    } else if (existingDataTrialDate && !Number.isNaN(existingDataTrialDate.getTime())) {
-      trialStartToUse = existingDataTrialDate.toISOString();
-    }
-  }
+  const trialStartToUse = resolveImportTrialStartIso(
+    backupTrialDate,
+    localTrialDate,
+    existingDataTrialDate
+  );
 
   this.data = DataManager._migrate(
     JSON.parse(JSON.stringify(backup.state))
@@ -408,6 +386,12 @@ Tracker._restoreImportBackup = function(backup) {
 
   DataManager.saveNow(this.data);
 
+  if (typeof clearPremiumMirrorAndResyncStore === 'function') {
+    clearPremiumMirrorAndResyncStore();
+  } else if (typeof clearPremiumRecord === 'function') {
+    clearPremiumRecord();
+  }
+
   this._celebQueue = [];
   this._celebrating = false;
 
@@ -429,7 +413,11 @@ Tracker._deleteAllData = function() {
   try { localStorage.removeItem('sj_onboarded'); } catch (e) {}
   try { localStorage.removeItem('sj_welcome_dismissed'); } catch (e) {}
   try { localStorage.removeItem('sj_welcome_step1_done'); } catch (e) {}
-  if (typeof clearPremiumRecord === 'function') clearPremiumRecord();
+  if (typeof clearPremiumMirrorAndResyncStore === 'function') {
+    clearPremiumMirrorAndResyncStore();
+  } else if (typeof clearPremiumRecord === 'function') {
+    clearPremiumRecord();
+  }
   if (typeof setTrialStartedAtISO === 'function') setTrialStartedAtISO(null);
   if (this.data) this.data.trialStartedAt = null;
   try { localStorage.removeItem('sj_trialPolicyDays'); } catch (e) {}

@@ -13,6 +13,7 @@ rsync -a \
   --exclude '.git' \
   --exclude '.gitignore' \
   --exclude '.cursor' \
+  --exclude '.tools' \
   --exclude '.idea' \
   --exclude '__MACOSX' \
   --exclude '.DS_Store' \

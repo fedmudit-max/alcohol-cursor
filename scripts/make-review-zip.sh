@@ -20,7 +20,7 @@ Focus areas for review:
 Tests: npm test
 Play checklist: docs/PLAY_INTERNAL_TESTING.md
 
-Excluded: node_modules, dist, .git, keystores, android/build
+Excluded: node_modules, dist, .git, .tools, keystores, android/build
 EOF
 
 rm -f "$OUT"
@@ -31,6 +31,7 @@ zip -r "$OUT" . \
   -x "*node_modules/*" \
   -x "*dist/*" \
   -x "*/.cursor/*" \
+  -x "*/.tools/*" \
   -x "*/.idea/*" \
   -x "*__MACOSX/*" \
   -x "*.DS_Store" \

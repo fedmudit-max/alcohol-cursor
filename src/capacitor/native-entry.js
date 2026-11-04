@@ -28,7 +28,17 @@ async function initNativeShell() {
     const d = typeof Tracker !== 'undefined' && Tracker.data
       ? Tracker.data
       : (typeof DataManager !== 'undefined' ? DataManager.load() : null);
-    if (typeof refreshEntitlementIfChanged === 'function') refreshEntitlementIfChanged(d);
+    if (typeof isRevenueCatStoreBilling === 'function' && isRevenueCatStoreBilling()
+      && typeof RevenueCatBilling !== 'undefined') {
+      RevenueCatBilling.syncEntitlement()
+        .then((info) => {
+          if (typeof applyRevenueCatCustomerInfo === 'function') applyRevenueCatCustomerInfo(info);
+          if (typeof refreshEntitlementIfChanged === 'function') refreshEntitlementIfChanged(d);
+        })
+        .catch(() => {
+          if (typeof refreshEntitlementIfChanged === 'function') refreshEntitlementIfChanged(d);
+        });
+    } else if (typeof refreshEntitlementIfChanged === 'function') refreshEntitlementIfChanged(d);
     else if (d && typeof UI !== 'undefined' && UI.renderAll) UI.renderAll(d);
   });
 }

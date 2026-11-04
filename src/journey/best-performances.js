@@ -29,7 +29,9 @@ function liveJourneyRecordId(attempt) {
 function collectStreakRecords(data) {
   data = data || {};
   const out = [];
-  const past = data.pastJourneyStreaks || [];
+  const past = typeof pastJourneyStreaksForDisplay === 'function'
+    ? pastJourneyStreaksForDisplay(data)
+    : (data.pastJourneyStreaks || []);
   for (let pi = 0; pi < past.length; pi++) {
     const journey = past[pi];
     const attempt = Math.max(1, Math.floor(Number(journey.attempt) || 1));
@@ -104,7 +106,9 @@ function hasActiveJourneySeriesForBest(data) {
 function collectJourneyRecords(data) {
   data = data || {};
   const out = [];
-  const completed = data.completedJourneys || [];
+  const completed = typeof completedJourneysForDisplay === 'function'
+    ? completedJourneysForDisplay(data)
+    : (data.completedJourneys || []);
   for (let i = 0; i < completed.length; i++) {
     const row = completed[i];
     const attempt = Math.max(1, Math.floor(Number(row.attempt) || 1));
@@ -234,10 +238,6 @@ function archiveCurrentJourneyStreaks(data) {
     streaks: [...(data.currentJourneyStreaks || [])],
     date: new Date().toISOString(),
   });
-  const histCap = typeof journeyHistoryCap === 'function' ? journeyHistoryCap() : 50;
-  if (data.pastJourneyStreaks.length > histCap) {
-    data.pastJourneyStreaks = data.pastJourneyStreaks.slice(-histCap);
-  }
   data.currentJourneyStreaks = [];
 }
 

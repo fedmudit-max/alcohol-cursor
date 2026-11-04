@@ -163,7 +163,7 @@ Tracker._setRiskMeterOpen = function(open) {
 };
 
 Tracker.toggleRiskMeter = function() {
-  if (isTrialGatedFeatureLocked()) {
+  if (typeof isAuditSafetyGuidanceLocked === 'function' && isAuditSafetyGuidanceLocked()) {
     if (typeof renderPremiumLocks === 'function') renderPremiumLocks(this.data || DataManager.load());
     return;
   }
@@ -182,7 +182,7 @@ Tracker.toggleRiskMeter = function() {
 };
 
 Tracker.expandRiskMeter = function() {
-  if (isTrialGatedFeatureLocked()) {
+  if (typeof isAuditSafetyGuidanceLocked === 'function' && isAuditSafetyGuidanceLocked()) {
     if (typeof Tracker.openPremium === 'function') Tracker.openPremium();
     return;
   }

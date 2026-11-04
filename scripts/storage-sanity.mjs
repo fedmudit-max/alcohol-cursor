@@ -35,6 +35,7 @@ const ctx = vm.createContext({
 });
 
 runScript('src/config/app.config.js', ctx);
+vm.runInContext('var __realDateNow = Date.now.bind(Date);', ctx);
 runScript('src/utils/dates.js', ctx);
 runScript('src/journey/journey-score.js', ctx);
 runScript('src/utils/helpers.js', ctx);
@@ -179,6 +180,8 @@ const {
   isCalendarLocked,
   hasPremiumAccess,
   isPremiumActive,
+  applyRevenueCatCustomerInfo,
+  clearPremiumRecord,
   trialDaysLeft,
   getTrialEndTimestamp,
 } = ctx;
@@ -250,13 +253,36 @@ ok('History / Best Scores tier locked when journey 3 ended (pending reset) and t
   if (!isBestScoreLocked(ctx.Tracker.data)) throw new Error('should lock after J3 ends without premium access');
 });
 
-ok('trial ends after 15 calendar days from start', () => {
-  const start = new Date(2026, 0, 1, 10, 0, 0);
+ok('trial duration is exactly 360 hours (15×24h)', () => {
+  const dayMs = 86400000;
+  const start = new Date(1_700_000_000_000);
+  const endMs = getTrialEndTimestamp(start);
+  const expectEnd = start.getTime() + 15 * dayMs;
+  if (endMs !== expectEnd) throw new Error(`expected 360h duration, delta ${endMs - start.getTime()}`);
+  if (15 * dayMs !== 1296000000) throw new Error('15×24h should be 1296000000 ms');
+});
+
+ok('trial ends after 15×24h from start instant', () => {
+  const dayMs = 86400000;
+  const startMs = 1_700_000_000_000;
+  const start = new Date(startMs);
+  const endMs = getTrialEndTimestamp(start);
+  const expectEnd = startMs + 15 * dayMs;
+  if (endMs !== expectEnd) throw new Error(`end should be start+15×24h, got ${endMs - startMs}`);
+  vm.runInContext(`Date.now = function() { return ${expectEnd - 1000}; };`, ctx);
   store[TRIAL_STORE_KEY] = start.toISOString();
   ctx.Tracker.data = DM.load();
-  const endMs = getTrialEndTimestamp(start);
-  const day16 = new Date(2026, 0, 16, 12, 0, 0).getTime();
-  if (day16 <= endMs) throw new Error('day 16 should be after trial end');
+  if (!isTrialActive()) throw new Error('should be active 1s before end');
+  vm.runInContext(`Date.now = function() { return ${expectEnd + 1}; };`, ctx);
+  if (isTrialActive()) throw new Error('should be inactive after trial end');
+  vm.runInContext('Date.now = __realDateNow;', ctx);
+});
+
+ok('trialDaysLeft — full 15 at start, ceil from remaining ms', () => {
+  const start = new Date();
+  store[TRIAL_STORE_KEY] = start.toISOString();
+  ctx.Tracker.data = DM.load();
+  if (trialDaysLeft(ctx.Tracker.data) !== 15) throw new Error('fresh trial should show 15 days left');
 });
 
 ok('trialDaysLeft — 0 when trial expired', () => {
@@ -283,13 +309,13 @@ ok('reconcileTrialClock does not pull trial start from journey logs', () => {
   if (!isTrialActive()) throw new Error('trial should stay active regardless of journey day');
 });
 
-ok('journey day 20 does not end trial — only wall-clock 15 days since install', () => {
+ok('journey day 20 does not end trial — only 15×24h since install', () => {
   store[TRIAL_STORE_KEY] = new Date().toISOString();
   ctx.Tracker.data = { attempt: 1, calendarDay: 20 };
   if (!isTrialActive()) throw new Error('trial should not use journey day counter');
 });
 
-ok('trial expiry uses device calendar — simulatedToday does not end active trial', () => {
+ok('trial expiry uses real time — simulatedToday does not end active trial', () => {
   ctx.CONFIG.showTestUI = false;
   ctx.CONFIG.showInternalTestBar = true;
   store[TRIAL_STORE_KEY] = new Date().toISOString();
@@ -299,7 +325,7 @@ ok('trial expiry uses device calendar — simulatedToday does not end active tri
     simulatedToday: new Date(2030, 0, 1, 12, 0, 0).toISOString(),
   };
   if (!isTrialActive(ctx.Tracker.data)) {
-    throw new Error('simulatedToday must not expire wall-clock trial');
+    throw new Error('simulatedToday must not expire duration trial');
   }
   const past = new Date(Date.now() - (16 * 86400000));
   store[TRIAL_STORE_KEY] = past.toISOString();
@@ -309,7 +335,7 @@ ok('trial expiry uses device calendar — simulatedToday does not end active tri
     simulatedToday: new Date().toISOString(),
   };
   if (isTrialActive(ctx.Tracker.data)) {
-    throw new Error('expired wall-clock trial must stay expired regardless of simulatedToday');
+    throw new Error('expired duration trial must stay expired regardless of simulatedToday');
   }
 });
 
@@ -357,6 +383,123 @@ ok('local-stub premium rejected when expiresAt is in the past', () => {
     expiresAt: new Date(Date.now() - 86400000).toISOString(),
   });
   if (isPremiumActive()) throw new Error('expired stub must not grant premium');
+});
+
+ok('forged localStorage revenuecat record does not grant premium', () => {
+  vm.runInContext("CONFIG.premiumBilling = 'store'", ctx);
+  clearPremiumRecord();
+  const future = new Date(Date.now() + 86400000).toISOString();
+  store[PREMIUM_KEY] = JSON.stringify({
+    active: true,
+    source: 'revenuecat',
+    entitlementId: 'premium',
+    expiresAt: future,
+  });
+  if (isPremiumActive()) throw new Error('localStorage must not grant store premium');
+  vm.runInContext("CONFIG.premiumBilling = 'local-stub'", ctx);
+});
+
+ok('revenuecat CustomerInfo grants premium in store mode', () => {
+  vm.runInContext("CONFIG.premiumBilling = 'store'", ctx);
+  clearPremiumRecord();
+  const future = new Date(Date.now() + 86400000).toISOString();
+  const granted = applyRevenueCatCustomerInfo({
+    requestDate: new Date().toISOString(),
+    entitlements: {
+      verification: 'VERIFIED',
+      active: {
+        premium: {
+          expirationDate: future,
+          productIdentifier: 'ten_drinks_premium:yearly',
+        },
+      },
+    },
+  });
+  if (!granted || !isPremiumActive()) throw new Error('RC CustomerInfo should grant premium');
+  vm.runInContext("CONFIG.premiumBilling = 'local-stub'", ctx);
+  if (isPremiumActive()) throw new Error('RC state must not grant in local-stub mode');
+});
+
+ok('revenuecat premium rejected without expiresAt', () => {
+  vm.runInContext("CONFIG.premiumBilling = 'store'", ctx);
+  clearPremiumRecord();
+  applyRevenueCatCustomerInfo({
+    requestDate: new Date().toISOString(),
+    entitlements: {
+      verification: 'VERIFIED',
+      active: {
+        premium: { expirationDate: null, productIdentifier: 'ten_drinks_premium:yearly' },
+      },
+    },
+  });
+  if (isPremiumActive()) throw new Error('missing expiresAt must not grant premium');
+  vm.runInContext("CONFIG.premiumBilling = 'local-stub'", ctx);
+});
+
+ok('revenuecat verification FAILED denies premium', () => {
+  vm.runInContext("CONFIG.premiumBilling = 'store'", ctx);
+  clearPremiumRecord();
+  const future = new Date(Date.now() + 86400000).toISOString();
+  applyRevenueCatCustomerInfo({
+    requestDate: '2026-06-01T12:00:00.000Z',
+    entitlements: {
+      verification: 'FAILED',
+      active: {
+        premium: { expirationDate: future, productIdentifier: 'ten_drinks_premium:yearly' },
+      },
+    },
+  });
+  if (isPremiumActive()) throw new Error('FAILED verification must not grant premium');
+  vm.runInContext("CONFIG.premiumBilling = 'local-stub'", ctx);
+});
+
+ok('revenuecat stale CustomerInfo does not undo newer premium', () => {
+  vm.runInContext("CONFIG.premiumBilling = 'store'", ctx);
+  clearPremiumRecord();
+  const future = new Date(Date.now() + 86400000).toISOString();
+  applyRevenueCatCustomerInfo({
+    requestDate: '2026-06-02T12:00:00.000Z',
+    entitlements: {
+      verification: 'VERIFIED',
+      active: {
+        premium: { expirationDate: future, productIdentifier: 'ten_drinks_premium:yearly' },
+      },
+    },
+  });
+  if (!isPremiumActive()) throw new Error('newer snapshot should grant premium');
+  applyRevenueCatCustomerInfo({
+    requestDate: '2026-06-01T12:00:00.000Z',
+    entitlements: {
+      verification: 'VERIFIED',
+      active: {},
+    },
+  });
+  if (!isPremiumActive()) throw new Error('older inactive snapshot must not revoke premium');
+  vm.runInContext("CONFIG.premiumBilling = 'local-stub'", ctx);
+});
+
+ok('revenuecat newer inactive CustomerInfo revokes premium', () => {
+  vm.runInContext("CONFIG.premiumBilling = 'store'", ctx);
+  clearPremiumRecord();
+  const future = new Date(Date.now() + 86400000).toISOString();
+  applyRevenueCatCustomerInfo({
+    requestDate: '2026-06-01T12:00:00.000Z',
+    entitlements: {
+      verification: 'VERIFIED',
+      active: {
+        premium: { expirationDate: future, productIdentifier: 'ten_drinks_premium:yearly' },
+      },
+    },
+  });
+  applyRevenueCatCustomerInfo({
+    requestDate: '2026-06-03T12:00:00.000Z',
+    entitlements: {
+      verification: 'VERIFIED',
+      active: {},
+    },
+  });
+  if (isPremiumActive()) throw new Error('newer inactive snapshot should revoke premium');
+  vm.runInContext("CONFIG.premiumBilling = 'local-stub'", ctx);
 });
 
 console.log(failed ? `\n${failed} check(s) failed.\n` : '\nAll checks passed.\n');

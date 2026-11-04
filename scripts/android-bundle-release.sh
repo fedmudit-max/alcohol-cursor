@@ -4,6 +4,14 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ANDROID="${ROOT}/android"
 PROPS="${ANDROID}/keystore.properties"
+RELEASE_PROFILE="${RELEASE_PROFILE:-unknown}"
+case "$RELEASE_PROFILE" in
+  trial|store) ;;
+  *)
+    echo "WARNING: RELEASE_PROFILE is not set (expected trial or store)."
+    echo "Use: npm run android:bundle  OR  npm run android:bundle:store"
+    ;;
+esac
 
 if [[ -x "/Applications/Android Studio.app/Contents/jbr/Contents/Home/bin/java" ]]; then
   export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
@@ -29,7 +37,18 @@ if [[ -z "$VERSION_CODE" ]]; then
   echo "Could not read versionCode from ${GRADLE}"
   exit 1
 fi
-echo "Building release AAB: versionCode=${VERSION_CODE} versionName=${VERSION_NAME}"
+echo "Building release AAB: profile=${RELEASE_PROFILE} versionCode=${VERSION_CODE} versionName=${VERSION_NAME}"
+if [[ "$RELEASE_PROFILE" == trial ]]; then
+  echo ""
+  echo ">>> TRIAL-ONLY BUILD — local-stub billing, paywall hidden, no RevenueCat monetization."
+  echo ">>> Do NOT upload to Production / monetized tracks. Use android:bundle:store for subscriptions."
+  echo ""
+fi
+if [[ "$RELEASE_PROFILE" == store ]]; then
+  echo ""
+  echo ">>> STORE BILLING BUILD — RevenueCat + subscribe UI enabled (verify Play + RC dashboard)."
+  echo ""
+fi
 
 AAB="${ANDROID}/app/build/outputs/bundle/release/app-release.aab"
 RELEASE_DIR="${ANDROID}/app/build/outputs/bundle/release"
@@ -53,7 +72,7 @@ if ! ./gradlew clean bundleRelease; then
   exit 1
 fi
 
-AAB_TAGGED="${ANDROID}/app/build/outputs/bundle/release/app-release-vc${VERSION_CODE}.aab"
+AAB_TAGGED="${ANDROID}/app/build/outputs/bundle/release/app-release-vc${VERSION_CODE}-${RELEASE_PROFILE}.aab"
 if [[ -f "$AAB" ]]; then
   cp -f "$AAB" "$AAB_TAGGED"
   ls -lh "$AAB" "$AAB_TAGGED"

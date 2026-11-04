@@ -251,6 +251,19 @@ ok('import — restores journey progress and trial from backup', () => {
   if (Tracker.data.trialStartedAt !== backupTrial) throw new Error('Tracker.data trial mismatch');
 });
 
+ok('import — clears local premium mirror (store sub re-syncs via RevenueCat)', () => {
+  clearStore();
+  store[PREMIUM_KEY] = JSON.stringify({
+    active: true,
+    source: 'revenuecat',
+    entitlementId: 'premium',
+    expiresAt: new Date(Date.now() + 86400000).toISOString(),
+  });
+  Tracker.data = DM.defaults();
+  restoreFromState(sampleState());
+  if (store[PREMIUM_KEY]) throw new Error('premium record should clear on import');
+});
+
 ok('import — rejects backup with missing or invalid trialStartedAt', () => {
   clearStore();
   Tracker.data = DM.defaults();
@@ -278,7 +291,7 @@ ok('import — pristine device (bootstrap trial today) uses backup trial anchor'
   }
 });
 
-ok('import — established device keeps local trial over older backup trial', () => {
+ok('import — uses earliest trial anchor (never extends local trial)', () => {
   clearStore();
   const localTrial = daysAgo(5);
   store[TRIAL_KEY] = localTrial;
@@ -289,8 +302,32 @@ ok('import — established device keeps local trial over older backup trial', ()
   DM.saveNow(Tracker.data);
   const backupTrial = daysAgo(20);
   restoreFromState(sampleState({ trialStartedAt: backupTrial, attempt: 3 }));
-  if (store[TRIAL_KEY] !== localTrial) throw new Error('local trial should win on established device');
+  if (store[TRIAL_KEY] !== backupTrial) throw new Error('older backup anchor should win over newer local');
   if (DM.load().attempt !== 3) throw new Error('progress should still come from backup');
+});
+
+ok('import — blocks delete-all trial re-up with old backup', () => {
+  clearStore();
+  const freshTrial = new Date().toISOString();
+  store[TRIAL_KEY] = freshTrial;
+  Tracker.data = DM.load();
+  Tracker.data.trialStartedAt = freshTrial;
+  Tracker.data.dailyLog = { '2026-06-01': 'sober' };
+  DM.saveNow(Tracker.data);
+  const oldBackupTrial = daysAgo(12);
+  restoreFromState(sampleState({ trialStartedAt: oldBackupTrial, attempt: 4 }));
+  if (store[TRIAL_KEY] === freshTrial) throw new Error('fresh post-delete trial must not beat older backup');
+  if (store[TRIAL_KEY] !== oldBackupTrial) throw new Error('backup trial anchor should apply');
+});
+
+ok('import — rejects future trialStartedAt', () => {
+  clearStore();
+  Tracker.data = DM.defaults();
+  DM.saveNow(Tracker.data);
+  const future = new Date(Date.now() + 86400000 * 400).toISOString();
+  restoreFromState(sampleState({ trialStartedAt: future }));
+  if (DM.load().attempt !== 1) throw new Error('future trial must not restore');
+  if (!/trial date/i.test(getLastToast())) throw new Error(`expected trial toast, got: ${getLastToast()}`);
 });
 
 ok('import — records last backup time from exportedAt', () => {

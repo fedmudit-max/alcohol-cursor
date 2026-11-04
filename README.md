@@ -28,9 +28,9 @@ Push these files to GitHub (branch **main**, Pages source **/ root**):
 - `d3.min.js`
 - `.nojekyll` (must be committed — do not gitignore it)
 
-**Release folder (generated, not in git):** Run `./scripts/build-release.sh` when you need a clean tree for Capacitor `www`. It copies from the repo root (including one `d3.min.js`) into `dist/`, which is gitignored — do not commit or ship `dist/` in zips; regenerate on the machine that builds native or deploys.
+**Release folder (generated, not in git):** Run `npm run build` (release copy + Capacitor/RevenueCat JS bundles) before Capacitor sync. Output goes to `dist/`, which is gitignored — regenerate on the machine that builds native or deploys.
 
-**Before native (Capacitor):** Keep journey/streak/storage logic frozen; fix web issues first. Production web uses trial only — `local-stub` unlock runs only when `showTestUI: true` (dev). Set `premiumBilling: 'store'` when native IAP is wired.
+**Before native (Capacitor):** Production web/PWA uses trial only — `local-stub` unlock runs only when `showTestUI: true` (dev). Android subscriptions use **RevenueCat** — see [docs/REVENUECAT.md](docs/REVENUECAT.md); set `premiumBilling: 'store'` and `REVENUECAT_ANDROID_API_KEY` for internal billing tests.
 
 **Storage sanity:** `node scripts/storage-sanity.mjs`
 
@@ -103,7 +103,7 @@ const CONFIG = {
   showTestUI:     false,   // true only for local dev (test bar, sim day, SJ_status)
   showOnboarding: true,
   buildTag:       'production',
-  premiumBilling: 'local-stub', // non-production until Capacitor store billing
+  premiumBilling: 'local-stub', // 'store' + RevenueCat on Android internal builds
 };
 ```
 

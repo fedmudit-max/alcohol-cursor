@@ -10,22 +10,31 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
-const entry = path.join(root, 'src/capacitor/native-entry.js');
-const outDist = path.join(root, 'dist/src/capacitor/native.bundle.js');
-const outDev = path.join(root, 'src/capacitor/native.bundle.js');
+const bundles = [
+  {
+    entry: path.join(root, 'src/capacitor/native-entry.js'),
+    outDist: path.join(root, 'dist/src/capacitor/native.bundle.js'),
+    outDev: path.join(root, 'src/capacitor/native.bundle.js'),
+    label: 'Native bridge',
+  },
+  {
+    entry: path.join(root, 'src/capacitor/revenuecat-entry.js'),
+    outDist: path.join(root, 'dist/src/capacitor/revenuecat.bundle.js'),
+    outDev: path.join(root, 'src/capacitor/revenuecat.bundle.js'),
+    label: 'RevenueCat bridge',
+  },
+];
 
-for (const out of [outDist, outDev]) {
-  fs.mkdirSync(path.dirname(out), { recursive: true });
+for (const spec of bundles) {
+  fs.mkdirSync(path.dirname(spec.outDist), { recursive: true });
+  await esbuild.build({
+    entryPoints: [spec.entry],
+    bundle: true,
+    format: 'iife',
+    minify: true,
+    outfile: spec.outDist,
+    logLevel: 'info',
+  });
+  fs.copyFileSync(spec.outDist, spec.outDev);
+  console.log(`${spec.label}:`, spec.outDist);
 }
-
-await esbuild.build({
-  entryPoints: [entry],
-  bundle: true,
-  format: 'iife',
-  minify: true,
-  outfile: outDist,
-  logLevel: 'info',
-});
-
-fs.copyFileSync(outDist, outDev);
-console.log('Native bridge:', outDist);

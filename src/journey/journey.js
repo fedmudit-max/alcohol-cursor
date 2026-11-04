@@ -89,6 +89,7 @@ const Tracker = {
       ensureTrialStarted(this.data);
     }
     if (typeof reconcileStubPremiumWithTrial === 'function') reconcileStubPremiumWithTrial();
+    if (typeof bootstrapStoreEntitlement === 'function') bootstrapStoreEntitlement();
     if (typeof Tracker !== 'undefined') {
       Tracker._lastPremiumAccess = typeof hasPremiumAccess === 'function' ? hasPremiumAccess() : true;
     }
@@ -508,10 +509,6 @@ const Tracker = {
     if (d.journeyPendingReset) return;
     if (!d.completedJourneys) d.completedJourneys = [];
     d.completedJourneys.push({ attempt: d.attempt, score: {...d.currentScore}, date: new Date().toISOString() });
-    const histCap = journeyHistoryCap();
-    if (d.completedJourneys.length > histCap) {
-      d.completedJourneys = d.completedJourneys.slice(-histCap);
-    }
     archiveCurrentJourneyStreaks(d);
     const prevBest = d.highestScore.success | 0;
     this._updateBest();
