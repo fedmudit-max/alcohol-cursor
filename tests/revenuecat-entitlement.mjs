@@ -85,6 +85,21 @@ ok('NOT_REQUESTED active does not grant', () => {
   if (ctx.isPremiumActive()) throw new Error('must not grant');
 });
 
+ok('NOT_REQUESTED on later sync keeps existing verified premium', () => {
+  const ctx = setupContext();
+  ctx.clearPremiumRecord();
+  ctx.applyRevenueCatCustomerInfo(makeCustomerInfo({
+    requestDate: '2026-06-01T12:00:00.000Z',
+    verification: 'VERIFIED',
+  }));
+  if (!ctx.isPremiumActive()) throw new Error('seed premium');
+  ctx.applyRevenueCatCustomerInfo(makeCustomerInfo({
+    requestDate: '2026-06-02T12:00:00.000Z',
+    verification: 'NOT_REQUESTED',
+  }));
+  if (!ctx.isPremiumActive()) throw new Error('transient verification must not revoke');
+});
+
 ok('missing verification does not grant', () => {
   const ctx = setupContext();
   ctx.clearPremiumRecord();
@@ -169,34 +184,34 @@ ok('malformed active map does not revoke', () => {
   if (!ctx.isPremiumActive()) throw new Error('malformed must not revoke');
 });
 
-ok('unknown product id does not grant', () => {
+ok('unknown product id still grants verified premium entitlement', () => {
   const ctx = setupContext();
   ctx.clearPremiumRecord();
   ctx.applyRevenueCatCustomerInfo(makeCustomerInfo({
     verification: 'VERIFIED',
     productId: 'wrong_monthly_sku',
   }));
-  if (ctx.isPremiumActive()) throw new Error('unknown sku');
+  if (!ctx.isPremiumActive()) throw new Error('RC premium entitlement must grant access');
 });
 
-ok('regex-like product id without configured sku does not grant', () => {
+ok('unrecognized product id grants access without inferring plan from name', () => {
   const ctx = setupContext();
   ctx.clearPremiumRecord();
   ctx.applyRevenueCatCustomerInfo(makeCustomerInfo({
     verification: 'VERIFIED',
     productId: 'someone_elses_annual_plan',
   }));
-  if (ctx.isPremiumActive()) throw new Error('must not infer yearly from name');
+  if (!ctx.isPremiumActive()) throw new Error('expected access');
 });
 
-ok('legacy separate Play product ids do not grant', () => {
+ok('legacy separate Play product id grants when RC marks premium active', () => {
   const ctx = setupContext();
   ctx.clearPremiumRecord();
   ctx.applyRevenueCatCustomerInfo(makeCustomerInfo({
     verification: 'VERIFIED',
     productId: 'ten_drinks_premium_yearly',
   }));
-  if (ctx.isPremiumActive()) throw new Error('legacy sku must not match');
+  if (!ctx.isPremiumActive()) throw new Error('legacy sku on active entitlement must grant');
 });
 
 ok('Play subscription id + base plan monthly grants premium', () => {
@@ -221,17 +236,17 @@ ok('Play subscription id + base plan yearly grants premium', () => {
   if (!ctx.isPremiumActive()) throw new Error('expected active');
 });
 
-ok('subscription id alone without base plan does not grant', () => {
+ok('subscription id alone without base plan still grants active premium', () => {
   const ctx = setupContext();
   ctx.clearPremiumRecord();
   ctx.applyRevenueCatCustomerInfo(makeCustomerInfo({
     verification: 'VERIFIED',
     productId: 'ten_drinks_premium',
   }));
-  if (ctx.isPremiumActive()) throw new Error('must require base plan');
+  if (!ctx.isPremiumActive()) throw new Error('active premium entitlement must grant');
 });
 
-ok('wrong subscription id with base plan does not grant', () => {
+ok('migration sku — other subscription id with base plan grants access', () => {
   const ctx = setupContext();
   ctx.clearPremiumRecord();
   ctx.applyRevenueCatCustomerInfo(makeCustomerInfo({
@@ -239,10 +254,10 @@ ok('wrong subscription id with base plan does not grant', () => {
     productId: 'other_subscription',
     productPlanId: 'yearly',
   }));
-  if (ctx.isPremiumActive()) throw new Error('wrong subscription');
+  if (!ctx.isPremiumActive()) throw new Error('verified premium must grant');
 });
 
-ok('unknown base plan id does not grant', () => {
+ok('unknown base plan id still grants verified premium entitlement', () => {
   const ctx = setupContext();
   ctx.clearPremiumRecord();
   ctx.applyRevenueCatCustomerInfo(makeCustomerInfo({
@@ -250,7 +265,7 @@ ok('unknown base plan id does not grant', () => {
     productId: 'ten_drinks_premium',
     productPlanId: 'weekly',
   }));
-  if (ctx.isPremiumActive()) throw new Error('unknown base plan');
+  if (!ctx.isPremiumActive()) throw new Error('unknown base plan must not block access');
 });
 
 ok('realistic SDK CustomerInfo (split Play ids) grants premium', () => {
@@ -276,6 +291,28 @@ ok('cancelled sub (willRenew false) stays premium until expirationDate', () => {
     expirationDate: future,
   }));
   if (!ctx.isPremiumActive()) throw new Error('cancelled but in paid period must stay premium');
+});
+
+ok('cached entitlement — access until expiration instant without new sync', () => {
+  const ctx = setupContext();
+  ctx.clearPremiumRecord();
+  const future = new Date(Date.now() + 3600 * 1000).toISOString();
+  ctx.applyRevenueCatCustomerInfo(makeRealisticCustomerInfo({
+    verification: 'VERIFIED',
+    expirationDate: future,
+  }));
+  if (!ctx.isPremiumActive()) throw new Error('future expiration must grant offline-style access');
+});
+
+ok('cached entitlement — no local grace after expirationDate passes', () => {
+  const ctx = setupContext();
+  ctx.clearPremiumRecord();
+  const past = new Date(Date.now() - 1000).toISOString();
+  ctx.applyRevenueCatCustomerInfo(makeRealisticCustomerInfo({
+    verification: 'VERIFIED',
+    expirationDate: past,
+  }));
+  if (ctx.isPremiumActive()) throw new Error('expired cache must not grant');
 });
 
 ok('cancelled sub loses premium after expirationDate passes', () => {

@@ -172,7 +172,6 @@ function renderMonthGrid(data, targetYear, targetMonth) {
   let pendingInMonth = 0;
   for (let d = 1; d <= days; d++) {
     const k = `${targetYear}-${String(targetMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const isToday     = k === todayKey;
     const isFuture    = k > todayKey;
     const beforeCurrentJourney = k < journeyFloorKey;
     const status      = log[k];

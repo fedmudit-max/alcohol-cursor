@@ -102,12 +102,20 @@ function installMockRC(ctx, handlers = {}) {
   return billing;
 }
 
+/** RevenueCat SDK CustomerInfo update listener (no sync-generation argument). */
+function simulateRcCustomerInfoListener(ctx, customerInfo) {
+  ctx.applyRevenueCatCustomerInfo(customerInfo);
+}
+
 /** Foreground resume path — mirrors src/capacitor/native-entry.js appStateChange sync. */
 function simulateAppResumeForeground(ctx) {
   const d = ctx.Tracker && ctx.Tracker.data ? ctx.Tracker.data : null;
+  const syncGeneration = typeof ctx.captureRcEntitlementSyncGeneration === 'function'
+    ? ctx.captureRcEntitlementSyncGeneration()
+    : null;
   return ctx.RevenueCatBilling.syncEntitlement()
     .then((info) => {
-      ctx.applyRevenueCatCustomerInfo(info);
+      ctx.applyRevenueCatCustomerInfo(info, syncGeneration);
       if (typeof ctx.refreshEntitlementIfChanged === 'function') {
         ctx.refreshEntitlementIfChanged(d);
       }
@@ -266,6 +274,17 @@ async function run() {
     if (!/pending/i.test(toast())) throw new Error(`expected pending toast, got: ${toast()}`);
   });
 
+  await ok('subscribe — pending message alone shows failure toast', async () => {
+    const { ctx, toast, clearToast } = setupPremiumContext();
+    installMockRC(ctx, {
+      purchasePlan: () => Promise.reject(new Error('Payment pending with store')),
+    });
+    clearToast();
+    ctx.Tracker.subscribePremium();
+    await flushPromises();
+    if (!/did not complete/i.test(toast())) throw new Error(`expected failure toast, got: ${toast()}`);
+  });
+
   await ok('subscribe — store error shows retry toast', async () => {
     const { ctx, toast, clearToast } = setupPremiumContext();
     installMockRC(ctx, {
@@ -329,6 +348,52 @@ async function run() {
       requestDate: '2026-06-03T12:00:00.000Z',
     }));
     if (ctx.isPremiumActive()) throw new Error('revocation should remove premium');
+  });
+
+  await ok('mirror clear — older premium CustomerInfo ignored after newer inactive', async () => {
+    const { ctx } = setupPremiumContext();
+    ctx.clearPremiumRecord();
+    ctx.applyRevenueCatCustomerInfo(makeCustomerInfo({
+      active: false,
+      requestDate: '2026-06-02T12:00:00.000Z',
+    }));
+    ctx.applyRevenueCatCustomerInfo(makeCustomerInfo({
+      requestDate: '2026-06-01T12:00:00.000Z',
+    }));
+    if (ctx.isPremiumActive()) throw new Error('older premium snapshot must not apply');
+  });
+
+  await ok('subscribe — userCancelled does not show failure toast', async () => {
+    const { ctx, toast, clearToast } = setupPremiumContext();
+    installMockRC(ctx, {
+      purchasePlan: () => Promise.reject({ userCancelled: true, message: 'Purchase was cancelled.' }),
+    });
+    clearToast();
+    ctx.Tracker.subscribePremium();
+    await flushPromises();
+    if (toast()) throw new Error(`expected silent cancel, got: ${toast()}`);
+  });
+
+  await ok('subscribe — cancellation message alone shows failure toast', async () => {
+    const { ctx, toast, clearToast } = setupPremiumContext();
+    installMockRC(ctx, {
+      purchasePlan: () => Promise.reject(new Error('Purchase was cancelled.')),
+    });
+    clearToast();
+    ctx.Tracker.subscribePremium();
+    await flushPromises();
+    if (!/did not complete/i.test(toast())) throw new Error(`expected failure toast, got: ${toast()}`);
+  });
+
+  await ok('subscribe — billing error with "User" in message still shows toast', async () => {
+    const { ctx, toast, clearToast } = setupPremiumContext();
+    installMockRC(ctx, {
+      purchasePlan: () => Promise.reject(new Error('User billing profile is invalid')),
+    });
+    clearToast();
+    ctx.Tracker.subscribePremium();
+    await flushPromises();
+    if (!/did not complete/i.test(toast())) throw new Error(`expected failure toast, got: ${toast()}`);
   });
 
   await ok('clearPremiumMirrorAndResyncStore — premium returns from mock sync', async () => {
@@ -446,21 +511,47 @@ async function run() {
     if (!ctx.isPremiumActive()) throw new Error('cancelled sub must remain active until expiry');
   });
 
-  await ok('subscribe — unexpected CustomerInfo (no expiration) does not grant', async () => {
+  await ok('subscribe — delayed entitlement refresh after purchase', async () => {
     const { ctx, toast, clearToast } = setupPremiumContext();
     const broken = makeRealisticCustomerInfo();
     broken.entitlements.active.premium.expirationDate = null;
+    let syncCalls = 0;
     installMockRC(ctx, {
       purchasePlan: () => Promise.resolve(broken),
+      syncEntitlement: () => {
+        syncCalls += 1;
+        return Promise.resolve(makeCustomerInfo());
+      },
+    });
+    clearToast();
+    ctx.Tracker.subscribePremium();
+    await flushPromises();
+    if (!ctx.isPremiumActive()) throw new Error('refresh sync should activate premium');
+    if (syncCalls < 1) throw new Error('expected post-purchase syncEntitlement');
+    if (!/thank you/i.test(toast())) throw new Error(`expected success toast, got: ${toast()}`);
+  });
+
+  await ok('subscribe — purchase without entitlement prompts restore (no double purchase)', async () => {
+    const { ctx, toast, clearToast } = setupPremiumContext();
+    const broken = makeRealisticCustomerInfo();
+    broken.entitlements.active.premium.expirationDate = null;
+    let purchases = 0;
+    installMockRC(ctx, {
+      purchasePlan: () => {
+        purchases += 1;
+        return Promise.resolve(broken);
+      },
+      syncEntitlement: () => Promise.resolve(broken),
     });
     clearToast();
     ctx.Tracker.subscribePremium();
     await flushPromises();
     if (ctx.isPremiumActive()) throw new Error('must not grant without expiration');
-    if (!/not active yet/i.test(toast())) throw new Error(`expected inactive toast, got: ${toast()}`);
+    if (purchases !== 1) throw new Error('must not repeat purchase');
+    if (!/restore purchase/i.test(toast())) throw new Error(`expected restore hint, got: ${toast()}`);
   });
 
-  await ok('restore — unexpected CustomerInfo (unknown sku) does not grant', async () => {
+  await ok('restore — verified premium with migration sku grants access', async () => {
     const { ctx, toast, clearToast } = setupPremiumContext();
     installMockRC(ctx, {
       restorePurchases: () => Promise.resolve(makeRealisticCustomerInfo({
@@ -471,8 +562,85 @@ async function run() {
     clearToast();
     ctx.Tracker.restorePremium();
     await flushPromises();
-    if (ctx.isPremiumActive()) throw new Error('unknown sku must not grant');
-    if (!/no active subscription/i.test(toast())) throw new Error(`expected no sub toast, got: ${toast()}`);
+    if (!ctx.isPremiumActive()) throw new Error('verified premium must restore');
+    if (!/restored/i.test(toast())) throw new Error(`expected restored toast, got: ${toast()}`);
+  });
+
+  await ok('RC listener — stale premium ignored after newer inactive sync', async () => {
+    const { ctx } = setupPremiumContext();
+    ctx.clearPremiumRecord();
+    ctx.applyRevenueCatCustomerInfo(makeCustomerInfo({
+      active: false,
+      requestDate: '2026-06-05T12:00:00.000Z',
+    }));
+    simulateRcCustomerInfoListener(ctx, makeCustomerInfo({
+      requestDate: '2026-06-04T12:00:00.000Z',
+    }));
+    if (ctx.isPremiumActive()) throw new Error('stale listener premium must not apply');
+  });
+
+  await ok('RC listener — newer premium after inactive sync restores access', async () => {
+    const { ctx } = setupPremiumContext();
+    ctx.clearPremiumRecord();
+    ctx.applyRevenueCatCustomerInfo(makeCustomerInfo({
+      active: false,
+      requestDate: '2026-06-05T12:00:00.000Z',
+    }));
+    simulateRcCustomerInfoListener(ctx, makeCustomerInfo({
+      requestDate: '2026-06-06T12:00:00.000Z',
+    }));
+    if (!ctx.isPremiumActive()) throw new Error('newer listener premium must apply');
+  });
+
+  await ok('RC listener after import — stale pre-reset premium ignored when resync wins', async () => {
+    const { ctx } = setupPremiumContext();
+    let resolveStale;
+    let syncCalls = 0;
+    const stalePromise = new Promise((resolve) => { resolveStale = resolve; });
+    installMockRC(ctx, {
+      syncEntitlement: () => {
+        syncCalls += 1;
+        if (syncCalls === 1) return stalePromise;
+        return Promise.resolve(makeCustomerInfo({
+          active: false,
+          requestDate: '2026-06-10T12:00:00.000Z',
+        }));
+      },
+    });
+    ctx.bootstrapStoreEntitlement();
+    ctx.clearPremiumMirrorAndResyncStore();
+    await flushPromises();
+    resolveStale(makeCustomerInfo({ requestDate: '2026-06-09T12:00:00.000Z' }));
+    await flushPromises();
+    simulateRcCustomerInfoListener(ctx, makeCustomerInfo({
+      requestDate: '2026-06-08T12:00:00.000Z',
+    }));
+    if (ctx.isPremiumActive()) throw new Error('stale listener/sync must not grant after inactive resync');
+  });
+
+  await ok('import resync — stale in-flight sync ignored after generation bump', async () => {
+    const { ctx } = setupPremiumContext();
+    let resolveStale;
+    let syncCalls = 0;
+    const stalePromise = new Promise((resolve) => { resolveStale = resolve; });
+    installMockRC(ctx, {
+      syncEntitlement: () => {
+        syncCalls += 1;
+        if (syncCalls === 1) return stalePromise;
+        return Promise.resolve(makeCustomerInfo({
+          active: false,
+          requestDate: '2026-06-10T12:00:00.000Z',
+        }));
+      },
+    });
+    ctx.bootstrapStoreEntitlement();
+    ctx.clearPremiumMirrorAndResyncStore();
+    resolveStale(makeCustomerInfo({
+      requestDate: '2026-06-09T12:00:00.000Z',
+    }));
+    await flushPromises();
+    await flushPromises();
+    if (ctx.isPremiumActive()) throw new Error('stale pre-reset sync must not grant premium');
   });
 
   await ok('bootstrap — malformed CustomerInfo keeps existing premium', async () => {

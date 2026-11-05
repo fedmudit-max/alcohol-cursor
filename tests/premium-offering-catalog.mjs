@@ -68,6 +68,11 @@ ok('packageForPlan — MONTHLY / ANNUAL types', () => {
   if (y.product.identifier !== 'ten_drinks_premium:yearly') throw new Error('yearly pkg');
 });
 
+ok('packageForPlan — rejects unknown planId', () => {
+  if (cat.packageForPlan(offering, 'lifetime') !== null) throw new Error('unknown plan');
+  if (cat.resolvePackageForPlan(offering, 'weekly') !== null) throw new Error('unknown resolve');
+});
+
 ok('resolvePackageForPlan — rejects wrong Play product ID', () => {
   const bad = {
     availablePackages: [
@@ -104,6 +109,47 @@ ok('package identifier fallback when types CUSTOM', () => {
   };
   if (!cat.resolvePackageForPlan(customOffering, 'yearly')) {
     throw new Error('annual identifier fallback');
+  }
+});
+
+ok('buildPartialPlanQuotes — monthly only', () => {
+  const m = cat.resolvePackageForPlan(offering, 'monthly');
+  const q = cat.buildPartialPlanQuotes(m, null);
+  if (!q || !q.fromStore || q.monthly !== '$2.99') throw new Error('monthly partial');
+  if (q.yearly !== '—' || q.percentOff !== 0) throw new Error('yearly placeholder');
+});
+
+ok('buildPartialPlanQuotes — yearly only', () => {
+  const y = cat.resolvePackageForPlan(offering, 'yearly');
+  const q = cat.buildPartialPlanQuotes(null, y);
+  if (!q || q.yearly !== '$14.99') throw new Error('yearly partial');
+  if (q.monthly !== '—') throw new Error('monthly placeholder');
+});
+
+ok('resolvePackageForPlan — skips invalid first monthly, selects valid second', () => {
+  const multiMonthly = {
+    availablePackages: [
+      pkg('MONTHLY', 'promo_monthly', 'wrong_sku:monthly', 1.99, '$1.99'),
+      pkg('MONTHLY', 'monthly', 'ten_drinks_premium:monthly', 2.99, '$2.99'),
+      pkg('ANNUAL', 'annual', 'ten_drinks_premium:yearly', 14.99, '$14.99'),
+    ],
+  };
+  const resolved = cat.resolvePackageForPlan(multiMonthly, 'monthly');
+  if (!resolved || resolved.product.identifier !== 'ten_drinks_premium:monthly') {
+    throw new Error('must pick validated product, not first MONTHLY slot');
+  }
+});
+
+ok('configured package identifier wins over generic MONTHLY type', () => {
+  const offering = {
+    availablePackages: [
+      pkg('MONTHLY', 'promo_slot', 'wrong_sku:monthly', 2.99, '$2.99'),
+      pkg('CUSTOM', 'monthly', 'ten_drinks_premium:monthly', 2.99, '$2.99'),
+    ],
+  };
+  const resolved = cat.resolvePackageForPlan(offering, 'monthly');
+  if (!resolved || resolved.product.identifier !== 'ten_drinks_premium:monthly') {
+    throw new Error('identifier mapping must beat generic MONTHLY type');
   }
 });
 

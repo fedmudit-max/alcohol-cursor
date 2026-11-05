@@ -68,7 +68,7 @@ function pickBetterScore(candidate, best) {
     : { success: best.success | 0, failures: best.failures | 0 };
 }
 
-// Best Score card — laotzu101: J1 mirrors current; J2+ shows better of live score vs stored best journey.
+// Best Score card — journey 1 mirrors current; journey 2+ shows better of live score vs stored best.
 function getDisplayBestScore(data) {
   ensureScoreNumbers(data);
   const cur = { success: data.currentScore.success | 0, failures: data.currentScore.failures | 0 };
@@ -79,7 +79,7 @@ function getDisplayBestScore(data) {
   return pickBetterScore(cur, stored);
 }
 
-/** Permanent best (highestScore) — laotzu101: J1 tracks live; J2+ commits only when journey ends (10 drinks). */
+/** Permanent best (highestScore) — J1 tracks live; J2+ commits only when journey ends (10 drinks). */
 function applyBestScore(data, cur) {
   if (!isValidJourneyScore(cur)) return;
   if (!data.highestScore || typeof data.highestScore !== 'object') {
@@ -112,11 +112,8 @@ function isBeatingBestScore(data) {
   if (!(data.completedJourneys || []).length) return false;
   return isScoreBetterThan(data.currentScore, getBestCompletedJourneyScore(data));
 }
-const AUDIT_MAX_SCORE        = 12;   // max possible AUDIT-C score
 const AUDIT_SEEK_SUPPORT_SCORE = 9;  // score >= this → Seek Support (high-risk screening range)
-const AUDIT_HARMFUL_SCORE    = 6;    // score >= this → Harmful zone
 const AUDIT_HAZARDOUS_SCORE  = 4;    // score >= this → Hazardous zone
-const AUDIT_LOW_RISK_SCORE   = 1;    // score >= this → Low Risk zone
 const MAX_COMPLETED_JOURNEYS = 20;   // free journey history cap
 const MAX_COMPLETED_JOURNEYS_PREMIUM = 100; // premium journey history cap
 const PREMIUM_KEY = 'sj_premium';

@@ -1,7 +1,7 @@
 /* ===== src/journey/best-performances.js ===== */
 'use strict';
 
-// Top-3 historical streaks & journeys (read-only). Uses journey/streak persisted state.
+// Top-3 historical journeys (read-only). Streak segments remain in journey data for scoring.
 
 const BEST_PERFORMANCES_RANK_COUNT = 3;
 const BEST_PERFORMANCES_MEDALS = ['🥇', '🥈', '🥉'];
@@ -10,87 +10,12 @@ function isAwaitingNextJourney(data) {
   return !!(data && data.journeyPendingReset);
 }
 
-function streakRecordId(attempt, segmentIndex) {
-  return 'streak:' + attempt + ':' + segmentIndex;
-}
-
-function liveStreakRecordId(attempt) {
-  return 'streak:' + attempt + ':live';
-}
-
 function completedJourneyRecordId(attempt) {
   return 'journey:' + attempt + ':completed';
 }
 
 function liveJourneyRecordId(attempt) {
   return 'journey:' + attempt + ':live';
-}
-
-function collectStreakRecords(data) {
-  data = data || {};
-  const out = [];
-  const past = typeof pastJourneyStreaksForDisplay === 'function'
-    ? pastJourneyStreaksForDisplay(data)
-    : (data.pastJourneyStreaks || []);
-  for (let pi = 0; pi < past.length; pi++) {
-    const journey = past[pi];
-    const attempt = Math.max(1, Math.floor(Number(journey.attempt) || 1));
-    const streaks = journey.streaks || [];
-    for (let si = 0; si < streaks.length; si++) {
-      const days = Math.floor(Number(streaks[si]) || 0);
-      if (days <= 0) continue;
-      out.push({
-        id: streakRecordId(attempt, si),
-        days,
-        attempt,
-        segmentIndex: si,
-        sortKey: attempt * 10000 + si,
-      });
-    }
-  }
-
-  if (!isAwaitingNextJourney(data)) {
-    const curAttempt = Math.max(1, Math.floor(Number(data.attempt) || 1));
-    const curSegments = data.currentJourneyStreaks || [];
-    for (let ci = 0; ci < curSegments.length; ci++) {
-      const cdays = Math.floor(Number(curSegments[ci]) || 0);
-      if (cdays <= 0) continue;
-      out.push({
-        id: streakRecordId(curAttempt, ci),
-        days: cdays,
-        attempt: curAttempt,
-        segmentIndex: ci,
-        sortKey: curAttempt * 10000 + ci,
-      });
-    }
-    const liveDays = Math.floor(Number(data.currentStreak) || 0);
-    if (liveDays > 0) {
-      out.push({
-        id: liveStreakRecordId(curAttempt),
-        days: liveDays,
-        attempt: curAttempt,
-        segmentIndex: -1,
-        sortKey: curAttempt * 10000 + 9999,
-      });
-    }
-  }
-
-  return out;
-}
-
-function getActiveStreakRecordId(data) {
-  data = data || {};
-  if (isAwaitingNextJourney(data)) return null;
-  const liveDays = Math.floor(Number(data.currentStreak) || 0);
-  if (liveDays <= 0) return null;
-  const attempt = Math.max(1, Math.floor(Number(data.attempt) || 1));
-  return liveStreakRecordId(attempt);
-}
-
-function compareStreakRecords(a, b) {
-  if (b.days !== a.days) return b.days - a.days;
-  if (a.sortKey !== b.sortKey) return a.sortKey - b.sortKey;
-  return String(a.id).localeCompare(String(b.id));
 }
 
 function hasActiveJourneySeriesForBest(data) {
@@ -155,20 +80,15 @@ function compareJourneyRecords(a, b) {
   return String(a.id).localeCompare(String(b.id));
 }
 
-function sortStreakRecords(records) {
-  return records.slice().sort(compareStreakRecords);
-}
-
 function sortJourneyRecords(records) {
   return records.slice().sort(compareJourneyRecords);
 }
 
-function buildBestPerformanceSlots(records, activeId, kind) {
-  const sorted = kind === 'journey' ? sortJourneyRecords(records) : sortStreakRecords(records);
-  const top = sorted.slice(0, BEST_PERFORMANCES_RANK_COUNT);
+function buildBestPerformanceSlots(records, activeId) {
+  const top = sortJourneyRecords(records).slice(0, BEST_PERFORMANCES_RANK_COUNT);
   let maxVal = 0;
   for (let i = 0; i < top.length; i++) {
-    const v = kind === 'journey' ? top[i].success : top[i].days;
+    const v = top[i].success;
     if (v > maxVal) maxVal = v;
   }
 
@@ -184,18 +104,16 @@ function buildBestPerformanceSlots(records, activeId, kind) {
         value: 0,
         barPercent: 0,
         isActive: false,
-        ariaLabel: 'Rank ' + rank + ', no ' + (kind === 'journey' ? 'journey' : 'streak') + ' yet',
+        ariaLabel: 'Rank ' + rank + ', no journey yet',
         id: '',
       });
       continue;
     }
-    const value = kind === 'journey' ? rec.success : rec.days;
+    const value = rec.success;
     let barPercent = maxVal > 0 ? Math.round((value / maxVal) * 100) : 0;
     if (barPercent < 4 && value > 0) barPercent = 4;
     const isActive = !!(activeId && rec.id === activeId);
-    let label = kind === 'journey'
-      ? ('Rank ' + rank + ', best journey, ' + value + ' days')
-      : ('Rank ' + rank + ', best streak, ' + value + ' days');
+    let label = 'Rank ' + rank + ', best journey, ' + value + ' days';
     if (isActive) label += ', currently active';
     slots.push({
       rank,
@@ -211,23 +129,10 @@ function buildBestPerformanceSlots(records, activeId, kind) {
   return { slots };
 }
 
-function buildBestStreaksBoard(data) {
-  const records = collectStreakRecords(data);
-  const activeId = getActiveStreakRecordId(data);
-  return buildBestPerformanceSlots(records, activeId, 'streak');
-}
-
 function buildBestJourneysBoard(data) {
   const records = collectJourneyRecords(data);
   const activeId = getActiveJourneyRecordId(data);
-  return buildBestPerformanceSlots(records, activeId, 'journey');
-}
-
-function buildBestPerformancesViewModel(data) {
-  return {
-    streaks: buildBestStreaksBoard(data),
-    journeys: buildBestJourneysBoard(data),
-  };
+  return buildBestPerformanceSlots(records, activeId);
 }
 
 function archiveCurrentJourneyStreaks(data) {

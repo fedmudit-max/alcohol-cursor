@@ -2,22 +2,37 @@
 'use strict';
 
 const OfferingCatalog = {
-  packageForPlan(offering, planId) {
-    if (!offering || !offering.availablePackages) return null;
+  /** Ordered candidates for a plan (configured id first, then matching package type). */
+  packageCandidatesForPlan(offering, planId) {
+    if (!offering || !offering.availablePackages) return [];
+    if (planId !== 'monthly' && planId !== 'yearly') return [];
     const packages = offering.availablePackages;
-    const wantType = planId === 'yearly' ? 'ANNUAL' : 'MONTHLY';
-    for (let i = 0; i < packages.length; i++) {
-      if (packages[i].packageType === wantType) return packages[i];
+    const out = [];
+    const seen = new Set();
+    function push(pkg) {
+      if (!pkg || seen.has(pkg)) return;
+      seen.add(pkg);
+      out.push(pkg);
     }
     const lookup = typeof REVENUECAT_PACKAGE_IDENTIFIERS === 'object'
       ? REVENUECAT_PACKAGE_IDENTIFIERS
       : {};
     const ident = lookup[planId];
-    if (!ident) return null;
-    for (let j = 0; j < packages.length; j++) {
-      if (packages[j].identifier === ident) return packages[j];
+    if (ident) {
+      for (let j = 0; j < packages.length; j++) {
+        if (packages[j].identifier === ident) push(packages[j]);
+      }
     }
-    return null;
+    const wantType = planId === 'yearly' ? 'ANNUAL' : 'MONTHLY';
+    for (let i = 0; i < packages.length; i++) {
+      if (packages[i].packageType === wantType) push(packages[i]);
+    }
+    return out;
+  },
+
+  packageForPlan(offering, planId) {
+    const candidates = this.packageCandidatesForPlan(offering, planId);
+    return candidates.length ? candidates[0] : null;
   },
 
   expectedPlayProductId(planId) {
@@ -33,9 +48,31 @@ const OfferingCatalog = {
   },
 
   resolvePackageForPlan(offering, planId) {
-    const pkg = this.packageForPlan(offering, planId);
-    if (!pkg || !this.validatePackageProduct(pkg, planId)) return null;
-    return pkg;
+    const candidates = this.packageCandidatesForPlan(offering, planId);
+    for (let i = 0; i < candidates.length; i++) {
+      if (this.validatePackageProduct(candidates[i], planId)) return candidates[i];
+    }
+    return null;
+  },
+
+  /** Store price strings when only one plan resolved (no savings compare). */
+  buildPartialPlanQuotes(monthlyPkg, yearlyPkg) {
+    const mp = monthlyPkg && monthlyPkg.product ? monthlyPkg.product : null;
+    const yp = yearlyPkg && yearlyPkg.product ? yearlyPkg.product : null;
+    if (!mp && !yp) return null;
+    const currency = (yp && yp.currencyCode) || (mp && mp.currencyCode) || '';
+    return {
+      currency,
+      monthly: mp ? mp.priceString : '—',
+      yearly: yp ? yp.priceString : '—',
+      yearlyList: '',
+      yearlyPerMonth: yp && yp.pricePerMonthString
+        ? `${yp.pricePerMonthString}/mo · best value`
+        : (yp ? '—' : '—'),
+      percentOff: 0,
+      fromStore: true,
+      partial: true,
+    };
   },
 
   buildPlanQuotes(monthlyPkg, yearlyPkg) {
@@ -48,7 +85,7 @@ const OfferingCatalog = {
       : 0;
     const yearlyPerMonthLabel = yp.pricePerMonthString
       ? `${yp.pricePerMonthString}/mo · best value`
-      : `${(yp.price / 12).toFixed(2)} · best value`;
+      : '—';
     return {
       currency: yp.currencyCode || mp.currencyCode || '',
       monthly: mp.priceString,

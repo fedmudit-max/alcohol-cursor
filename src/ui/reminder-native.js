@@ -1,5 +1,5 @@
 /* ===== src/ui/reminder-native.js ===== */
-/* Android daily reminder — AlarmManager via TenDrinksReminder (same model as laotzu101). */
+/* Android daily reminder — AlarmManager via TenDrinksReminder. */
 'use strict';
 
 const REMINDER_AWAITING_EXACT_KEY = 'sj_reminderAwaitingExact';

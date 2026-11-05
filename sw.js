@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = '10drinks-v228';
+const CACHE_NAME = '10drinks-v229';
 
 function isStaticAssetPath(pathname) {
   return /\.(js|mjs|css|json|png|jpe?g|webp|svg|woff2?)$/i.test(pathname)
@@ -22,6 +22,7 @@ function precacheUrls() {
     scopeUrl('src/utils/dates.js'),
     scopeUrl('src/utils/helpers.js'),
     scopeUrl('src/constants/milestones.js'),
+    scopeUrl('src/constants/science-nodes.js'),
     scopeUrl('src/constants/dyk.js'),
     scopeUrl('src/data/local-storage.js'),
     scopeUrl('src/data/backup.js'),
@@ -36,6 +37,7 @@ function precacheUrls() {
     scopeUrl('src/ui/dashboard.js'),
     scopeUrl('src/ui/history-views.js'),
     scopeUrl('src/ui/renderAll.js'),
+    scopeUrl('src/ui/reminder-native.js'),
     scopeUrl('src/ui/reminders.js'),
     scopeUrl('src/ui/panels.js'),
     scopeUrl('src/premium/offering-catalog.js'),
@@ -44,6 +46,8 @@ function precacheUrls() {
     scopeUrl('src/onboarding/onboarding.js'),
     scopeUrl('src/assessment/meter.js'),
     scopeUrl('src/assessment/questions.js'),
+    scopeUrl('src/capacitor/native.bundle.js'),
+    scopeUrl('src/capacitor/revenuecat.bundle.js'),
     scopeUrl('src/main.js'),
     scopeUrl('assets/icons/icon-180.png'),
     scopeUrl('assets/icons/icon-192.png'),

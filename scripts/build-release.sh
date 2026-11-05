@@ -3,9 +3,14 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${ROOT}/dist"
+ICON_512="${ROOT}/assets/icons/icon-512.png"
 if [[ -f "${ROOT}/assets/icons/logo-master.jpg" ]]; then
-  python3 "${ROOT}/scripts/generate-brand-icons.py" 2>/dev/null || true
+  python3 "${ROOT}/scripts/generate-brand-icons.py"
+elif [[ ! -f "$ICON_512" ]]; then
+  echo "build-release: missing assets/icons/logo-master.jpg and ${ICON_512}" >&2
+  exit 1
 fi
+[[ -f "$ICON_512" ]] || { echo "build-release: icon generation did not produce ${ICON_512}" >&2; exit 1; }
 rm -rf "$OUT"
 mkdir -p "$OUT"
 

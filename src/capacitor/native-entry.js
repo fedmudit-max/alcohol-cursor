@@ -30,9 +30,14 @@ async function initNativeShell() {
       : (typeof DataManager !== 'undefined' ? DataManager.load() : null);
     if (typeof isRevenueCatStoreBilling === 'function' && isRevenueCatStoreBilling()
       && typeof RevenueCatBilling !== 'undefined') {
+      const syncGeneration = typeof captureRcEntitlementSyncGeneration === 'function'
+        ? captureRcEntitlementSyncGeneration()
+        : null;
       RevenueCatBilling.syncEntitlement()
         .then((info) => {
-          if (typeof applyRevenueCatCustomerInfo === 'function') applyRevenueCatCustomerInfo(info);
+          if (typeof applyRevenueCatCustomerInfo === 'function') {
+            applyRevenueCatCustomerInfo(info, syncGeneration);
+          }
           if (typeof refreshEntitlementIfChanged === 'function') refreshEntitlementIfChanged(d);
         })
         .catch(() => {

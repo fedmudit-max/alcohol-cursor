@@ -12,7 +12,7 @@ Generated: ${STAMP}
 Package: com.tendrinks.app (Capacitor Android + PWA)
 
 Focus areas for review:
-- Journey score / best score (src/config/app.config.js — laotzu-style)
+- Journey score / best score (src/config/app.config.js)
 - Trial locks 15d (src/premium/premium.js)
 - Calendar / meter / J3+ panels (src/ui/panels.js, premium.js)
 - Data: src/data/local-storage.js, src/journey/*

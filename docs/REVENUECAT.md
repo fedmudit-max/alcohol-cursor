@@ -75,19 +75,21 @@ Ship an **Internal testing** AAB from Play Console — testers install from Play
 |------|----------------|
 | Cold start / journey init | `bootstrapStoreEntitlement()` → RevenueCat `getCustomerInfo()` → in-memory entitlement (not localStorage) |
 | App foreground | Native bridge syncs customer info again |
-| Subscribe | Validated package on current offering (`MONTHLY`/`ANNUAL` or `monthly`/`annual` IDs) → Play product must match `PLAY_BILLING_PRODUCT_IDS` |
-| Paywall prices | `getOfferings` → `product.priceString` (no hardcoded reference prices on native store builds) |
+| Subscribe | Validated package on current offering (scans candidates by configured id then type) → Play product must match `PLAY_BILLING_PRODUCT_IDS`. If purchase returns before entitlement applies, one `syncEntitlement` retry runs; otherwise user is directed to **Restore purchase** (no automatic re-purchase). |
+| Paywall prices | `getOfferings` → `product.priceString`. If both plans resolve, savings copy is shown; if only one resolves, partial store strings are shown but **checkout stays disabled** until both `monthly` and `yearly` packages validate (`isStoreCheckoutReady`). Never falls back to web reference prices on native store builds. |
+| RC `CustomerInfo` listener | Applies updates **without** sync-generation (renewals/revokes). Ordering uses **`requestDate`**; stale listener payloads after import/delete must not beat a newer explicit sync. |
 | Restore | `restorePurchases()` — same entitlement apply path |
-| Import backup / Delete all data | Clear local premium mirror + `bootstrapStoreEntitlement()` (same anonymous RC user; Play sub returns on sync) |
+| Import backup / Delete all data | Clear local premium mirror + `bootstrapStoreEntitlement()`. On the **same install**, RevenueCat keeps the same anonymous user and Play sync can restore entitlement. On a **new install or device**, RevenueCat may assign a new anonymous ID — use **Restore purchase** with the same Google Play account. |
 
 Store Premium is **not** read from `localStorage` (forged records are ignored). Access follows in-memory state updated from `CustomerInfo` only.
 
 | Rule | Behavior |
 |------|----------|
 | Configure | `entitlementVerificationMode: INFORMATIONAL` (RevenueCat Capacitor SDK) |
-| Grant | `entitlements.verification` is `VERIFIED` or `VERIFIED_ON_DEVICE`, dated payload, `premium` active, plan resolved via composite `productIdentifier` or `PLAY_SUBSCRIPTION_ID` + `productPlanIdentifier`, valid `expirationDate` |
+| Grant | `entitlements.verification` is `VERIFIED` or `VERIFIED_ON_DEVICE`, dated payload, `premium` active, valid `expirationDate`. Plan label (monthly/yearly) is best-effort for UI; unknown product ids still grant when RC marks `premium` active (logged once). Async applies from before import/delete are ignored via sync generation. |
 | Revoke | Same verification states on a **complete** inactive snapshot; `FAILED` revokes; malformed or undated payloads are ignored |
-| Ordering | **`requestDate` monotonic apply** — stale syncs cannot undo a newer snapshot |
+| Ordering | **`requestDate` monotonic apply** — stale syncs and delayed listener payloads cannot undo a newer snapshot |
+| Offline access | Premium uses cached `expirationDate` from last verified `CustomerInfo` (`Date.now() <= exp`). No local grace extension; validate renewal/offline behavior on device with the native SDK. |
 | Purchase / restore | Single in-flight billing op; failed sync does not clear premium |
 
 `RevenueCatBilling.configure()` is single-flight (shared promise + one listener).

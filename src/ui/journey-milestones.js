@@ -1,7 +1,7 @@
 /* ===== src/ui/journey-milestones.js ===== */
 'use strict';
 
-// Progressive journey milestone reveal — same model as King / laotzu101:
+// Progressive journey milestone reveal:
 // revealed milestones render as full rows; unrevealed ones become locked placeholders.
 
 function isJourneyMilestoneReviewMode(data) {

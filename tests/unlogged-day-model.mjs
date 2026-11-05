@@ -177,7 +177,7 @@ assert('12b — corrupt stored best (failures > 10) does not display', () => {
   }
 });
 
-assert('12c — best score display = better of current vs stored best (laotzu101)', () => {
+assert('12c — best score display = better of current vs stored best', () => {
   const d = fresh(2026, 8, 1);
   d.attempt = 2;
   d.completedJourneys = [{ attempt: 1, score: { success: 25, failures: 10 }, date: '' }];

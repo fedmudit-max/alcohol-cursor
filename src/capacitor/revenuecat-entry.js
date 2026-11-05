@@ -62,6 +62,8 @@ const RevenueCatBilling = {
     } catch (e) { /* optional */ }
     if (!this._listenerRegistered) {
       await Purchases.addCustomerInfoUpdateListener((customerInfo) => {
+        // No sync-generation guard: RC pushes legitimate renewals/revocations here.
+        // Stale payloads are dropped via CustomerInfo requestDate monotonic apply.
         if (typeof applyRevenueCatCustomerInfo === 'function') {
           applyRevenueCatCustomerInfo(customerInfo);
         }
@@ -89,9 +91,18 @@ const RevenueCatBilling = {
     const monthly = cat.resolvePackageForPlan(offering, 'monthly');
     const yearly = cat.resolvePackageForPlan(offering, 'yearly');
     this._packagesByPlan = { monthly, yearly };
-    this._planQuotes = monthly && yearly
-      ? cat.buildPlanQuotes(monthly, yearly)
-      : null;
+    if (monthly && yearly) {
+      this._planQuotes = cat.buildPlanQuotes(monthly, yearly);
+    } else if (monthly || yearly) {
+      this._planQuotes = cat.buildPartialPlanQuotes(monthly, yearly);
+    } else {
+      this._planQuotes = null;
+    }
+  },
+
+  /** Launch policy: both base plans must resolve before checkout (see syncPremiumStoreCheckoutState). */
+  isStoreCheckoutReady() {
+    return this.hasPlan('monthly') && this.hasPlan('yearly') && !!this._planQuotes;
   },
 
   async loadOfferings(forceRefresh) {

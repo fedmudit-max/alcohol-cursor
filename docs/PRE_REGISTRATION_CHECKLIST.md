@@ -35,7 +35,7 @@ Preflight: `bash scripts/preflight-release.sh --store` on `dist/src/config/app.c
 
 - [ ] App created with package **`com.tendrinks.app`**
 - [ ] **Privacy policy URL** matches app (`PRIVACY_POLICY_URL` in config — currently Netlify policy)
-- [ ] **Data safety** form: local journey data, backup export/import, no backend account for MVP
+- [ ] **Data safety** form: local journey data, backup export/import, no backend account for MVP; **no Google Auto Backup** (`allowBackup=false` + data extraction rules — user JSON export is the backup path)
 - [ ] **Health apps** declaration matches reality (alcohol tracking, AUDIT-C screening — not a medical device; accurate wording per Play policy)
 - [ ] Content rating questionnaire completed
 - [ ] Target audience and ads declaration (if applicable)
