@@ -268,6 +268,39 @@ function premiumDaysLeftLabel() {
   return `${left} days left`;
 }
 
+/** Settings premium row — active trial (collapsed header). */
+function premiumTrialHeaderTitle() {
+  const left = trialDaysLeft();
+  if (left <= 0) return 'Free Trial Ended';
+  if (left === 1) return 'Free Trial · 1 Day Left';
+  return `Free Trial · ${left} Days Left`;
+}
+
+function isPremiumPanelOpen() {
+  const body = el('premiumPanelBody');
+  return !!(body && body.classList.contains('is-open'));
+}
+
+function syncPremiumPanelHeaderTrial() {
+  const teaser = el('premiumPanelTeaser');
+  const titleEl = el('premiumPanelTitle');
+  const card = el('premiumPanelCard');
+  const status = el('premiumEntryStatus');
+  const open = isPremiumPanelOpen();
+  if (card) card.classList.toggle('premium-panel-open', open);
+  const trial = isTrialActive() && !isForcePremiumLocked() && !isPremiumActive();
+  if (!trial) {
+    if (teaser) teaser.hidden = false;
+    return;
+  }
+  if (titleEl) titleEl.textContent = premiumTrialHeaderTitle();
+  if (teaser) {
+    teaser.textContent = '';
+    teaser.hidden = open;
+  }
+  if (status) status.hidden = true;
+}
+
 function isPremiumInAppVisible() {
   return CONFIG.showPremiumInApp === true;
 }
@@ -925,7 +958,7 @@ function renderPremiumPanelContent() {
     if (active) {
       daysEl.textContent = '';
     } else if (trial) {
-      daysEl.textContent = premiumDaysLeftLabel();
+      daysEl.textContent = '';
       daysEl.classList.remove('is-ended');
     } else {
       daysEl.textContent = 'Trial ended';
@@ -978,7 +1011,7 @@ function renderPremiumEntry() {
     isPremium = true;
   } else if (isTrialActive()) {
     badge = '';
-    sub = premiumDaysLeftLabel();
+    sub = '';
     showBadge = false;
     trial = true;
   } else {
@@ -989,18 +1022,19 @@ function renderPremiumEntry() {
     if (!isPremiumSubscribeOffered()) showBadge = false;
   }
 
-  if (titleEl) titleEl.textContent = '✦ Premium';
+  if (titleEl) titleEl.textContent = trial ? premiumTrialHeaderTitle() : '✦ Premium';
   if (card) {
     card.classList.toggle('premium-active-state', isPremium);
     card.classList.toggle('premium-trial-state', trial);
   }
   if (status) {
-    status.hidden = !showBadge;
+    status.hidden = !showBadge || trial;
     status.textContent = badge;
     status.classList.toggle('is-premium', isPremium);
   }
-  if (teaser) teaser.textContent = sub;
+  if (teaser) teaser.textContent = trial ? '' : sub;
   renderPremiumPanelContent();
+  syncPremiumPanelHeaderTrial();
 }
 
 Tracker.togglePremiumPanel = function() {
@@ -1014,6 +1048,7 @@ Tracker.togglePremiumPanel = function() {
   if (toggle) toggle.setAttribute('aria-expanded', open ? 'false' : 'true');
   if (chev) chev.classList.toggle('open', !open);
   if (!open) renderPremiumPanelContent();
+  syncPremiumPanelHeaderTrial();
 };
 
 // Paywall sheet + test lock (attached to Tracker for onclick="SoberTracker.…")

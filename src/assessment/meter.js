@@ -10,6 +10,54 @@ function lerpColor(hex1, hex2, t) {
   return `rgb(${Math.round(r1+(r2-r1)*t)},${Math.round(g1+(g2-g1)*t)},${Math.round(b1+(b2-b1)*t)})`;
 }
 
+const METER_SVG_LAYOUT_VERSION = '10';
+
+function meterTextBlockMetrics(centerY, lines, fontSize) {
+  const lineHeight = fontSize * 1.12;
+  const blockH = (lines.length - 1) * lineHeight + fontSize * 0.92;
+  const top = centerY - blockH / 2;
+  const bottom = centerY + blockH / 2;
+  const firstBaseline = top + fontSize * 0.78;
+  return { lineHeight, blockH, top, bottom, firstBaseline };
+}
+
+/** @param {d3.Selection} parent */
+function appendMeterOutlinedText(parent, opts) {
+  const {
+    x, y, anchor, lines, fontSize, fontWeight, fontStyle, className,
+    color, haloSw, opacity,
+  } = opts;
+  const { lineHeight, firstBaseline } = meterTextBlockMetrics(y, lines, fontSize);
+  const styles = [
+    { fill: 'none', stroke: 'white', sw: haloSw },
+    { fill: color, stroke: 'none', sw: '0', op: opacity },
+  ];
+  styles.forEach(st => {
+    const text = parent.append('text')
+      .attr('class', className)
+      .attr('x', x)
+      .attr('y', firstBaseline)
+      .attr('text-anchor', anchor)
+      .attr('dominant-baseline', 'alphabetic')
+      .attr('font-size', `${fontSize}px`)
+      .attr('font-weight', fontWeight || '400')
+      .attr('font-family', '-apple-system,sans-serif')
+      .attr('fill', st.fill)
+      .attr('stroke', st.stroke)
+      .attr('stroke-width', st.sw)
+      .attr('stroke-linejoin', 'round');
+    if (fontStyle) text.attr('font-style', fontStyle);
+    if (st.op != null) text.attr('opacity', st.op);
+    lines.forEach((line, li) => {
+      text.append('tspan')
+        .attr('x', x)
+        .attr('dy', li === 0 ? 0 : lineHeight)
+        .text(line);
+    });
+  });
+  return lineHeight * Math.max(0, lines.length - 1);
+}
+
 // ═══════════════════════════════════════════════════════════════
 // METER CONTROLLER
 // ═══════════════════════════════════════════════════════════════
@@ -28,11 +76,11 @@ const MeterController = {
   lastQ1: null, lastQ2: null, lastQ3: null, lastScore: null,
 
   ZONES: [
-    { label:'No alcohol reported', sub:'', who:'No alcohol reported on screening', color:'#1a7a34', scoreMin:0,  scoreMax:1,  arcUnits:0.5  },
-    { label:'Lower-risk range', sub:'', who:'AUDIT-C score 1–3', color:'#34c759', scoreMin:1,  scoreMax:4,  arcUnits:2.75 },
-    { label:'Hazardous range',  sub:'',            who:'AUDIT-C score 4–5', color:'#ff9500', scoreMin:4,  scoreMax:6,  arcUnits:2    },
-    { label:'Harmful range',    sub:'',            who:'AUDIT-C score 6–8', color:'#ff3b30', scoreMin:6,  scoreMax:9,  arcUnits:2.75 },
-    { label:'Seek support',     sub:'',            who:'AUDIT-C: Seek support range', hideArcRange:true, color:'#7b0000', scoreMin:9,  scoreMax:12, arcUnits:4    },
+    { label:'No alcohol reported', labelLines:['No alcohol','reported'], sub:'', who:'No alcohol reported on screening', color:'#1a7a34', scoreMin:0,  scoreMax:1,  arcUnits:0.5  },
+    { label:'Lower-risk range', labelLines:['Lower-risk','range'], sub:'', who:'AUDIT-C score 1–3', color:'#34c759', scoreMin:1,  scoreMax:4,  arcUnits:2.75 },
+    { label:'Hazardous range', labelLines:['Hazardous','range'], sub:'', who:'AUDIT-C score 4–5', color:'#ff9500', scoreMin:4,  scoreMax:6,  arcUnits:2    },
+    { label:'Harmful range', labelLines:['Harmful','range'], sub:'', who:'AUDIT-C score 6–8', color:'#ff3b30', scoreMin:6,  scoreMax:9,  arcUnits:2.75 },
+    { label:'Seek support', labelLines:['Seek','support'], sub:'', who:'AUDIT-C: Seek support range', color:'#7b0000', scoreMin:9,  scoreMax:12, arcUnits:4    },
   ],
 
   GRADIENTS: [
@@ -120,7 +168,10 @@ const MeterController = {
     if (this.initialized || typeof d3 === 'undefined') return;
     const svgNode = document.getElementById('meterSvg');
     if (!svgNode) return;
-    if (svgNode.childNodes.length > 0) {
+    if (svgNode.dataset.meterLayoutVersion !== METER_SVG_LAYOUT_VERSION) {
+      while (svgNode.firstChild) svgNode.removeChild(svgNode.firstChild);
+      svgNode.dataset.meterLayoutVersion = METER_SVG_LAYOUT_VERSION;
+    } else if (svgNode.childNodes.length > 0) {
       this.initialized = true;
       return;
     }
@@ -129,6 +180,15 @@ const MeterController = {
     const CX=150, CY=158, INNER=76, OUTER=135;
     const GAP=0.015, STEPS=20;
     const DEG = Math.PI / 12;
+    const VB_WIDTH = 400;
+    const capCss = typeof getComputedStyle === 'function'
+      ? getComputedStyle(document.documentElement).getPropertyValue('--meter-caption-size').trim()
+      : '';
+    const METER_CAPTION_SCREEN_PX = parseFloat(capCss) || 10; /* .meter-screening-disclaimer */
+    let renderW = svgNode.getBoundingClientRect().width;
+    if (!renderW || renderW < 80) renderW = 360;
+    const labelFont = (METER_CAPTION_SCREEN_PX * VB_WIDTH) / renderW;
+    const labelScale = labelFont / 7;
 
     const svg = d3.select('#meterSvg');
     const g   = svg.append('g').attr('transform', `translate(${CX},${CY})`);
@@ -164,47 +224,39 @@ const MeterController = {
     });
 
     const RANGES = ['0','1-3','4-5','6-8','9-12'];
+    const nameToRangeGap = labelFont * 0.4455;
     this.ZONES.forEach((z, i) => {
       const midDeg = z.arcMid * 180 / Math.PI;
-      // Uniform anchor based on position — all labels point outward from arc center
-      const anchor = midDeg < -15 ? 'end' : midDeg > 15 ? 'start' : 'middle';
-      const lr  = OUTER + 16;
-      const lx  = (lr * Math.sin(z.arcMid)).toFixed(1);
-      const ly1 = (-lr * Math.cos(z.arcMid) - 9).toFixed(1);   // zone name
-      const ly2 = (-lr * Math.cos(z.arcMid) + 1).toFixed(1);   // score range
-      const ly3 = (-lr * Math.cos(z.arcMid) + 10).toFixed(1);  // sub-label
+      const anchor = midDeg < -20 ? 'end' : midDeg > 20 ? 'start' : 'middle';
+      const lr  = OUTER + 10.395 * labelScale;
+      const lx  = +(lr * Math.sin(z.arcMid)).toFixed(1);
+      const baseY = -lr * Math.cos(z.arcMid);
+      const nameLines = z.labelLines && z.labelLines.length ? z.labelLines : [z.label];
+      const nameExtra = (nameLines.length - 1) * labelFont * 1.12 * 0.2079;
+      const lyName = baseY - 5.94 * labelScale - nameExtra;
+      const nameGeom = meterTextBlockMetrics(lyName, nameLines, labelFont);
+      const rangeGeom = meterTextBlockMetrics(0, [RANGES[i]], labelFont);
+      const lyRange = nameGeom.bottom + nameToRangeGap + rangeGeom.blockH / 2;
+      const lySub = lyRange + nameGeom.lineHeight * 0.72 + rangeGeom.blockH / 2;
+      const haloSw = Math.max(3, 3 * labelScale).toFixed(1);
 
-      // Zone name
-      [{ fill:'none', stroke:'white', sw:'3' }, { fill:z.color, stroke:'none', sw:'0' }].forEach(st => {
-        g.append('text')
-          .attr('x', lx).attr('y', ly1)
-          .attr('text-anchor', anchor).attr('dominant-baseline','middle')
-          .attr('font-size','7px').attr('font-weight','700').attr('font-family','-apple-system,sans-serif')
-          .attr('fill', st.fill).attr('stroke', st.stroke).attr('stroke-width', st.sw)
-          .attr('stroke-linejoin','round').text(z.label);
+      appendMeterOutlinedText(g, {
+        x: lx, y: lyName, anchor, lines: nameLines, fontSize: labelFont,
+        fontWeight: '700', className: 'meter-arc-label', color: z.color, haloSw,
       });
-      // Score range (omitted for Seek support — screening band, not a score band label)
+
       if (!z.hideArcRange) {
-        [{ fill:'none', stroke:'white', sw:'3' }, { fill:z.color, stroke:'none', sw:'0', op:'0.7' }].forEach(st => {
-          const t2 = g.append('text')
-            .attr('x', lx).attr('y', ly2)
-            .attr('text-anchor', anchor).attr('dominant-baseline','middle')
-            .attr('font-size','7px').attr('font-family','-apple-system,sans-serif')
-            .attr('fill', st.fill).attr('stroke', st.stroke).attr('stroke-width', st.sw)
-            .attr('stroke-linejoin','round').text(RANGES[i]);
-          if (st.op) t2.attr('opacity', st.op);
+        appendMeterOutlinedText(g, {
+          x: lx, y: lyRange, anchor, lines: [RANGES[i]], fontSize: labelFont,
+          fontWeight: '500', className: 'meter-arc-range', color: z.color, haloSw, opacity: 0.7,
         });
       }
-      // Sub-label (e.g. "Your target", "Medical supervision")
+
       if (z.sub) {
-        [{ fill:'none', stroke:'white', sw:'3' }, { fill:z.color, stroke:'none', sw:'0', op:'0.6' }].forEach(st => {
-          const t3 = g.append('text')
-            .attr('x', lx).attr('y', ly3)
-            .attr('text-anchor', anchor).attr('dominant-baseline','middle')
-            .attr('font-size','6.5px').attr('font-style','italic').attr('font-family','-apple-system,sans-serif')
-            .attr('fill', st.fill).attr('stroke', st.stroke).attr('stroke-width', st.sw)
-            .attr('stroke-linejoin','round').text(`(${z.sub})`);
-          if (st.op) t3.attr('opacity', st.op);
+        const subFont = labelFont * 0.92;
+        appendMeterOutlinedText(g, {
+          x: lx, y: lySub, anchor, lines: [`(${z.sub})`], fontSize: subFont,
+          fontStyle: 'italic', className: 'meter-arc-sub', color: z.color, haloSw, opacity: 0.6,
         });
       }
     });
@@ -217,7 +269,7 @@ const MeterController = {
       .attr('text-anchor','middle').attr('font-size','28px').attr('font-weight','800')
       .attr('font-family','-apple-system,sans-serif').attr('fill','#c7c7cc').text('—');
     g.append('text').attr('id','mScoreLabel').attr('x',0).attr('y',-8)
-      .attr('text-anchor','middle').attr('font-size','9px').attr('font-family','-apple-system,sans-serif')
+      .attr('text-anchor','middle').attr('font-size', `${labelFont}px`).attr('font-family','-apple-system,sans-serif')
       .attr('fill','rgba(60,60,67,0.35)').text('score / 12');
     g.append('circle').attr('r',10).attr('fill','white').attr('stroke','#8e8e93').attr('stroke-width',2).attr('id','mHubRing');
     g.append('circle').attr('r',4).attr('fill','#8e8e93').attr('id','mHubDot');

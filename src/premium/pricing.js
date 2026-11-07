@@ -3,15 +3,15 @@
 
   /** Reference USD tiers when no local list price is defined. */
   const PREMIUM_USD_REFERENCE = {
-    monthly: 2.99,
-    yearly: 14.99,
-    yearlyList: 26.99,
+    monthly: 4.99,
+    yearly: 39.99,
+    yearlyList: 59.88,
   };
 
   /** Typical list prices in major currencies (store will replace when wired). */
   const PREMIUM_LIST_BY_CURRENCY = {
-    USD: { monthly: 2.99, yearly: 14.99, yearlyList: 26.99 },
-    EUR: { monthly: 2.99, yearly: 14.99, yearlyList: 26.99 },
+    USD: { monthly: 4.99, yearly: 39.99, yearlyList: 59.88 },
+    EUR: { monthly: 4.99, yearly: 39.99, yearlyList: 59.88 },
     GBP: { monthly: 2.49, yearly: 12.99, yearlyList: 22.99 },
     INR: { monthly: 149, yearly: 999, yearlyList: 1788 },
     AUD: { monthly: 4.49, yearly: 22.99, yearlyList: 40.99 },
