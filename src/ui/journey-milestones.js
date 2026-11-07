@@ -33,8 +33,7 @@ function buildJourneyMilestoneRowHtml(data, m) {
   const current = data.currentScore.success | 0;
   const count = (data.journeyTrophies && data.journeyTrophies[m.days]) || 0;
   const fullLabel = m.label || (m.days + ' Days');
-  const alwaysShowLabel = m.days === 100 || m.days === 200;
-  const shortLabel = alwaysShowLabel ? fullLabel : fullLabel.split(' — ')[0];
+  const shortLabel = journeyMilestonePendingLabel(m.days);
   const reviewMode = isJourneyMilestoneReviewMode(data);
   const reached = current >= m.days;
   const previouslyAchieved = isJourneyMilestonePreviouslyAchieved(data, m.days);

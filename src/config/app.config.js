@@ -153,17 +153,17 @@ const PLAY_BILLING_PRODUCT_IDS = {
   yearly: 'ten_drinks_premium:yearly',
 };
 /** RevenueCat entitlement identifier (Dashboard → Entitlements). */
-const REVENUECAT_ENTITLEMENT_ID = 'premium';
+const REVENUECAT_ENTITLEMENT_ID = '10drinks_premium';
 /**
  * Optional RevenueCat offering package identifiers (Dashboard → Offerings → current).
  * Fallback: packageType MONTHLY / ANNUAL on the current offering.
  */
 const REVENUECAT_PACKAGE_IDENTIFIERS = {
-  monthly: 'monthly',
-  yearly: 'annual',
+  monthly: '$rc_monthly',
+  yearly: '$rc_annual',
 };
 /** Public Android SDK key from RevenueCat → Project → API keys (starts with goog_). */
-const REVENUECAT_ANDROID_API_KEY = '';
+const REVENUECAT_ANDROID_API_KEY = 'goog_QtibYbsSKRHDfmeEXputUnkVjtL';
 const MS_PER_DAY             = 86400000; // milliseconds in one day
 const CONFETTI_DURATION_MS   = 4000; // how long confetti stays on screen
 const TOAST_DURATION_MS      = 3200; // how long toast message shows
@@ -181,7 +181,7 @@ const APP_DISPLAY_NAME = '10Drinks';
 const PRIVACY_POLICY_URL = 'https://10drinksprivacy.netlify.app/';
 
 // Billing mode: 'local-stub' (dev/test via showTestUI) or 'store' (native IAP when wired).
-const PREMIUM_BILLING_MODE = 'local-stub';
+const PREMIUM_BILLING_MODE = 'store';
 
 const CONFIG = {
   isProduction:   true,
@@ -206,11 +206,11 @@ const CONFIG = {
    * false = hide paywall sheet and most Premium marketing UI.
    * true = show full entitlement UX; pair with showPremiumSubscribe when billing is live.
    */
-  showPremiumInApp: false,
+  showPremiumInApp: true,
   /** Only applies when showPremiumInApp is true. */
-  showPremiumSubscribe: false,
+  showPremiumSubscribe: true,
   /** false = hide Premium section in Settings until billing is live. */
-  showPremiumInSettings: false,
+  showPremiumInSettings: true,
   privacyPolicyUrl: PRIVACY_POLICY_URL,
 };
 

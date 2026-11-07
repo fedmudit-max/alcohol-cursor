@@ -24,7 +24,7 @@ function setupPremiumContext() {
       isProduction: true,
       premiumBilling: 'store',
       revenueCatAndroidApiKey: 'goog_fake_integration_test',
-      revenueCatEntitlementId: 'premium',
+      revenueCatEntitlementId: '10drinks_premium',
       enforceTrialEntitlement: true,
       showPremiumInApp: true,
       showPremiumSubscribe: true,
@@ -514,7 +514,7 @@ async function run() {
   await ok('subscribe — delayed entitlement refresh after purchase', async () => {
     const { ctx, toast, clearToast } = setupPremiumContext();
     const broken = makeRealisticCustomerInfo();
-    broken.entitlements.active.premium.expirationDate = null;
+    broken.entitlements.active['10drinks_premium'].expirationDate = null;
     let syncCalls = 0;
     installMockRC(ctx, {
       purchasePlan: () => Promise.resolve(broken),
@@ -534,7 +534,7 @@ async function run() {
   await ok('subscribe — purchase without entitlement prompts restore (no double purchase)', async () => {
     const { ctx, toast, clearToast } = setupPremiumContext();
     const broken = makeRealisticCustomerInfo();
-    broken.entitlements.active.premium.expirationDate = null;
+    broken.entitlements.active['10drinks_premium'].expirationDate = null;
     let purchases = 0;
     installMockRC(ctx, {
       purchasePlan: () => {

@@ -21,7 +21,7 @@ For **subscription / RevenueCat** internal tests (after editing `app.config.js` 
 npm run android:bundle:store
 ```
 
-That runs **`preflight-release.sh --store`** (checks `store` billing, `goog_` key set, `showPremiumInApp` / `showPremiumSubscribe` / `showPremiumInSettings`, `REVENUECAT_ENTITLEMENT_ID = 'premium'` — key is never printed).
+That runs **`preflight-release.sh --store`** (checks `store` billing, `goog_` key set, `showPremiumInApp` / `showPremiumSubscribe` / `showPremiumInSettings`, `REVENUECAT_ENTITLEMENT_ID = '10drinks_premium'` — key is never printed).
 
 Current app config for store builds (see `src/config/app.config.js`):
 

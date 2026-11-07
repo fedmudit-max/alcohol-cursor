@@ -54,7 +54,7 @@ const JOURNEY_MILESTONE_SECTIONS = [
     labelClass: 'stage-building',
     containerId: 'journeySectionEarly',
     days: [10, 15, 20],
-    alwaysVisibleDays: [10, 15],
+    alwaysVisibleDays: [10, 15, 20],
   },
   {
     labelId: 'journeyStageForward',
@@ -77,6 +77,12 @@ const JOURNEY_MILESTONE_SECTIONS = [
 ];
 
 const JOURNEY_SOBER_TARGET_DAYS = JOURNEY_TROPHIES.map(m => m.days);
+
+/** Journey tab row title before the milestone is reached this journey (e.g. "20 Sober Days"). */
+function journeyMilestonePendingLabel(days) {
+  const n = days | 0;
+  return n + ' Sober Day' + (n === 1 ? '' : 's');
+}
 
 // Popup-only sober-day targets per journey (not shown in Journey tab).
 // Inserts prior best (e.g. 43) between standard milestones when beating last journey matters.

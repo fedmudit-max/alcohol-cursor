@@ -24,7 +24,7 @@ function setupContext() {
       isProduction: true,
       premiumBilling: 'store',
       revenueCatAndroidApiKey: 'goog_fake',
-      revenueCatEntitlementId: 'premium',
+      revenueCatEntitlementId: '10drinks_premium',
       enforceTrialEntitlement: true,
     },
     Capacitor: { isNativePlatform: () => true, getPlatform: () => 'android' },

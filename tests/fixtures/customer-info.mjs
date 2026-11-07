@@ -9,7 +9,10 @@ function defaultFutureExpiration(opts) {
  * PurchasesEntitlementInfo-shaped object for Android Play subscription + base plan.
  * @see @revenuecat/purchases-capacitor PurchasesEntitlementInfo
  */
+const DEFAULT_RC_ENTITLEMENT_ID = '10drinks_premium';
+
 export function makeAndroidPremiumEntitlement(opts = {}) {
+  const entitlementId = opts.entitlementId ?? DEFAULT_RC_ENTITLEMENT_ID;
   const expirationDate = defaultFutureExpiration(opts);
   const nowIso = opts.now ?? new Date().toISOString();
   const nowMs = opts.nowMs ?? Date.now();
@@ -31,7 +34,7 @@ export function makeAndroidPremiumEntitlement(opts = {}) {
   }
 
   const ent = {
-    identifier: 'premium',
+    identifier: entitlementId,
     isActive: opts.isActive !== false,
     willRenew,
     periodType: opts.periodType ?? 'NORMAL',
@@ -66,7 +69,8 @@ export function makeRealisticCustomerInfo(opts = {}) {
     isActive: !inactive && opts.isActive !== false,
   });
 
-  const active = inactive ? {} : { premium: premiumEnt };
+  const entitlementId = opts.entitlementId ?? DEFAULT_RC_ENTITLEMENT_ID;
+  const active = inactive ? {} : { [entitlementId]: premiumEnt };
   const allPremium = inactive ? { ...premiumEnt, isActive: false } : premiumEnt;
 
   const compositeSku = premiumEnt.productPlanIdentifier
@@ -76,7 +80,7 @@ export function makeRealisticCustomerInfo(opts = {}) {
 
   return {
     entitlements: {
-      all: { premium: allPremium },
+      all: { [entitlementId]: allPremium },
       active,
       verification: opts.verification ?? 'VERIFIED',
     },

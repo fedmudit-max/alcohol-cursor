@@ -27,6 +27,7 @@ export function loadAppConfig(configPath) {
     REVENUECAT_ENTITLEMENT_ID,
     PLAY_SUBSCRIPTION_ID,
     PLAY_BILLING_PRODUCT_IDS,
+    REVENUECAT_PACKAGE_IDENTIFIERS,
     PREMIUM_PLANS,
     CONFIG,
   })`, ctx);
@@ -34,11 +35,22 @@ export function loadAppConfig(configPath) {
 
 export function validateBillingCatalog(cfg) {
   const errors = [];
-  if (cfg.REVENUECAT_ENTITLEMENT_ID !== 'premium') {
-    errors.push(`REVENUECAT_ENTITLEMENT_ID must be "premium" (got ${cfg.REVENUECAT_ENTITLEMENT_ID})`);
+  if (cfg.REVENUECAT_ENTITLEMENT_ID !== '10drinks_premium') {
+    errors.push(`REVENUECAT_ENTITLEMENT_ID must be "10drinks_premium" (got ${cfg.REVENUECAT_ENTITLEMENT_ID})`);
   }
-  if (!cfg.CONFIG || cfg.CONFIG.revenueCatEntitlementId !== 'premium') {
-    errors.push('CONFIG.revenueCatEntitlementId must be "premium"');
+  if (!cfg.CONFIG || cfg.CONFIG.revenueCatEntitlementId !== '10drinks_premium') {
+    errors.push('CONFIG.revenueCatEntitlementId must be "10drinks_premium"');
+  }
+  const pkgIds = cfg.REVENUECAT_PACKAGE_IDENTIFIERS;
+  if (!pkgIds || typeof pkgIds !== 'object') {
+    errors.push('REVENUECAT_PACKAGE_IDENTIFIERS must be an object');
+  } else {
+    if (pkgIds.monthly !== '$rc_monthly') {
+      errors.push(`RC package monthly must be $rc_monthly (got ${pkgIds.monthly})`);
+    }
+    if (pkgIds.yearly !== '$rc_annual') {
+      errors.push(`RC package yearly must be $rc_annual (got ${pkgIds.yearly})`);
+    }
   }
   if (cfg.PLAY_SUBSCRIPTION_ID !== 'ten_drinks_premium') {
     errors.push(`PLAY_SUBSCRIPTION_ID must be ten_drinks_premium (got ${cfg.PLAY_SUBSCRIPTION_ID})`);
@@ -145,8 +157,10 @@ function runDefaultTestSuite() {
     if (errs.length) throw new Error(errs.join('; '));
   });
 
-  ok('default shipping profile matches trial preflight', () => {
-    const errs = validateTrialProfile(srcCfg);
+  ok('shipping profile matches release preflight (trial or store)', () => {
+    const errs = srcCfg.PREMIUM_BILLING_MODE === 'store'
+      ? validateStoreProfile(srcCfg)
+      : validateTrialProfile(srcCfg);
     if (errs.length) throw new Error(errs.join('; '));
   });
 

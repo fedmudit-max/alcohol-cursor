@@ -19,7 +19,7 @@ App id: **`com.tendrinks.app`**. Billing architecture matches `src/config/app.co
 |---------|--------|
 | `PREMIUM_BILLING_MODE` | `'store'` |
 | `REVENUECAT_ANDROID_API_KEY` | Public `goog_…` key |
-| `REVENUECAT_ENTITLEMENT_ID` | `premium` |
+| `REVENUECAT_ENTITLEMENT_ID` | `10drinks_premium` |
 | `PLAY_SUBSCRIPTION_ID` | `ten_drinks_premium` |
 | Base plans (Play) | `monthly`, `yearly` |
 | RC/Play product ids | `ten_drinks_premium:monthly`, `ten_drinks_premium:yearly` |
@@ -66,7 +66,7 @@ Keystore: see [PLAY_INTERNAL_TESTING.md](PLAY_INTERNAL_TESTING.md) — never com
   - `ten_drinks_premium:monthly`
   - `ten_drinks_premium:yearly`
 - [ ] Entitlement **`premium`** created; both products attached
-- [ ] **Current offering** with packages (MONTHLY/ANNUAL or package ids `monthly` / `annual` per `REVENUECAT_PACKAGE_IDENTIFIERS`)
+- [ ] **Current offering** with packages `$rc_monthly` / `$rc_annual` (or `REVENUECAT_PACKAGE_IDENTIFIERS` in config)
 - [ ] Android public API key (`goog_…`) copied into `REVENUECAT_ANDROID_API_KEY` for store builds only
 
 ---

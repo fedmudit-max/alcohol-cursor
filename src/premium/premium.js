@@ -119,7 +119,7 @@ function isRevenueCatStoreBilling() {
 function revenueCatEntitlementId() {
   if (CONFIG && CONFIG.revenueCatEntitlementId) return CONFIG.revenueCatEntitlementId;
   if (typeof REVENUECAT_ENTITLEMENT_ID === 'string') return REVENUECAT_ENTITLEMENT_ID;
-  return 'premium';
+  return '10drinks_premium';
 }
 
 function planIdFromStoreProductId(productId) {

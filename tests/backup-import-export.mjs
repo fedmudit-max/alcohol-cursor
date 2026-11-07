@@ -256,7 +256,7 @@ ok('import — clears local premium mirror (store sub re-syncs via RevenueCat)',
   store[PREMIUM_KEY] = JSON.stringify({
     active: true,
     source: 'revenuecat',
-    entitlementId: 'premium',
+    entitlementId: '10drinks_premium',
     expiresAt: new Date(Date.now() + 86400000).toISOString(),
   });
   Tracker.data = DM.defaults();

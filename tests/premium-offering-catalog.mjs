@@ -9,18 +9,25 @@ import { fileURLToPath } from 'url';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 
+function loadAppBillingConstants() {
+  const ctx = vm.createContext({});
+  vm.runInContext(fs.readFileSync(path.join(root, 'src/config/app.config.js'), 'utf8'), ctx);
+  return {
+    PLAY_BILLING_PRODUCT_IDS: vm.runInContext('PLAY_BILLING_PRODUCT_IDS', ctx),
+    REVENUECAT_PACKAGE_IDENTIFIERS: vm.runInContext('REVENUECAT_PACKAGE_IDENTIFIERS', ctx),
+  };
+}
+
 function loadCatalog() {
+  const billing = loadAppBillingConstants();
   const ctx = {
     window: {},
-    PLAY_BILLING_PRODUCT_IDS: {
-      monthly: 'ten_drinks_premium:monthly',
-      yearly: 'ten_drinks_premium:yearly',
-    },
-    REVENUECAT_PACKAGE_IDENTIFIERS: { monthly: 'monthly', yearly: 'annual' },
+    PLAY_BILLING_PRODUCT_IDS: billing.PLAY_BILLING_PRODUCT_IDS,
+    REVENUECAT_PACKAGE_IDENTIFIERS: billing.REVENUECAT_PACKAGE_IDENTIFIERS,
   };
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync(path.join(root, 'src/premium/offering-catalog.js'), 'utf8'), ctx);
-  return ctx.window.OfferingCatalog;
+  return { cat: ctx.window.OfferingCatalog, pkgIds: billing.REVENUECAT_PACKAGE_IDENTIFIERS };
 }
 
 function pkg(type, ident, productId, price, priceString, extras) {
@@ -39,7 +46,7 @@ function pkg(type, ident, productId, price, priceString, extras) {
   };
 }
 
-const cat = loadCatalog();
+const { cat, pkgIds } = loadCatalog();
 let failed = 0;
 
 function ok(name, fn) {
@@ -56,14 +63,16 @@ console.log('\nPremium offering catalog\n');
 
 const offering = {
   availablePackages: [
-    pkg('MONTHLY', 'monthly', 'ten_drinks_premium:monthly', 2.99, '$2.99'),
-    pkg('ANNUAL', 'annual', 'ten_drinks_premium:yearly', 14.99, '$14.99'),
+    pkg('MONTHLY', pkgIds.monthly, 'ten_drinks_premium:monthly', 2.99, '$2.99'),
+    pkg('ANNUAL', pkgIds.yearly, 'ten_drinks_premium:yearly', 14.99, '$14.99'),
   ],
 };
 
-ok('packageForPlan — MONTHLY / ANNUAL types', () => {
+ok('packageForPlan — configured $rc_* package ids', () => {
   const m = cat.packageForPlan(offering, 'monthly');
   const y = cat.packageForPlan(offering, 'yearly');
+  if (m.identifier !== pkgIds.monthly) throw new Error('monthly package id');
+  if (y.identifier !== pkgIds.yearly) throw new Error('yearly package id');
   if (m.product.identifier !== 'ten_drinks_premium:monthly') throw new Error('monthly pkg');
   if (y.product.identifier !== 'ten_drinks_premium:yearly') throw new Error('yearly pkg');
 });
@@ -76,7 +85,7 @@ ok('packageForPlan — rejects unknown planId', () => {
 ok('resolvePackageForPlan — rejects wrong Play product ID', () => {
   const bad = {
     availablePackages: [
-      pkg('MONTHLY', 'monthly', 'wrong_monthly_sku', 2.99, '$2.99'),
+      pkg('MONTHLY', pkgIds.monthly, 'wrong_monthly_sku', 2.99, '$2.99'),
     ],
   };
   if (cat.resolvePackageForPlan(bad, 'monthly')) {
@@ -100,15 +109,15 @@ ok('buildPlanQuotes — uses Play priceString and store savings', () => {
   if (q.percentOff !== expectOff) throw new Error(`percentOff ${q.percentOff} vs ${expectOff}`);
 });
 
-ok('package identifier fallback when types CUSTOM', () => {
-  const customOffering = {
+ok('package type MONTHLY/ANNUAL fallback when ids differ', () => {
+  const legacyOffering = {
     availablePackages: [
-      pkg('CUSTOM', 'monthly', 'ten_drinks_premium:monthly', 2.99, '$2.99'),
-      pkg('CUSTOM', 'annual', 'ten_drinks_premium:yearly', 14.99, '$14.99'),
+      pkg('MONTHLY', 'monthly', 'ten_drinks_premium:monthly', 2.99, '$2.99'),
+      pkg('ANNUAL', 'annual', 'ten_drinks_premium:yearly', 14.99, '$14.99'),
     ],
   };
-  if (!cat.resolvePackageForPlan(customOffering, 'yearly')) {
-    throw new Error('annual identifier fallback');
+  if (!cat.resolvePackageForPlan(legacyOffering, 'yearly')) {
+    throw new Error('MONTHLY/ANNUAL type fallback');
   }
 });
 
@@ -130,8 +139,8 @@ ok('resolvePackageForPlan — skips invalid first monthly, selects valid second'
   const multiMonthly = {
     availablePackages: [
       pkg('MONTHLY', 'promo_monthly', 'wrong_sku:monthly', 1.99, '$1.99'),
-      pkg('MONTHLY', 'monthly', 'ten_drinks_premium:monthly', 2.99, '$2.99'),
-      pkg('ANNUAL', 'annual', 'ten_drinks_premium:yearly', 14.99, '$14.99'),
+      pkg('MONTHLY', pkgIds.monthly, 'ten_drinks_premium:monthly', 2.99, '$2.99'),
+      pkg('ANNUAL', pkgIds.yearly, 'ten_drinks_premium:yearly', 14.99, '$14.99'),
     ],
   };
   const resolved = cat.resolvePackageForPlan(multiMonthly, 'monthly');
@@ -141,13 +150,13 @@ ok('resolvePackageForPlan — skips invalid first monthly, selects valid second'
 });
 
 ok('configured package identifier wins over generic MONTHLY type', () => {
-  const offering = {
+  const dupOffering = {
     availablePackages: [
       pkg('MONTHLY', 'promo_slot', 'wrong_sku:monthly', 2.99, '$2.99'),
-      pkg('CUSTOM', 'monthly', 'ten_drinks_premium:monthly', 2.99, '$2.99'),
+      pkg('CUSTOM', pkgIds.monthly, 'ten_drinks_premium:monthly', 2.99, '$2.99'),
     ],
   };
-  const resolved = cat.resolvePackageForPlan(offering, 'monthly');
+  const resolved = cat.resolvePackageForPlan(dupOffering, 'monthly');
   if (!resolved || resolved.product.identifier !== 'ten_drinks_premium:monthly') {
     throw new Error('identifier mapping must beat generic MONTHLY type');
   }

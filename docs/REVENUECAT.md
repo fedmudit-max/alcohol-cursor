@@ -19,11 +19,11 @@ RevenueCat validates Google Play receipts server-side and exposes entitlements t
    `PLAY_SUBSCRIPTION_ID` and `PLAY_BILLING_PRODUCT_IDS` in `app.config.js` must match Play. Import products in RevenueCat after Play is linked.
 
    **CustomerInfo entitlements (Android):** RevenueCat may expose either composite `productIdentifier` (`ten_drinks_premium:monthly`) or split `productIdentifier` = subscription id plus `productPlanIdentifier` = base plan id. The app accepts both when granting Premium.
-5. **Entitlements** — create entitlement identifier **`premium`** (must match `REVENUECAT_ENTITLEMENT_ID`).
-6. Attach both store products to the `premium` entitlement.
+5. **Entitlements** — create entitlement identifier **`10drinks_premium`** (must match `REVENUECAT_ENTITLEMENT_ID`).
+6. Attach both store products to the `10drinks_premium` entitlement.
 7. **Offerings** — set a **current** offering with packages:
-   - Prefer package types **MONTHLY** and **ANNUAL**, or
-   - Package identifiers `monthly` and `annual` (see `REVENUECAT_PACKAGE_IDENTIFIERS` in config).
+   - Package identifiers **`$rc_monthly`** and **`$rc_annual`** (see `REVENUECAT_PACKAGE_IDENTIFIERS` in config), or
+   - Fallback: package types **MONTHLY** and **ANNUAL** if ids differ.
 
 ## API key in the app
 

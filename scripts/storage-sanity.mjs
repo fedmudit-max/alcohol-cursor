@@ -350,7 +350,7 @@ ok('internal test bar alone does not grant Premium after trial ends', () => {
 });
 
 ok('local-stub premium requires valid future expiresAt (dev)', () => {
-  vm.runInContext('CONFIG.showTestUI = true', ctx);
+  vm.runInContext("CONFIG.showTestUI = true; CONFIG.premiumBilling = 'local-stub'", ctx);
   store[TRIAL_STORE_KEY] = new Date(Date.now() - (16 * 86400000)).toISOString();
   const future = new Date(Date.now() + (5 * 86400000)).toISOString();
   store[PREMIUM_KEY] = JSON.stringify({
@@ -362,13 +362,13 @@ ok('local-stub premium requires valid future expiresAt (dev)', () => {
 });
 
 ok('local-stub premium rejected without expiresAt', () => {
-  vm.runInContext('CONFIG.showTestUI = true', ctx);
+  vm.runInContext("CONFIG.showTestUI = true; CONFIG.premiumBilling = 'local-stub'", ctx);
   store[PREMIUM_KEY] = JSON.stringify({ active: true, source: 'local-stub' });
   if (isPremiumActive()) throw new Error('missing expiresAt must not grant premium');
 });
 
 ok('local-stub premium rejected for empty or invalid expiresAt', () => {
-  vm.runInContext('CONFIG.showTestUI = true', ctx);
+  vm.runInContext("CONFIG.showTestUI = true; CONFIG.premiumBilling = 'local-stub'", ctx);
   store[PREMIUM_KEY] = JSON.stringify({ active: true, source: 'local-stub', expiresAt: '' });
   if (isPremiumActive()) throw new Error('empty expiresAt must not grant premium');
   store[PREMIUM_KEY] = JSON.stringify({ active: true, source: 'local-stub', expiresAt: 'not-a-date' });
@@ -376,7 +376,7 @@ ok('local-stub premium rejected for empty or invalid expiresAt', () => {
 });
 
 ok('local-stub premium rejected when expiresAt is in the past', () => {
-  vm.runInContext('CONFIG.showTestUI = true', ctx);
+  vm.runInContext("CONFIG.showTestUI = true; CONFIG.premiumBilling = 'local-stub'", ctx);
   store[PREMIUM_KEY] = JSON.stringify({
     active: true,
     source: 'local-stub',
@@ -392,7 +392,7 @@ ok('forged localStorage revenuecat record does not grant premium', () => {
   store[PREMIUM_KEY] = JSON.stringify({
     active: true,
     source: 'revenuecat',
-    entitlementId: 'premium',
+    entitlementId: '10drinks_premium',
     expiresAt: future,
   });
   if (isPremiumActive()) throw new Error('localStorage must not grant store premium');
@@ -408,7 +408,7 @@ ok('revenuecat CustomerInfo grants premium in store mode', () => {
     entitlements: {
       verification: 'VERIFIED',
       active: {
-        premium: {
+        '10drinks_premium': {
           expirationDate: future,
           productIdentifier: 'ten_drinks_premium:yearly',
         },
@@ -428,7 +428,7 @@ ok('revenuecat premium rejected without expiresAt', () => {
     entitlements: {
       verification: 'VERIFIED',
       active: {
-        premium: { expirationDate: null, productIdentifier: 'ten_drinks_premium:yearly' },
+        '10drinks_premium': { expirationDate: null, productIdentifier: 'ten_drinks_premium:yearly' },
       },
     },
   });
@@ -445,7 +445,7 @@ ok('revenuecat verification FAILED denies premium', () => {
     entitlements: {
       verification: 'FAILED',
       active: {
-        premium: { expirationDate: future, productIdentifier: 'ten_drinks_premium:yearly' },
+        '10drinks_premium': { expirationDate: future, productIdentifier: 'ten_drinks_premium:yearly' },
       },
     },
   });
@@ -462,7 +462,7 @@ ok('revenuecat stale CustomerInfo does not undo newer premium', () => {
     entitlements: {
       verification: 'VERIFIED',
       active: {
-        premium: { expirationDate: future, productIdentifier: 'ten_drinks_premium:yearly' },
+        '10drinks_premium': { expirationDate: future, productIdentifier: 'ten_drinks_premium:yearly' },
       },
     },
   });
@@ -487,7 +487,7 @@ ok('revenuecat newer inactive CustomerInfo revokes premium', () => {
     entitlements: {
       verification: 'VERIFIED',
       active: {
-        premium: { expirationDate: future, productIdentifier: 'ten_drinks_premium:yearly' },
+        '10drinks_premium': { expirationDate: future, productIdentifier: 'ten_drinks_premium:yearly' },
       },
     },
   });
